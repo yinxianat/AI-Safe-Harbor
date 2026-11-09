@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  displayName    String?
+  timezone       String   @default("America/Los_Angeles")
+  // How this person prefers to be spoken TO. Read by the compose route from
+  // the receiver's record and passed to the AI layer.
+  tonePreference String   @default("warm_and_gentle")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  sentConnections     Connection[]  @relation("UserA")
+  receivedConnections Connection[]  @relation("UserB")
+  sentMessages        Message[]     @relation("Sender")
+  topicSettings       TopicSetting[]
+  magicTokens         MagicToken[]
+  sentInvites         MagicToken[]  @relation("InvitedBy")
+}
+
+model MagicToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  // The account this token signs in (resolved from the recipient address).
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  // For purpose="invite": who sent the invitation. Kept separate from userId —
+  // conflating the two made every invite either fail or self-connect.
+  invitedByUserId String?
+  invitedBy       User?  @relation("InvitedBy", fields: [invitedByUserId], references: [id])
+  email     String
+  purpose   String
+  consumed  Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Connection {
+  id               String   @id @default(cuid())
+  userAId          String
+  userA            User     @relation("UserA", fields: [userAId], references: [id])
+  userBId          String
+  userB            User     @relation("UserB", fields: [userBId], references: [id])
+  relationshipType String   @default("spouse")
+  status           String   @default("pending")
+  createdAt        DateTime @default(now())
+
+  messages      Message[]
+  topicSettings TopicSetting[]
+
+  @@unique([userAId, userBId])
+}
+
+model TopicSetting {
+  id             String     @id @default(cuid())
+  connectionId   String
+  connection     Connection @relation(fields: [connectionId], references: [id])
+  userId         String
+  user           User       @relation(fields: [userId], references: [id])
+  topicName      String
+  comfortLevel   String
+  isCustom       Boolean    @default(false)
+  sanitizedLabel String?
+  updatedAt      DateTime   @updatedAt
+  createdAt      DateTime   @default(now())
+
+  @@unique([connectionId, userId, topicName])
+}
+
+model Message {
+  id               String     @id @default(cuid())
+  senderId         String
+  sender           User       @relation("Sender", fields: [senderId], references: [id])
+  connectionId     String
+  connection       Connection @relation(fields: [connectionId], references: [id])
+  contentRaw       String
+  contentRephrased String?
+  versionSent      String?
+  senderApproved   Boolean    @default(false)
+  topicTags        String[]
+  heldReason       String?
+  aiProvider       String?
+  aiModel          String?
+  aiTokensUsed     Int?
+  status           String     @default("draft")
+  createdAt        DateTime   @default(now())
+  sentAt           DateTime?
+}

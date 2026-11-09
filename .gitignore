@@ -1,7 +1,50 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# SafeHarbor .gitignore
+#
+# Contract: `git add -A` must stage everything needed to build and deploy,
+# and must never stage a secret.
+#
+# Deliberately COMMITTED because Railway/Vercel need them at build time:
+#   package.json, package-lock.json   dependency install
+#   next.config.mjs                   Tailwind v4 turbopack loader
+#   jsconfig.json                     the `@/*` import alias used across src/
+#   prisma/schema.prisma              schema
+#   prisma/migrations/**              `prisma migrate deploy` applies only what is committed
+#   prisma7.config.ts                 Prisma 7 CLI config
+#   railway.json, .nvmrc              deploy config + Node version pin
+#   eslint.config.mjs, jest.config.js lint + test config
+#   .env.example                      template, contains no real values
+# Do not add a broad pattern that catches any of the above.
 
-# dependencies
-/node_modules
+# ---------------------------------------------------------------------------
+# Secrets — never commit. Keep this section first and widest.
+# ---------------------------------------------------------------------------
+# All env files are ignored; the committed template is re-included below.
+.env
+.env.*
+!.env.example
+
+# Keys, certificates, credentials
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+id_rsa
+id_rsa.*
+*.ppk
+credentials.json
+service-account*.json
+secrets.json
+secrets.yaml
+secrets.yml
+.netrc
+.npmrc
+
+# ---------------------------------------------------------------------------
+# Dependencies
+# ---------------------------------------------------------------------------
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -10,32 +53,76 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# ---------------------------------------------------------------------------
+# Build output
+# ---------------------------------------------------------------------------
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
 
-# next.js
-/.next/
-/out/
+# ---------------------------------------------------------------------------
+# Generated code — recreated by `prisma generate` (runs in postinstall + build)
+# ---------------------------------------------------------------------------
+src/generated/
 
-# production
-/build
+# ---------------------------------------------------------------------------
+# Local database files (Postgres runs as a service; these are stray artifacts)
+# ---------------------------------------------------------------------------
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
 
-# misc
+# ---------------------------------------------------------------------------
+# Tests and coverage
+# ---------------------------------------------------------------------------
+coverage/
+.nyc_output/
+
+# ---------------------------------------------------------------------------
+# Agent / AI tooling scaffolding
+# `prisma init` auto-installs ~100 skill doc files. They are not needed to
+# build, run, or deploy the app. Project-level .claude config stays committable.
+# ---------------------------------------------------------------------------
+.agents/
+.windsurf/
+.cursor/
+.claude/skills/
+skills-lock.json
+
+# ---------------------------------------------------------------------------
+# Editor and OS
+# ---------------------------------------------------------------------------
 .DS_Store
-*.pem
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
+*.swp
+*.swo
+*~
 
-# debug
+# ---------------------------------------------------------------------------
+# Logs and temp
+# ---------------------------------------------------------------------------
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+logs/
+tmp/
+temp/
+.cache/
 
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
+# ---------------------------------------------------------------------------
+# Deploy platform local state
+# ---------------------------------------------------------------------------
 .vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+.railway

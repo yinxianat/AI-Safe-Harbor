@@ -4,19 +4,39 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest tests/topic-checker.test.js tests/topics.test.js tests/feature-flags.test.js tests/ai-provider-chain.test.js tests/ai-boundaries.test.js",
+    "test:ai": "node --experimental-vm-modules node_modules/.bin/jest tests/ai-quality.test.js tests/ai-injection.test.js --runInBand",
+    "test:all": "node --experimental-vm-modules node_modules/.bin/jest --runInBand"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.7.0",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "jose": "^6.2.17",
     "next": "16.4.6",
+    "nodemailer": "^10.4.0",
+    "pg": "^8.23.1",
+    "prisma": "^7.10.1",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
+  "type": "module",
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "dotenv": "^18.0.10",
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
+    "jest": "^30.5.2",
+    "jest-environment-jsdom": "^30.5.2",
     "tailwindcss": "4.3.3"
   }
 }
