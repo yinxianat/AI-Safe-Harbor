@@ -58,7 +58,7 @@ Nothing is delivered without the sender explicitly approving it.
 | Styling | Tailwind CSS 4 | Mobile-first; no separate stylesheet to maintain |
 | Database | PostgreSQL | Relational data with a `String[]` column for topic tags |
 | ORM | Prisma 7 | Typed queries and versioned migrations |
-| AI | Pluggable provider chain (Claude, OpenAI) | Tone rephrasing, with failover |
+| AI | Pluggable provider chain (Gemini → Claude → GPT) | Tone rephrasing, with failover. No vendor SDK. |
 | Auth | Magic links + JWT (`jose`) | No passwords to store or leak |
 | Email | Nodemailer | Magic-link delivery; logs to console when unconfigured |
 | Tests | Jest | Unit and AI-as-judge tests |
@@ -71,8 +71,8 @@ Nothing is delivered without the sender explicitly approving it.
 
 - Node.js 24 (see `.nvmrc`)
 - PostgreSQL running locally
-- A Claude API key (optional — the app runs without it, but Tone Tuner will hold every
-  message as a draft)
+- A Gemini API key from Google AI Studio (optional — the app runs without one, but Tone
+  Tuner will hold every message as a draft). The free tier is enough for two people.
 
 ### Setup
 
@@ -98,7 +98,9 @@ DATABASE_URL="postgresql://YOUR_USERNAME@localhost:5432/safeharbor"
 ```env
 DATABASE_URL="postgresql://YOUR_USERNAME@localhost:5432/safeharbor"
 TEST_DATABASE_URL="postgresql://YOUR_USERNAME@localhost:5432/safeharbor_test"
-ANTHROPIC_API_KEY="sk-ant-..."
+AI_PROVIDER_CHAIN="gemini,anthropic"
+GEMINI_API_KEY="your-google-ai-studio-key"
+ANTHROPIC_API_KEY=""
 JWT_SECRET="generate-me"
 MAGIC_LINK_SECRET="generate-me-separately"
 BASE_URL="http://localhost:3000"
@@ -173,12 +175,13 @@ safeharbor/
 │   │   ├── feature-flags.js       # Static flags gating Phase 2 features
 │   │   ├── base-url.js            # Public URL resolution (required in production)
 │   │   └── ai/                    # Provider-agnostic AI layer
-│   │       ├── index.js           # rephraseMessage() — the only public entry
+│   │       ├── index.js           # rephraseMessage() + REGISTRY + chain logic
 │   │       ├── prompt.js          # Prompt build + injection sanitization
 │   │       ├── errors.js          # ProviderError: refusal vs infrastructure
-│   │       └── providers/
-│   │           ├── anthropic.js   # Claude, via @anthropic-ai/sdk
-│   │           └── openai.js      # GPT, via fetch (no extra dependency)
+│   │       └── providers/         # All three are structurally identical
+│   │           ├── gemini.js      # DEFAULT — Google, via fetch
+│   │           ├── anthropic.js   # Fallback — Claude, via fetch
+│   │           └── openai.js      # Optional — GPT, via fetch
 │   │
 │   ├── components/                # Client components, all presentational
 │   │   ├── AuthGuard.js           # Redirects to / when unauthenticated
@@ -393,26 +396,33 @@ Three layers, deliberately separated by cost:
 
 | Layer | Command | Cost | Run when |
 |-------|---------|------|----------|
-| Unit — boundaries, flags | `npm test` | Free, <1s | Every change |
-| AI quality — judge-scored | `npm run test:ai` | ~$0.30 | Before deploying; after prompt edits |
-| Injection resistance | included in `test:ai` | ~$0.10 | After touching `ai.js` |
+| Unit — boundaries, registry, provider chain | `npm test` | Free, <1s | Every change |
+| AI quality — judge-scored | `npm run test:ai` | cents | Before deploying; after prompt edits |
+| Injection resistance | included in `test:ai` | cents | After touching `src/lib/ai/` |
 
 ```bash
-npm test                 # 16 tests, no network, no API key needed
+npm test                 # 51 tests, no network, no API key needed
 ```
 
-The AI tests are **skipped gracefully** when `ANTHROPIC_API_KEY` is absent rather than
-failing, so `test:all` stays usable without a key.
+The AI tests **skip gracefully** when no provider key is set rather than failing, so
+`npm run test:all` stays usable without any key at all.
 
 The AI-as-judge pattern: run a message through the real feature, then have a *separate*
-Claude call score the output on meaning preservation, tone match, added content, and
+model score the output on meaning preservation, tone match, added content, and
 naturalness. Thresholds live in `tests/ai-quality.test.js`; meaning preservation requires
 ≥4/5 because a rephrase that changes meaning is the worst failure this app can have.
 
-Integration tests (`tests/api-messages.test.js`, `tests/api-settings.test.js`) are
-referenced by `npm run test:integration` and specified in
-`PLANS/safeharbor-testing-plan.md`, but are **not yet written** — the fixtures in
-`tests/helpers/test-db.js` are ready for them.
+Two independence rules protect that signal:
+
+- The judge **never imports `prompt.js`** and never sees the writer's system prompt. A
+  judge shown the instructions grades against the instructions, not the outcome.
+- `AI_JUDGE_PROVIDER` can pin the judge to a *different* provider than the one under
+  test, so a model never marks its own homework.
+
+Integration tests against a live database are **not yet written** — the fixtures in
+`tests/helpers/test-db.js` are ready for them. There is deliberately no
+`test:integration` script until there is something for it to run; a script that always
+exits 1 is worse than no script.
 
 ---
 
@@ -437,31 +447,65 @@ curl https://<your-domain>/api/health
 
 ## Swapping or adding an AI provider
 
-The AI layer is provider-agnostic. Selection is entirely env-driven:
+**Default: Gemini, falling back to Claude.** Gemini is first because its free tier covers
+a two-person app at zero cost.
+
+### Switching providers — no code change
+
+Reorder one environment variable. That is the entire operation:
 
 ```env
-AI_PROVIDER_CHAIN="anthropic,openai"   # tried in order
-AI_MODEL_ANTHROPIC="claude-sonnet-4-5"
-AI_MODEL_OPENAI="gpt-4o"
+AI_PROVIDER_CHAIN="gemini,anthropic"   # default
+AI_PROVIDER_CHAIN="anthropic,gemini"   # prefer Claude
+AI_PROVIDER_CHAIN="openai"             # OpenAI only
 ```
 
-Providers without an API key are skipped, so the chain degrades rather than erroring.
-The failover rule is the important part:
+Set the matching key (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) and
+optionally the model (`AI_MODEL_GEMINI`, etc.). A provider with no key is **skipped**, so
+you only configure what you use, and the chain degrades instead of erroring. An unknown
+name is logged and ignored rather than crashing the request.
 
-- **Infrastructure failure** (timeout, 429, 5xx, auth, network) → try the next provider.
-  The content was never fairly judged.
-- **Content refusal** (the provider evaluated the text and declined) → **stop**. Another
-  provider would very likely refuse too, and the product requires surfacing the refusal
-  rather than shopping for a yes.
+### The failover rule
 
-Each adapter classifies its own errors, because only it understands its SDK's error
-shape; `index.js` reads nothing but `err.kind`.
+This is the part worth understanding:
 
-**To add a provider:** create `src/lib/ai/providers/<name>.js` exporting `name`,
-`isConfigured()`, `defaultModel()`, and `async complete({system, userMessage, model,
-maxTokens})` returning `{text, model, tokensUsed}` and throwing `ProviderError`. Register
-it in the `REGISTRY` map in `index.js`. Nothing else changes — the prompt, the
-sanitization, the return shape, and the database columns are all provider-independent.
+- **Infrastructure failure** (timeout, 429, 5xx, auth, network) → **try the next
+  provider.** The content was never fairly judged.
+- **Content refusal** (the provider read the text and declined) → **stop and surface it.**
+  Another provider would very likely refuse too, and shopping for a yes defeats the point
+  of having a safety response at all.
+
+Each adapter classifies its own errors, because only it knows its own API's error shape.
+`index.js` reads nothing but `err.kind`.
+
+### Adding a fourth provider
+
+Two steps, roughly 60 lines:
+
+1. Create `src/lib/ai/providers/<name>.js` implementing the contract:
+
+   ```js
+   {
+     name: "<name>",
+     isConfigured(): boolean,                 // is its API key present
+     defaultModel(): string,                  // env-overridable
+     async complete({ system, userMessage, model, maxTokens })
+       → { text, model, tokensUsed }
+       throws ProviderError(kind, name, cause)   // kind: refusal | infrastructure
+   }
+   ```
+
+2. Add one line to `REGISTRY` in `src/lib/ai/index.js`.
+
+Nothing else changes. The prompt, the injection sanitization, the return shape, the
+`aiProvider`/`aiModel`/`aiTokensUsed` columns, and every caller are all
+provider-independent. `tests/ai-provider-chain.test.js` enforces the contract, so a
+half-wired provider fails the build rather than failing in production.
+
+**No vendor SDK is used.** All three adapters call the provider's REST endpoint with
+`fetch`. The project depends on no AI vendor package, which is what makes the adapters
+symmetric and keeps swapping cheap. API keys always travel in headers, never in URLs —
+query strings end up in proxy and access logs.
 
 ---
 

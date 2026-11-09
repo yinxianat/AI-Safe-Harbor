@@ -1,5 +1,6 @@
 // Provider-chain behaviour, exercised without any network calls.
 import { ProviderError, INFRASTRUCTURE, REFUSAL } from "../src/lib/ai/errors.js";
+import { REGISTRY, resolveChain } from "../src/lib/ai/index.js";
 import {
   sanitizeTone,
   sanitizeTopics,
@@ -7,6 +8,94 @@ import {
   isValidTone,
   DEFAULT_TONE,
 } from "../src/lib/ai/prompt.js";
+
+// Catalogue-enforced-by-tests: every registered provider must satisfy the
+// adapter contract, so a new provider cannot be half-wired and fail at runtime.
+describe("Provider adapter contract", () => {
+
+  test("registry is non-empty and includes the documented providers", () => {
+    expect(Object.keys(REGISTRY).length).toBeGreaterThan(0);
+    expect(REGISTRY.gemini).toBeDefined();
+    expect(REGISTRY.anthropic).toBeDefined();
+  });
+
+  test("every provider implements the full contract", () => {
+    for (const [key, provider] of Object.entries(REGISTRY)) {
+      expect(typeof provider.name).toBe("string");
+      expect(provider.name).toBe(key);
+      expect(typeof provider.isConfigured).toBe("function");
+      expect(typeof provider.defaultModel).toBe("function");
+      expect(typeof provider.complete).toBe("function");
+      expect(typeof provider.defaultModel()).toBe("string");
+      expect(provider.defaultModel().length).toBeGreaterThan(0);
+    }
+  });
+
+  test("isConfigured is false when the provider's key is absent", () => {
+    const saved = { ...process.env };
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    try {
+      for (const provider of Object.values(REGISTRY)) {
+        expect(provider.isConfigured()).toBe(false);
+      }
+    } finally {
+      process.env = saved;
+    }
+  });
+
+  test("unconfigured providers are skipped rather than erroring", () => {
+    const saved = { ...process.env };
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    try {
+      expect(resolveChain()).toEqual([]);
+    } finally {
+      process.env = saved;
+    }
+  });
+
+  test("chain order follows AI_PROVIDER_CHAIN", () => {
+    const saved = { ...process.env };
+    process.env.GEMINI_API_KEY = "test";
+    process.env.ANTHROPIC_API_KEY = "test";
+    delete process.env.OPENAI_API_KEY;
+    try {
+      process.env.AI_PROVIDER_CHAIN = "anthropic,gemini";
+      expect(resolveChain().map((p) => p.name)).toEqual(["anthropic", "gemini"]);
+
+      process.env.AI_PROVIDER_CHAIN = "gemini,anthropic";
+      expect(resolveChain().map((p) => p.name)).toEqual(["gemini", "anthropic"]);
+    } finally {
+      process.env = saved;
+    }
+  });
+
+  test("defaults to gemini first when no chain is configured", () => {
+    const saved = { ...process.env };
+    delete process.env.AI_PROVIDER_CHAIN;
+    process.env.GEMINI_API_KEY = "test";
+    process.env.ANTHROPIC_API_KEY = "test";
+    try {
+      expect(resolveChain().map((p) => p.name)).toEqual(["gemini", "anthropic"]);
+    } finally {
+      process.env = saved;
+    }
+  });
+
+  test("an unknown provider name is ignored, not fatal", () => {
+    const saved = { ...process.env };
+    process.env.GEMINI_API_KEY = "test";
+    process.env.AI_PROVIDER_CHAIN = "not_a_provider,gemini";
+    try {
+      expect(resolveChain().map((p) => p.name)).toEqual(["gemini"]);
+    } finally {
+      process.env = saved;
+    }
+  });
+});
 
 describe("Provider error classification", () => {
 

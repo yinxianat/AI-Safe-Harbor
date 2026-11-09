@@ -1,20 +1,27 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { REGISTRY } from "../../src/lib/ai/index.js";
 
-// Constructed on first use, not at import — the SDK resolves credentials eagerly,
-// which fires after Jest tears down the environment when no API key is set.
-let client;
-function getClient() {
-  client ??= new Anthropic();
-  return client;
+// The judge is INDEPENDENT of the writer: it never imports prompt.js and never
+// sees the system prompt used to produce the text it is grading. A judge shown
+// the writer's instructions grades against those instructions rather than the
+// outcome. It reuses the provider adapters only as transport.
+//
+// It also deliberately prefers a DIFFERENT provider from the one under test
+// where possible, so a provider cannot mark its own homework.
+function pickJudgeProvider() {
+  const preferred = process.env.AI_JUDGE_PROVIDER;
+  if (preferred && REGISTRY[preferred]?.isConfigured()) {
+    return REGISTRY[preferred];
+  }
+  return Object.values(REGISTRY).find((p) => p.isConfigured()) || null;
 }
 
 export async function callJudge({ original, rephrased, receiverTone, yellowTopics }) {
-  const response = await getClient().messages.create({
-    model: "claude-sonnet-4-5",
-    max_tokens: 500,
-    messages: [{
-      role: "user",
-      content: `You are a quality judge for a communication app's rephrase feature.
+  const provider = pickJudgeProvider();
+  if (!provider) {
+    return { scores: {}, overallPass: false, notes: "No judge provider configured" };
+  }
+
+  const prompt = `You are a quality judge for a communication app's rephrase feature.
 
 A sender wrote this original message:
 "${original}"
@@ -44,15 +51,27 @@ Return ONLY valid JSON:
   },
   "overallPass": <true if all scores >= 3 AND meaningPreserved >= 4>,
   "notes": "<one sentence about the biggest issue, if any>"
-}`
-    }],
-  });
+}`;
 
-  const text = response.content[0].text;
+  let result;
   try {
-    return JSON.parse(text);
+    result = await provider.complete({
+      system: "You are a strict, impartial evaluator. Return only valid JSON.",
+      userMessage: prompt,
+      model: provider.defaultModel(),
+      maxTokens: 500,
+    });
+  } catch (err) {
+    return { scores: {}, overallPass: false, notes: `Judge call failed: ${err?.message}` };
+  }
+
+  // Models often wrap JSON in a markdown fence.
+  const cleaned = result.text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/, "");
+
+  try {
+    return JSON.parse(cleaned);
   } catch {
-    console.error("Judge returned non-JSON:", text);
+    console.error("Judge returned non-JSON:", result.text);
     return { scores: {}, overallPass: false, notes: "Judge response was not valid JSON" };
   }
 }

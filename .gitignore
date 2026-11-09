@@ -126,3 +126,26 @@ temp/
 # ---------------------------------------------------------------------------
 .vercel
 .railway
+
+# ---------------------------------------------------------------------------
+# Internal planning and lessons documents
+# These live in ../PLANS (outside this repo) and are deliberately NOT published.
+# The patterns below are defensive: if the folder is ever copied or moved in
+# here, `git add -A` must still not pick it up.
+# ---------------------------------------------------------------------------
+PLANS/
+plans/
+LESSONS.md
+LESSONS.pdf
+*-dev-plan.md
+*-dev-plan.pdf
+*-testing-plan.md
+*-testing-plan.pdf
+*-deployment-plan.md
+*-deployment-plan.pdf
+
+# Scratch / working notes
+scratch/
+notes/
+TODO.local.md
+*.local.md
