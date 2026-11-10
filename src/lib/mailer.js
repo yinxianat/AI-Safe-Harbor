@@ -114,12 +114,13 @@ function describeFailure(err) {
       reason: "smtp_unreachable",
       hint:
         "Could not open a session with the mail server, so the credentials were never tested. " +
-        "Check SMTP_HOST and SMTP_PORT (587 for STARTTLS, 465 for TLS). " +
-        "A timeout here does NOT by itself prove the port is blocked — it is also what a slow egress path looks like, " +
-        "and the connection budget is 30s precisely because a container platform can be much slower to connect than a laptop. " +
-        "Distinguish the two before concluding: a blocked port generally refuses immediately or stalls far past 30s, " +
-        "whereas a slow route eventually connects. Compare SMTP_PORT 587 and 465 before blaming the network. " +
-        "Only if every port and both families fail is this a platform-level block, which needs an HTTPS email API such as Resend, SendGrid or Brevo.",
+        "The detail below lists every address tried and how each one failed. Then: " +
+        "(1) confirm SMTP_HOST and SMTP_PORT are set on the deployed host, not only in a local .env; " +
+        "(2) try the other port — 587 for STARTTLS, 465 for TLS; " +
+        "(3) run scripts/smtp-diag.js on that host, which reports what both resolvers return " +
+        "and which addresses accept a connection. " +
+        "Note a timeout is this client's own 30s budget expiring, which is not the same as a blocked port; " +
+        "the diagnostic tells the two apart, so reach for an HTTPS email API only once it shows every address failing.",
     };
   }
   // Reached only when nothing above matched, i.e. no IPv4 address was tried or
