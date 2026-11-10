@@ -20,23 +20,40 @@ export async function POST(request) {
     return ok();
   }
 
+  let magicLink;
   try {
     const { plaintext } = await generateMagicToken(email, "login");
-    const magicLink = `${getBaseUrl(request)}/api/auth/verify?token=${plaintext}`;
-
-    const delivery = await sendMail({
-      to: email,
-      subject: "Leeway — Sign In Link",
-      text: `Click to sign in: ${magicLink}\n\nThis link expires in 15 minutes.`,
-      html: `<p>Click to sign in: <a href="${magicLink}">${magicLink}</a></p><p>This link expires in 15 minutes.</p>`,
-    });
-
-    if (delivery.error) {
-      logError("api.auth.request-link", "sign-in email could not be delivered", delivery.error);
-    }
+    magicLink = `${getBaseUrl(request)}/api/auth/verify?token=${plaintext}`;
   } catch (err) {
     logError("api.auth.request-link", "could not issue magic link", err?.message);
+    return ok();
   }
+
+  // Delivery is deliberately NOT awaited. A mail server that is slow, wrong, or
+  // refusing credentials would otherwise hold the HTTP response open for as
+  // long as it takes to fail — which the user experiences as a page spinning
+  // forever, unable to tell "still sending" from "silently broken".
+  //
+  // The token is already stored, so the link is valid whether or not this send
+  // succeeds, and a failure is recorded where an operator can actually see it.
+  sendMail({
+    to: email,
+    subject: "Leeway — Sign In Link",
+    text: `Click to sign in: ${magicLink}\n\nThis link expires in 15 minutes.\n\nIf you did not request this, you can ignore this email.`,
+    html: `<p>Click to sign in:</p><p><a href="${magicLink}">${magicLink}</a></p><p>This link expires in 15 minutes.</p><p style="color:#64748b;font-size:13px">If you did not request this, you can ignore this email.</p>`,
+  })
+    .then((delivery) => {
+      if (delivery.error) {
+        logError(
+          "api.auth.request-link",
+          "sign-in email could not be delivered",
+          delivery.detail || delivery.error
+        );
+      }
+    })
+    .catch((err) => {
+      logError("api.auth.request-link", "sign-in email threw unexpectedly", err?.message);
+    });
 
   return ok();
 }

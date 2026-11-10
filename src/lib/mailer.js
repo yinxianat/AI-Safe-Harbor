@@ -40,6 +40,48 @@ function fromAddress() {
   return process.env.SMTP_FROM || smtpUser();
 }
 
+// Without these, a wrong host or a silently dropped connection leaves the
+// socket open for minutes. The request that triggered the send waits the whole
+// time, which is how "the page just spins" happens.
+const TIMEOUTS = {
+  connectionTimeout: 10_000,
+  greetingTimeout: 10_000,
+  socketTimeout: 15_000,
+};
+
+// "smtp_failed" tells an operator nothing. These turn the provider's raw
+// response into something that names the actual fix, because the whole point
+// of persisting the error is to shorten the next diagnosis.
+function describeFailure(err) {
+  const code = err?.code || err?.responseCode || "";
+  const message = err?.message || String(err);
+  const text = `${code} ${message}`;
+
+  if (/EAUTH|535|Username and Password not accepted|BadCredentials/i.test(text)) {
+    return {
+      reason: "smtp_auth_rejected",
+      hint:
+        "The mail server rejected the credentials. For Gmail this must be a 16-character App Password, not the account password, and SMTP_USER must be the full address.",
+    };
+  }
+  if (/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(text)) {
+    return { reason: "smtp_host_not_found", hint: "SMTP_HOST does not resolve. Check it for typos." };
+  }
+  if (/ECONNREFUSED|ECONNECTION|ETIMEDOUT|ESOCKET|Greeting never received/i.test(text)) {
+    return {
+      reason: "smtp_unreachable",
+      hint: "Could not establish a session with the mail server. Check SMTP_HOST and SMTP_PORT (587 for STARTTLS, 465 for TLS).",
+    };
+  }
+  if (/EENVELOPE|550|553|Sender address rejected/i.test(text)) {
+    return {
+      reason: "smtp_sender_rejected",
+      hint: "The server refused the From address. It must be one the authenticated account may send as.",
+    };
+  }
+  return { reason: "smtp_failed", hint: "Unclassified SMTP failure; see detail." };
+}
+
 export async function sendMail({ to, subject, text, html }) {
   if (!process.env.SMTP_HOST) {
     console.log(`\n--- email to ${to} ---\n${subject}\n${text}\n`);
@@ -50,11 +92,12 @@ export async function sendMail({ to, subject, text, html }) {
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || "587", 10),
-      secure: false,
+      secure: parseInt(process.env.SMTP_PORT || "587", 10) === 465,
       auth: {
         user: smtpUser(),
         pass: smtpPass(),
       },
+      ...TIMEOUTS,
     });
 
     await transporter.sendMail({
@@ -71,7 +114,14 @@ export async function sendMail({ to, subject, text, html }) {
     // (logger -> alerts -> mailer); routing a delivery failure back into the
     // logger would recurse forever. Callers that are not the alert path check
     // the return value and log it themselves.
-    console.error("[mailer] SMTP delivery failed:", err?.message);
-    return { delivered: false, error: "smtp_failed" };
+    const { reason, hint } = describeFailure(err);
+    console.error(`[mailer] ${reason}: ${err?.message}`);
+    return {
+      delivered: false,
+      error: reason,
+      // Passed to the caller so it reaches the persisted log. Redaction runs
+      // on the way in, so a credential echoed by the server is stripped.
+      detail: `${hint}\n\nServer said: ${err?.code || ""} ${err?.message || err}`.trim(),
+    };
   }
 }

@@ -45,16 +45,26 @@ export async function POST(request) {
   const inviteLink = `${getBaseUrl(request)}/api/invite/accept?token=${plaintext}`;
   const inviterName = user.displayName || "Someone";
 
-  const delivery = await sendMail({
+  // Not awaited, for the same reason as the sign-in route: a failing mail
+  // server must not hold the response open. The invitation is already valid.
+  sendMail({
     to: email,
     subject: `${inviterName} invited you to Leeway`,
     text: `You've been invited to connect on Leeway.\n\nAccept: ${inviteLink}\n\nThis link expires in 15 minutes.`,
     html: `<p>${inviterName} invited you to connect on Leeway.</p><p><a href="${inviteLink}">Accept Invitation</a></p><p>This link expires in 15 minutes.</p>`,
-  });
-
-  if (delivery.error) {
-    logError("api.invite", "invitation email could not be delivered", delivery.error);
-  }
+  })
+    .then((delivery) => {
+      if (delivery.error) {
+        logError(
+          "api.invite",
+          "invitation email could not be delivered",
+          delivery.detail || delivery.error
+        );
+      }
+    })
+    .catch((err) => {
+      logError("api.invite", "invitation email threw unexpectedly", err?.message);
+    });
 
   return Response.json({ sent: true });
 }
