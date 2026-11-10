@@ -137,7 +137,7 @@ export default function Dashboard() {
   }, [retryKey]);
 
   const connected = circle.members.length > 0;
-  const partnerName = circle.members[0]?.displayName || circle.members[0]?.username;
+  const partnerName = circle.members[0]?.displayName || (circle.members[0]?.username ? `@${circle.members[0].username}` : "your person");
   const pendingCount = circle.incoming.length;
   const setupDone = Boolean(user?.username) && boundariesSet && connected && hasSent;
 

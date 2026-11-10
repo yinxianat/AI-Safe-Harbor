@@ -32,8 +32,10 @@ function ReactionBar({ message, onReact }) {
 
 function inboxReducer(state, action) {
   switch (action.type) {
-    case "start": return { ...state, loading: true, messages: [] };
+    case "start": return { ...state, loading: true, messages: [], error: null };
     case "done": return { ...state, loading: false, messages: action.messages };
+    case "error": return { ...state, loading: false, error: action.error };
+    case "clear_error": return { ...state, error: null };
     case "react":
       return {
         ...state,
@@ -46,36 +48,64 @@ function inboxReducer(state, action) {
 }
 
 export default function InboxPage() {
-  const [{ messages, loading }, dispatch] = useReducer(inboxReducer, {
+  const [{ messages, loading, error }, dispatch] = useReducer(inboxReducer, {
     messages: [],
     loading: true,
+    error: null,
   });
   const [box, setBox] = useState("received");
 
   const loadMessages = useCallback(async (which) => {
-    const res = await fetch(`/api/messages/inbox?box=${which}`);
-    if (res.ok) {
-      const data = await res.json();
-      return data.messages || [];
+    try {
+      const res = await fetch(`/api/messages/inbox?box=${which}`);
+      if (res.ok) {
+        const data = await res.json();
+        return { messages: data.messages || [] };
+      }
+      return { error: "Could not load messages. Please try again." };
+    } catch {
+      return { error: "Network error. Check your connection and try again." };
     }
-    return [];
   }, []);
 
   useEffect(() => {
     let cancelled = false;
     dispatch({ type: "start" });
-    loadMessages(box).then((msgs) => {
-      if (!cancelled) dispatch({ type: "done", messages: msgs });
+    loadMessages(box).then((result) => {
+      if (cancelled) return;
+      if (result.error) {
+        dispatch({ type: "error", error: result.error });
+      } else {
+        dispatch({ type: "done", messages: result.messages });
+      }
     });
     return () => { cancelled = true; };
   }, [box, loadMessages]);
 
   async function handleReact(messageId, reaction) {
     dispatch({ type: "react", id: messageId, reaction });
-    await fetch("/api/messages/react", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messageId, reaction }),
+    try {
+      const res = await fetch("/api/messages/react", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, reaction }),
+      });
+      if (!res.ok) {
+        dispatch({ type: "error", error: "Could not save your reaction. Please try again." });
+      }
+    } catch {
+      dispatch({ type: "error", error: "Network error saving your reaction." });
+    }
+  }
+
+  function handleRefresh() {
+    dispatch({ type: "start" });
+    loadMessages(box).then((result) => {
+      if (result.error) {
+        dispatch({ type: "error", error: result.error });
+      } else {
+        dispatch({ type: "done", messages: result.messages });
+      }
     });
   }
 
@@ -84,12 +114,21 @@ export default function InboxPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">Messages</h1>
         <button
-          onClick={() => { dispatch({ type: "start" }); loadMessages(box).then((msgs) => dispatch({ type: "done", messages: msgs })); }}
+          onClick={handleRefresh}
           className="text-sm text-indigo-600 font-medium hover:text-indigo-800"
         >
           Refresh
         </button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
+          <p>{error}</p>
+          <button onClick={() => dispatch({ type: "clear_error" })} className="text-xs font-medium underline mt-1">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div className="flex rounded-xl bg-slate-100 p-1">
         {["received", "sent"].map((b) => (

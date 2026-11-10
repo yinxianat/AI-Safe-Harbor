@@ -11,19 +11,28 @@ export default function ComposePage() {
   const [sent, setSent] = useState(false);
   const [connections, setConnections] = useState([]);
   const [selectedConnection, setSelectedConnection] = useState("");
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    async function loadConnections() {
-      const connRes = await fetch("/api/connections");
-      if (connRes.ok) {
-        const data = await connRes.json();
-        setConnections(data.connections || []);
-        if (data.connections?.length > 0) {
-          setSelectedConnection(data.connections[0].id);
+    let cancelled = false;
+    (async () => {
+      try {
+        const connRes = await fetch("/api/connections");
+        if (cancelled) return;
+        if (connRes.ok) {
+          const data = await connRes.json();
+          setConnections(data.connections || []);
+          if (data.connections?.length > 0) {
+            setSelectedConnection(data.connections[0].id);
+          }
+        } else {
+          setError("Could not load your connections. Please refresh the page.");
         }
+      } catch {
+        if (!cancelled) setError("Network error. Check your connection and refresh.");
       }
-    }
-    loadConnections();
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   async function handleTune() {
@@ -32,6 +41,7 @@ export default function ComposePage() {
     setHeld(null);
     setRephrased(null);
     setSent(false);
+    setError(null);
 
     try {
       const res = await fetch("/api/messages/compose", {
@@ -43,6 +53,11 @@ export default function ComposePage() {
         }),
       });
 
+      if (!res.ok && res.status >= 500) {
+        setError("Server error while tuning your message. Please try again.");
+        return;
+      }
+
       const data = await res.json();
 
       if (data.held) {
@@ -52,7 +67,7 @@ export default function ComposePage() {
         setMessageId(data.messageId);
       }
     } catch {
-      setHeld({ heldReason: "ai_failed" });
+      setError("Network error. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -61,6 +76,7 @@ export default function ComposePage() {
   async function handleSend(version) {
     if (!messageId) return;
     setLoading(true);
+    setError(null);
 
     try {
       const res = await fetch("/api/messages/send", {
@@ -74,7 +90,12 @@ export default function ComposePage() {
         setRawMessage("");
         setRephrased(null);
         setMessageId(null);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.detail || "Could not send the message. Please try again.");
       }
+    } catch {
+      setError("Network error. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -108,6 +129,15 @@ export default function ComposePage() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold text-slate-900">Compose</h1>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
+          <p>{error}</p>
+          <button onClick={() => setError(null)} className="text-xs font-medium underline mt-1">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {connections.length > 1 && (
         <select

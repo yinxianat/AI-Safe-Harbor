@@ -4,14 +4,16 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
 function PersonRow({ person, action }) {
+  const name = person.displayName || (person.username ? `@${person.username}` : person.email || "Someone");
   return (
     <div className="flex items-center justify-between bg-white rounded-xl border border-gray-100 shadow-sm p-4">
       <div className="min-w-0">
-        <p className="font-semibold text-slate-800 truncate">
-          {person.displayName || `@${person.username}`}
-        </p>
+        <p className="font-semibold text-slate-800 truncate">{name}</p>
         {person.displayName && person.username && (
           <p className="text-sm text-slate-500 truncate">@{person.username}</p>
+        )}
+        {!person.displayName && !person.username && (
+          <p className="text-sm text-slate-400 truncate">No username claimed yet</p>
         )}
       </div>
       {action}
