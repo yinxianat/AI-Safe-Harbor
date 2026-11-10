@@ -55,6 +55,7 @@ function SignInForm() {
   const [problem, setProblem] = useState(null);
   const [suggestion, setSuggestion] = useState(null);
   const [cooldownUntil, setCooldownUntil] = useState(null);
+  const [undeliverable, setUndeliverable] = useState(false);
   const inFlight = useRef(false);
 
   const cooldown = useCountdown(cooldownUntil);
@@ -79,6 +80,10 @@ function SignInForm() {
         return;
       }
 
+      // The server reports mail-system health, not anything about this
+      // address, so acting on it cannot reveal whether the account exists.
+      const body = await res.json().catch(() => ({}));
+      setUndeliverable(Boolean(body.deliveryDegraded));
       setSentTo(address);
       setCooldownUntil(Date.now() + RESEND_COOLDOWN_SECONDS * 1000);
     } catch {
@@ -115,18 +120,36 @@ function SignInForm() {
   if (sentTo) {
     return (
       <div className="space-y-4">
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-center">
-          <p className="font-medium text-emerald-800">Check your email</p>
-          <p className="mt-1 text-sm text-emerald-700">
-            We sent a sign-in link to <strong>{sentTo}</strong>
-          </p>
-          <p className="mt-3 text-sm text-emerald-700">
-            It usually arrives within a minute. The link works for 15 minutes.
-          </p>
-          <p className="mt-2 text-xs text-emerald-600">
-            Not there yet? Check your spam or promotions folder.
-          </p>
-        </div>
+        {undeliverable ? (
+          // Telling someone to check their inbox when the mail system is known
+          // to be down is the single most confusing thing this page can do: it
+          // reads as "your address is wrong" and sends them to look for a
+          // message that does not exist.
+          <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-center">
+            <p className="font-medium text-red-800">We couldn&rsquo;t send your sign-in link</p>
+            <p className="mt-2 text-sm text-red-700">
+              Email delivery is temporarily unavailable. This is a problem on our side —
+              nothing is wrong with <strong>{sentTo}</strong>.
+            </p>
+            <p className="mt-3 text-sm text-red-700">
+              Your link was created and is waiting, so please try again shortly. The
+              administrator has been notified automatically.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-center">
+            <p className="font-medium text-emerald-800">Check your email</p>
+            <p className="mt-1 text-sm text-emerald-700">
+              We sent a sign-in link to <strong>{sentTo}</strong>
+            </p>
+            <p className="mt-3 text-sm text-emerald-700">
+              It usually arrives within a minute. The link works for 15 minutes.
+            </p>
+            <p className="mt-2 text-xs text-emerald-600">
+              Not there yet? Check your spam or promotions folder.
+            </p>
+          </div>
+        )}
 
         {problem && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
@@ -139,13 +162,13 @@ function SignInForm() {
             <p>You can send another link in {cooldown}s</p>
           ) : (
             <p>
-              Still nothing? Make sure the address above is right, or{" "}
+              {undeliverable ? "Ready to " : "Still nothing? Make sure the address above is right, or "}
               <button
                 onClick={() => send(sentTo)}
                 disabled={loading}
                 className="font-medium text-indigo-600 underline hover:text-indigo-800 disabled:opacity-50"
               >
-                {loading ? "sending…" : "send it again"}
+                {loading ? "sending…" : undeliverable ? "try again" : "send it again"}
               </button>
             </p>
           )}
@@ -155,6 +178,7 @@ function SignInForm() {
               setProblem(null);
               setSuggestion(null);
               setCooldownUntil(null);
+              setUndeliverable(false);
             }}
             className="mt-3 text-slate-400 underline hover:text-slate-600"
           >

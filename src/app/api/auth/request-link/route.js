@@ -1,7 +1,7 @@
 import { generateMagicToken } from "@/lib/auth.js";
 import { getBaseUrl } from "@/lib/base-url.js";
 import { parseJsonBody, requireString } from "@/lib/http.js";
-import { sendMail } from "@/lib/mailer.js";
+import { sendMail, deliveryHealth } from "@/lib/mailer.js";
 import { logError } from "@/lib/logger.js";
 
 export async function POST(request) {
@@ -9,7 +9,13 @@ export async function POST(request) {
 
   // Always 200, whatever happens — the response must not reveal whether an
   // address is registered, malformed, or failed to send.
-  const ok = () => Response.json({ sent: true });
+  //
+  // `deliveryDegraded` is the one exception, and only because it carries no
+  // per-address information: it is the same value for every caller, so it says
+  // "our mail system is down", never "this address does not exist". Without it
+  // the page confidently tells people to check an inbox that cannot receive
+  // anything, which is how a broken deployment looks like a working one.
+  const ok = () => Response.json({ sent: true, deliveryDegraded: deliveryHealth().degraded });
 
   if (!body.ok) {
     return ok();

@@ -14,6 +14,7 @@
  * alert path is logger -> alerts -> mailer, so that would recurse.
  */
 import nodemailer from "nodemailer";
+import { isProduction } from "./env.js";
 
 // SMTP_USERNAME/SMTP_PASSWORD are accepted alongside SMTP_USER/SMTP_PASS
 // because both are standard, and reading the wrong pair fails in the worst
@@ -42,22 +43,60 @@ function fromAddress() {
   return process.env.SMTP_FROM || smtpUser();
 }
 
-// Without these, a dropped connection holds the socket open for minutes.
+// Generous on purpose. Egress from a container platform to a public mail host
+// can take far longer than a laptop on a home network, and `ETIMEDOUT
+// Connection timeout` from nodemailer is this limit expiring — not proof that
+// the port is blocked. A 10s budget here reported a hard failure against a
+// server that was merely slow to accept.
+//
+// Nothing waits on these: the send is fired after the HTTP response has
+// already gone out, so a long ceiling costs a background socket, not a user
+// staring at a spinner.
 const TIMEOUTS = {
-  connectionTimeout: 10_000,
-  greetingTimeout: 10_000,
-  socketTimeout: 15_000,
+  connectionTimeout: 30_000,
+  greetingTimeout: 30_000,
+  socketTimeout: 45_000,
 };
 
-// Mail hosts publish both A and AAAA records, and Node 17+ dials them in DNS
-// order. Container platforms commonly assign an IPv6 address with no egress
-// route, so an IPv6 attempt hangs until the timeout rather than failing fast.
-// Defaults to IPv4; set SMTP_IP_FAMILY=6 or 0 to override.
+/**
+ * Most recent delivery failure, so the sign-in page can stop telling people to
+ * check an inbox we already know we cannot reach.
+ *
+ * Safe to report to an unauthenticated caller: this is global infrastructure
+ * state, identical for a registered and an unregistered address, so it reveals
+ * nothing the enumeration-resistant 200 was protecting. Per-address outcomes
+ * must never be exposed this way.
+ */
+const DEGRADED_WINDOW_MS = 10 * 60 * 1000;
+let lastFailure = null;
+
+export function deliveryHealth() {
+  // An unconfigured mailer in development is the console fallback, which is a
+  // working path — the link is read from the terminal. In production the same
+  // state means nothing can reach anyone.
+  if (!smtpConfigured()) {
+    return isProduction()
+      ? { degraded: true, reason: "smtp_not_configured" }
+      : { degraded: false };
+  }
+
+  if (!lastFailure || Date.now() - lastFailure.at > DEGRADED_WINDOW_MS) {
+    return { degraded: false };
+  }
+  return { degraded: true, reason: lastFailure.reason };
+}
+
+// 0 means "let the resolver decide", which lets Node try each address the host
+// resolves to — the behaviour that makes a dual-stack mail host reachable when
+// only one family has a working route.
+//
+// Pinning this to 4 looked like the fix for an IPv6 route problem and was
+// actually a regression: it yields a single address with no fallback, whereas
+// leaving it unset keeps the IPv4 attempt as a fallback rather than the only
+// option. Set SMTP_IP_FAMILY=4 or 6 only to diagnose a specific path.
 function ipFamily() {
-  const raw = process.env.SMTP_IP_FAMILY;
-  if (raw === undefined || raw === "") return 4;
-  const parsed = parseInt(raw, 10);
-  return [0, 4, 6].includes(parsed) ? parsed : 4;
+  const parsed = parseInt(process.env.SMTP_IP_FAMILY ?? "", 10);
+  return [0, 4, 6].includes(parsed) ? parsed : 0;
 }
 
 // "smtp_failed" tells an operator nothing. These turn the provider's raw
@@ -82,11 +121,13 @@ function describeFailure(err) {
     return {
       reason: "smtp_unreachable",
       hint:
-        "Could not open a session with the mail server, and the credentials were never tested. " +
+        "Could not open a session with the mail server, so the credentials were never tested. " +
         "Check SMTP_HOST and SMTP_PORT (587 for STARTTLS, 465 for TLS). " +
-        "If the same settings work from a laptop but time out here, the host is reachable and this is the deploy platform, not the configuration: " +
-        "either outbound SMTP is blocked on the current plan (Railway blocks it below Pro), or the connection went out over IPv6 with no return route. " +
-        "This app forces IPv4 already; if it is a plan-level block, no SMTP port will work and delivery has to move to an HTTPS email API such as Resend, SendGrid or Postmark.",
+        "A timeout here does NOT by itself prove the port is blocked — it is also what a slow egress path looks like, " +
+        "and the connection budget is 30s precisely because a container platform can be much slower to connect than a laptop. " +
+        "Distinguish the two before concluding: a blocked port generally refuses immediately or stalls far past 30s, " +
+        "whereas a slow route eventually connects. Try SMTP_IP_FAMILY=4 (then 6) to test one path at a time. " +
+        "Only if every port and both families fail is this a platform-level block, which needs an HTTPS email API such as Resend, SendGrid or Brevo.",
     };
   }
   if (/EENVELOPE|550|553|Sender address rejected/i.test(text)) {
@@ -166,9 +207,11 @@ export async function sendMail({ to, subject, text, html }) {
       html,
     });
 
+    lastFailure = null;
     return { delivered: true };
   } catch (err) {
     const { reason, hint } = describeFailure(err);
+    lastFailure = { reason, at: Date.now() };
     // console, not the logger — see the recursion note in the file header.
     console.error(`[mailer] ${reason}: ${err?.message}`);
     return {

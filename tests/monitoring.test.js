@@ -1,6 +1,7 @@
 import { redact, maskEmail } from "../src/lib/redact.js";
 import { FINDING_TITLES } from "../src/lib/diagnostics.js";
 import { getAdminEmails, isAdminEmail } from "../src/lib/admin-auth.js";
+import { deliveryHealth } from "../src/lib/mailer.js";
 
 function req(headers = {}) {
   const lower = Object.fromEntries(
@@ -8,6 +9,43 @@ function req(headers = {}) {
   );
   return { headers: { get: (k) => lower[k.toLowerCase()] ?? null } };
 }
+
+describe("Mail delivery health", () => {
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  // The sign-in page branches on this to avoid telling someone to check an
+  // inbox we already know we cannot reach.
+  test("an unconfigured mailer is the console fallback in development, not a fault", () => {
+    delete process.env.SMTP_HOST;
+    process.env.NODE_ENV = "development";
+    expect(deliveryHealth().degraded).toBe(false);
+  });
+
+  test("the same unconfigured mailer in production cannot deliver to anyone", () => {
+    delete process.env.SMTP_HOST;
+    process.env.NODE_ENV = "production";
+    expect(deliveryHealth()).toEqual({ degraded: true, reason: "smtp_not_configured" });
+  });
+
+  test("a host with no credentials counts as undeliverable, not configured", () => {
+    process.env.NODE_ENV = "production";
+    process.env.SMTP_HOST = "smtp.gmail.com";
+    delete process.env.SMTP_USER;
+    delete process.env.SMTP_USERNAME;
+    expect(deliveryHealth().degraded).toBe(true);
+  });
+
+  test("a fully configured mailer that has not failed reports healthy", () => {
+    process.env.NODE_ENV = "production";
+    process.env.SMTP_HOST = "smtp.gmail.com";
+    process.env.SMTP_USERNAME = "someone@example.com";
+    process.env.SMTP_PASSWORD = "app-password";
+    expect(deliveryHealth().degraded).toBe(false);
+  });
+});
 
 describe("Log redaction", () => {
 
