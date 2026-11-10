@@ -30,6 +30,49 @@ function ReactionBar({ message, onReact }) {
   );
 }
 
+const HELD_REASON_LABELS = {
+  red_topic: "Touches a sensitive topic",
+  ai_failed: "AI unavailable — saved as draft",
+  content_refused: "Content was flagged",
+};
+
+function HeldCard({ message, onRetry, retrying }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-slate-700">{message.partnerName}</p>
+          <p className="text-sm text-slate-600 mt-1">{message.contentPreview}</p>
+          <div className="flex items-center gap-2 mt-2">
+            <span className={`text-xs px-2 py-0.5 rounded-full ${
+              message.heldReason === "red_topic"
+                ? "bg-red-100 text-red-700"
+                : "bg-amber-100 text-amber-700"
+            }`}>
+              {HELD_REASON_LABELS[message.heldReason] || message.heldReason}
+            </span>
+            {message.topicTags?.length > 0 && (
+              <span className="text-xs text-slate-400">{message.topicTags.join(", ")}</span>
+            )}
+          </div>
+          <p className="text-xs text-slate-400 mt-1">
+            {new Date(message.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+          </p>
+        </div>
+        {message.canRetry && (
+          <button
+            onClick={() => onRetry(message.id)}
+            disabled={retrying}
+            className="text-sm font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50 shrink-0"
+          >
+            {retrying ? "Retrying…" : "Retry"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function inboxReducer(state, action) {
   switch (action.type) {
     case "start": return { ...state, loading: true, messages: [], error: null };
@@ -43,6 +86,11 @@ function inboxReducer(state, action) {
           m.id === action.id ? { ...m, reaction: action.reaction } : m
         ),
       };
+    case "remove":
+      return {
+        ...state,
+        messages: state.messages.filter((m) => m.id !== action.id),
+      };
     default: return state;
   }
 }
@@ -54,10 +102,13 @@ export default function InboxPage() {
     error: null,
   });
   const [box, setBox] = useState("received");
+  const [retryingId, setRetryingId] = useState(null);
+  const [retryResult, setRetryResult] = useState(null);
 
   const loadMessages = useCallback(async (which) => {
     try {
-      const res = await fetch(`/api/messages/inbox?box=${which}`);
+      const url = which === "held" ? "/api/messages/held" : `/api/messages/inbox?box=${which}`;
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         return { messages: data.messages || [] };
@@ -73,6 +124,7 @@ export default function InboxPage() {
     dispatch({ type: "start" });
     loadMessages(box).then((result) => {
       if (cancelled) return;
+      setRetryResult(null);
       if (result.error) {
         dispatch({ type: "error", error: result.error });
       } else {
@@ -81,6 +133,11 @@ export default function InboxPage() {
     });
     return () => { cancelled = true; };
   }, [box, loadMessages]);
+
+  useEffect(() => {
+    if (box !== "received") return;
+    fetch("/api/messages/read", { method: "POST" }).catch(() => {});
+  }, [box, messages]);
 
   async function handleReact(messageId, reaction) {
     dispatch({ type: "react", id: messageId, reaction });
@@ -98,8 +155,50 @@ export default function InboxPage() {
     }
   }
 
+  async function handleRetry(messageId) {
+    setRetryingId(messageId);
+    setRetryResult(null);
+    try {
+      const res = await fetch("/api/messages/retry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId }),
+      });
+      const data = await res.json();
+      if (data.held) {
+        setRetryResult({ type: "still_held", reason: data.heldReason });
+      } else {
+        dispatch({ type: "remove", id: messageId });
+        setRetryResult({ type: "ready", messageId: data.messageId, raw: data.raw, rephrased: data.rephrased });
+      }
+    } catch {
+      dispatch({ type: "error", error: "Network error retrying message." });
+    } finally {
+      setRetryingId(null);
+    }
+  }
+
+  async function handleSendRetried() {
+    if (!retryResult?.messageId) return;
+    try {
+      const res = await fetch("/api/messages/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId: retryResult.messageId, versionSent: "rephrased" }),
+      });
+      if (res.ok) {
+        setRetryResult({ type: "sent" });
+      } else {
+        dispatch({ type: "error", error: "Could not send the message." });
+      }
+    } catch {
+      dispatch({ type: "error", error: "Network error sending message." });
+    }
+  }
+
   function handleRefresh() {
     dispatch({ type: "start" });
+    setRetryResult(null);
     loadMessages(box).then((result) => {
       if (result.error) {
         dispatch({ type: "error", error: result.error });
@@ -131,7 +230,7 @@ export default function InboxPage() {
       )}
 
       <div className="flex rounded-xl bg-slate-100 p-1">
-        {["received", "sent"].map((b) => (
+        {["received", "sent", "held"].map((b) => (
           <button
             key={b}
             onClick={() => setBox(b)}
@@ -139,10 +238,53 @@ export default function InboxPage() {
               box === b ? "bg-white shadow text-slate-900" : "text-slate-500"
             }`}
           >
-            {b}
+            {b === "held" ? "Held" : b.charAt(0).toUpperCase() + b.slice(1)}
           </button>
         ))}
       </div>
+
+      {retryResult?.type === "ready" && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-medium text-indigo-800">Message ready to send</p>
+          <div className="bg-white rounded-lg p-3 text-sm text-slate-600">
+            <p className="text-xs font-medium text-gray-400 uppercase mb-1">Your words</p>
+            <p>{retryResult.raw}</p>
+          </div>
+          <div className="bg-indigo-100 rounded-lg p-3 text-sm text-indigo-900">
+            <p className="text-xs font-medium text-indigo-400 uppercase mb-1">Tuned version</p>
+            <p>{retryResult.rephrased}</p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={handleSendRetried}
+              className="flex-1 bg-indigo-600 text-white font-medium py-2.5 rounded-xl hover:bg-indigo-700 transition-colors"
+            >
+              Send Tuned
+            </button>
+            <button
+              onClick={() => setRetryResult(null)}
+              className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              Discard
+            </button>
+          </div>
+        </div>
+      )}
+
+      {retryResult?.type === "sent" && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl p-4 text-center">
+          <p className="font-medium">Message sent!</p>
+          <button onClick={() => setRetryResult(null)} className="text-xs underline mt-1">Dismiss</button>
+        </div>
+      )}
+
+      {retryResult?.type === "still_held" && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl p-4 text-sm">
+          <p className="font-medium">Still held</p>
+          <p className="mt-1">{HELD_REASON_LABELS[retryResult.reason] || "Could not deliver this message."}</p>
+          <button onClick={() => setRetryResult(null)} className="text-xs underline mt-1">Dismiss</button>
+        </div>
+      )}
 
       {loading && (
         <div className="flex justify-center py-12">
@@ -152,16 +294,30 @@ export default function InboxPage() {
 
       {!loading && messages.length === 0 && (
         <div className="text-center py-12 text-gray-400">
-          <p className="text-lg mb-1">{box === "sent" ? "Nothing sent yet" : "No messages yet"}</p>
+          <p className="text-lg mb-1">
+            {box === "held" ? "Nothing held" : box === "sent" ? "Nothing sent yet" : "No messages yet"}
+          </p>
           <p className="text-sm">
-            {box === "sent"
-              ? "Messages you send appear here, with your person's reaction"
-              : "Messages from your circle will appear here"}
+            {box === "held"
+              ? "Messages blocked by topic boundaries or failed AI will appear here"
+              : box === "sent"
+                ? "Messages you send appear here, with your person's reaction"
+                : "Messages from your circle will appear here"}
           </p>
         </div>
       )}
 
-      {!loading &&
+      {!loading && box === "held" &&
+        messages.map((msg) => (
+          <HeldCard
+            key={msg.id}
+            message={msg}
+            onRetry={handleRetry}
+            retrying={retryingId === msg.id}
+          />
+        ))}
+
+      {!loading && box !== "held" &&
         messages.map((msg) => (
           <div key={msg.id}>
             <MessageCard

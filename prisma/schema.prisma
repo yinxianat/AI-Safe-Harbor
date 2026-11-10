@@ -179,6 +179,7 @@ model Message {
   // changeable; the sender sees it on their Sent view.
   reaction         String?
   reactedAt        DateTime?
+  readAt           DateTime?
   createdAt        DateTime   @default(now())
   sentAt           DateTime?
 }
