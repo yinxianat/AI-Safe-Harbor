@@ -107,35 +107,37 @@ function describeFailure(err) {
   if (/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(text)) {
     return { reason: "smtp_host_not_found", hint: "SMTP_HOST does not resolve. Check it for typos." };
   }
-  // Checked before ENETUNREACH on purpose. A failure list that holds both means
-  // IPv4 was tried and timed out while a dual-stack AAAA record merely had no
-  // route — the IPv4 timeout is the actionable half.
+  // Checked before ENETUNREACH on purpose. A failure list that holds both —
+  // a timed-out IPv4 and a routeless IPv6 — means neither family currently
+  // works, and the timeout half is the one an operator can act on.
   if (/ECONNREFUSED|ECONNECTION|ETIMEDOUT|ESOCKET|Greeting never received/i.test(text)) {
     return {
       reason: "smtp_unreachable",
       hint:
         "Could not open a session with the mail server, so the credentials were never tested. " +
         "The detail below lists every address tried and how each one failed. Then: " +
-        "(1) confirm SMTP_HOST and SMTP_PORT are set on the deployed host, not only in a local .env; " +
-        "(2) try the other port — 587 for STARTTLS, 465 for TLS; " +
-        "(3) run scripts/smtp-diag.js on that host, which reports what both resolvers return " +
-        "and which addresses accept a connection. " +
-        "Note a timeout is this client's own 30s budget expiring, which is not the same as a blocked port; " +
+        "(1) if an IPv4 timeout appears alongside an IPv6 ENETUNREACH, the platform is likely " +
+        "filtering SMTP on its IPv4 path — on Railway, turn on Settings -> Networking -> " +
+        "Enable Outbound IPv6 for this service so the IPv6 path exists; " +
+        "(2) confirm SMTP_HOST and SMTP_PORT are set on the deployed host, not only in a local .env; " +
+        "(3) try the other port — 587 for STARTTLS, 465 for TLS; " +
+        "(4) run the /admin egress diagnostic, which reports what both resolvers return, " +
+        "which addresses accept a connection, and whether an unrelated mail host accepts port 587. " +
+        "A timeout here is a per-address budget expiring, which is not the same as a blocked port; " +
         "the diagnostic tells the two apart, so reach for an HTTPS email API only once it shows every address failing.",
     };
   }
-  // Reached only when nothing above matched, i.e. no IPv4 address was tried or
-  // returned. The kernel refused instantly for want of a route, which is a
-  // different fix from a port that is blocked or slow.
+  // Reached only when every attempt was refused instantly for want of a
+  // route, which is a different fix from a port that is blocked or slow.
   if (/ENETUNREACH|EHOSTUNREACH/i.test(text)) {
     return {
       reason: "smtp_no_route",
       hint:
-        "The host has no route to that address. An IPv6 target with a local address of " +
-        "':::0' means getaddrinfo returned AAAA records while the container has no IPv6 " +
-        "egress — connection attempts are ordered IPv4-first for exactly this reason, so " +
-        "seeing only IPv6 failures means getaddrinfo returned no A record at all. " +
-        "Run scripts/smtp-diag.js on the deployed host to confirm what it returns.",
+        "The host has no route to any resolved address. An IPv6 target with a local address " +
+        "of ':::0' means the container has no public IPv6 egress — on Railway, turn on " +
+        "Settings -> Networking -> Enable Outbound IPv6 for this service. Only-IPv6 failures " +
+        "with no IPv4 attempt listed mean getaddrinfo returned no A record at all; run the " +
+        "/admin egress diagnostic to confirm what each resolver returns.",
     };
   }
   if (/EENVELOPE|550|553|Sender address rejected/i.test(text)) {
@@ -176,24 +178,34 @@ function connectTo(address, family, port, timeoutMs) {
   });
 }
 
+// Per-address slice of the overall connect budget. A family with no route
+// fails in ~1ms and costs nothing; the expensive case is a silently-dropped
+// port (Railway filters SMTP on the IPv4 NAT path), where only this timer
+// moves the loop on to an address that works. 30s on the first address would
+// spend the whole budget before the working path was ever tried.
+const PER_ADDRESS_CONNECT_MS = 10_000;
+
 async function openSmtpSocket(host, port, timeoutMs) {
   // dns.lookup is getaddrinfo — the resolver Python's smtplib reaches through
-  // socket.create_connection. IPv4 is tried first because a container
-  // platform's public egress is routinely IPv4-only while getaddrinfo still
-  // returns AAAA records for a dual-stack host like Gmail; connecting to those
-  // fails instantly with ENETUNREACH and must not consume the whole budget.
+  // socket.create_connection — and the addresses are walked in ITS order,
+  // exactly as Python does. Do not reorder by family: on Railway the IPv4
+  // path silently drops SMTP while enabled IPv6 egress passes, so forcing
+  // IPv4 first costs a full per-address timeout on every send. Whichever
+  // family is dead fails instantly (ENETUNREACH) and the loop moves on.
   const results = await dnsLookup(host, { all: true });
-  const ordered = [
-    ...results.filter((r) => r.family === 4),
-    ...results.filter((r) => r.family !== 4),
-  ];
 
   // Every attempt is reported, not just the last. A single trailing ENETUNREACH
   // told us nothing about whether any IPv4 address had been tried at all.
   const failures = [];
-  for (const { address, family } of ordered) {
+  const deadline = Date.now() + timeoutMs;
+  for (const { address, family } of results) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      failures.push(`${address} -> skipped (${timeoutMs}ms budget spent)`);
+      continue;
+    }
     try {
-      return await connectTo(address, family, port, timeoutMs);
+      return await connectTo(address, family, port, Math.min(PER_ADDRESS_CONNECT_MS, remaining));
     } catch (err) {
       failures.push(`${address} -> ${err.code || err.message}`);
     }
@@ -249,11 +261,15 @@ function summariseDiagnostic(d) {
     `Diagnostic (${d.durationMs}ms${d.fromCache ? `, cached at ${d.cachedAt}` : ""}):`,
     `  ${d.summary}`,
     `  interfaces: ${d.interfaces.length ? d.interfaces.map((i) => `${i.name}:${i.family}:${i.address}`).join(", ") : "(none external)"}`,
+    d.egressIp ? `  public egress ip: ${d.egressIp}` : null,
     `  getaddrinfo: ${Array.isArray(d.getaddrinfo) ? d.getaddrinfo.map((r) => `${r.address}(v${r.family})`).join(", ") : `error ${d.getaddrinfo?.error}`}`,
     `  c-ares A: ${Array.isArray(d.cares.ipv4) ? d.cares.ipv4.join(", ") || "(none)" : `error ${d.cares.ipv4?.error}`}`,
     `  c-ares AAAA: ${Array.isArray(d.cares.ipv6) ? d.cares.ipv6.join(", ") || "(none)" : `error ${d.cares.ipv6?.error}`}`,
     probeLines,
     `  control ${d.control.host}:${d.control.port} ${d.control.ok ? `OK ${d.control.ms}ms` : d.control.code} (general egress)`,
+    d.smtpControl
+      ? `  smtp control ${d.smtpControl.host}:${d.smtpControl.port} ${d.smtpControl.ok ? `OK ${d.smtpControl.ms}ms` : d.smtpControl.code} (unrelated mail host on the SMTP port)`
+      : null,
     d.commitSha ? `  commit: ${d.commitSha}` : null,
   ].filter((l) => l !== null).join("\n");
 }

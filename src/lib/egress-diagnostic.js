@@ -35,6 +35,17 @@ const CONTROL_PORT = 443;
 const CONTROL_HOST = process.env.EGRESS_CONTROL_HOST || "www.google.com";
 
 /**
+ * Second control: an unrelated mail host probed on the SMTP port itself. When
+ * every probe to the configured SMTP host fails while 443 works, this is the
+ * probe that tells the two remaining causes apart — the platform filtering
+ * outbound SMTP ports (this fails too) versus the mail provider refusing this
+ * egress IP (this connects). It is a TCP reachability knock only: no account,
+ * no login, nothing sent.
+ */
+const SMTP_CONTROL_HOST = process.env.EGRESS_SMTP_CONTROL_HOST || "smtp-mail.outlook.com";
+const SMTP_CONTROL_PORT = 587;
+
+/**
  * Short-lived cache, because the failure path that wants this is also the
  * path that repeats. `logError -> notifyAdmin -> sendMail` means one broken
  * mail server turns every logged error into another diagnostic run, and
@@ -116,13 +127,15 @@ export async function diagnoseEgress(host, ports = [587, 465], { force = false }
     ports.map((port) => ({ addr, port }))
   );
 
-  const [probes, control] = await Promise.all([
+  const [probes, control, smtpControl, egressIp] = await Promise.all([
     Promise.all(
       probeTargets.map(({ addr, port }) =>
         probeTcp(addr, port).then((r) => ({ ...r, source: sourceOf(addr) }))
       )
     ),
     probeControl(),
+    probeNamedHost(SMTP_CONTROL_HOST, SMTP_CONTROL_PORT),
+    discoverEgressIp(),
   ]);
 
   const interfaces = [];
@@ -160,30 +173,51 @@ export async function diagnoseEgress(host, ports = [587, 465], { force = false }
     dnsAgree,
     probes,
     control,
-    summary: summarise(probes, control, interfaces, hasExternalIpv4, hasExternalIpv6, dnsAgree),
+    smtpControl,
+    egressIp,
+    summary: summarise(probes, control, smtpControl, interfaces, hasExternalIpv4, hasExternalIpv6, dnsAgree),
   };
 
   cache.set(key, { at: Date.now(), value: result });
   return result;
 }
 
-// Separate from the SMTP probes because it needs its own hostname — see
-// CONTROL_HOST. Reported as its own field so a reader never confuses "the
-// control port is shut" with "an SMTP address refused".
+// Separate from the SMTP probes because the controls need their own hostnames
+// — see CONTROL_HOST and SMTP_CONTROL_HOST. Reported as their own fields so a
+// reader never confuses "a control is shut" with "an SMTP address refused".
 async function probeControl() {
+  return probeNamedHost(CONTROL_HOST, CONTROL_PORT);
+}
+
+// The container's PUBLIC exit IP, which its own interfaces cannot reveal —
+// traffic leaves through a shared NAT whose address only the far end sees.
+// Gmail drops SMTP by sender-IP reputation, so when one service on the same
+// plan and region delivers and another cannot, this is the number to compare
+// against the Received: header of a mail the working service delivered.
+async function discoverEgressIp() {
   try {
-    const addrs = await dnsLookup(CONTROL_HOST, { all: true });
+    const res = await fetch("https://api.ipify.org", { signal: AbortSignal.timeout(3000) });
+    const text = (await res.text()).trim();
+    return /^[0-9a-f.:]+$/i.test(text) ? text : null;
+  } catch {
+    return null;
+  }
+}
+
+async function probeNamedHost(host, port) {
+  try {
+    const addrs = await dnsLookup(host, { all: true });
     const preferred =
       addrs.find((a) => a.family === 4)?.address || addrs[0]?.address;
     if (!preferred) {
-      return { host: CONTROL_HOST, port: CONTROL_PORT, ok: false, code: "NO_ADDRESS", ms: 0 };
+      return { host, port, ok: false, code: "NO_ADDRESS", ms: 0 };
     }
-    const r = await probeTcp(preferred, CONTROL_PORT);
-    return { host: CONTROL_HOST, ...r };
+    const r = await probeTcp(preferred, port);
+    return { host, ...r };
   } catch (err) {
     return {
-      host: CONTROL_HOST,
-      port: CONTROL_PORT,
+      host,
+      port,
       ok: false,
       code: err?.code || "DNS_ERROR",
       ms: 0,
@@ -216,7 +250,7 @@ function probeTcp(address, port) {
 // decoding the structured fields below it. Written for the four cases that
 // actually happen, not a general rubric — a vague "mixed results" is worse
 // than no sentence.
-function summarise(smtpProbes, control, interfaces, hasV4, hasV6, dnsAgree) {
+function summarise(smtpProbes, control, smtpControl, interfaces, hasV4, hasV6, dnsAgree) {
   const anySmtpOk = smtpProbes.some((p) => p.ok);
   const anyIpv4Smtp = smtpProbes.some((p) => !p.address.includes(":"));
   const ipv4SmtpOk = smtpProbes.some((p) => p.ok && !p.address.includes(":"));
@@ -236,14 +270,23 @@ function summarise(smtpProbes, control, interfaces, hasV4, hasV6, dnsAgree) {
     if (!hasV4 && hasV6) {
       return "This host has only IPv6 egress. If every SMTP target is IPv4, nothing here can connect regardless of the mail configuration.";
     }
+    // The SMTP-port control splits the last two causes, which need opposite
+    // responses: a filtered port is the platform's to open, a refused egress
+    // IP is escaped by changing region or moving to an HTTPS email API.
+    if (smtpControl?.ok) {
+      return `Every probe to the configured SMTP host failed, but ${smtpControl.host}:${smtpControl.port} accepts connections from here (${smtpControl.ms}ms) and ${CONTROL_PORT} works. The SMTP port is open — the mail provider is refusing this platform's egress IP. Code and credentials are not the problem; change the service's region or send over HTTPS instead.`;
+    }
+    if (smtpControl && !smtpControl.ok) {
+      return `Port ${SMTP_CONTROL_PORT} fails to two unrelated mail hosts (${smtpControl.host}: ${smtpControl.code}) while ${CONTROL_PORT} works. The platform is filtering outbound SMTP from this service — no code change can open it. On Railway, enable Settings -> Networking -> Outbound IPv6 for this service: the SMTP filter sits on the IPv4 path, and the IPv6 path delivers. Otherwise ask the platform, or send over HTTPS instead.`;
+    }
     return `Every SMTP probe failed while ${CONTROL_PORT} to ${control.host} succeeded in ${control.ms}ms. General egress works, so this is SMTP-specific: a blocked port or a provider-side rule.`;
   }
 
   if (ipv4SmtpOk && !ipv6SmtpOk) {
-    return "IPv4 SMTP is reachable; IPv6 is not. That is the expected shape on this platform, and why the mailer orders IPv4 first.";
+    return "IPv4 SMTP is reachable; IPv6 is not. The mailer walks every resolved address, so a routeless IPv6 costs ~1ms before IPv4 connects.";
   }
   if (!ipv4SmtpOk && ipv6SmtpOk) {
-    return "Only IPv6 SMTP is reachable, which is unusual for a container platform. Confirm the mailer is really using the IPv6 address.";
+    return "SMTP is reachable over IPv6 only — the expected healthy shape on Railway, whose IPv4 path filters SMTP while enabled Outbound IPv6 delivers. The mailer walks every resolved address, so sends go out over IPv6.";
   }
   if (!dnsAgree) {
     return "SMTP is reachable, but c-ares and getaddrinfo return different addresses. Keep the socket-handoff fix in place — nodemailer's own resolver would pick the other set.";

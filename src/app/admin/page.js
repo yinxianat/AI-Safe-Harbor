@@ -377,6 +377,14 @@ function DiagnosticResult({ data }) {
             {data.control.ok ? `reachable in ${data.control.ms}ms` : `FAILED (${data.control.code})`}
           </p>
         )}
+        {data.smtpControl && (
+          <p className="mt-1 text-xs opacity-70">
+            SMTP port control — {data.smtpControl.host}:{data.smtpControl.port}{" "}
+            {data.smtpControl.ok
+              ? `reachable in ${data.smtpControl.ms}ms`
+              : `FAILED (${data.smtpControl.code})`}
+          </p>
+        )}
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
@@ -389,6 +397,12 @@ function DiagnosticResult({ data }) {
             IPv4 egress: {data.hasExternalIpv4 ? "yes" : "no"} · IPv6 egress:{" "}
             {data.hasExternalIpv6 ? "yes" : "no"}
           </p>
+          {data.egressIp && (
+            <p className="mt-1 text-xs text-slate-500">
+              Public egress IP: <span className="font-mono">{data.egressIp}</span> — compare
+              with the Received: header of a mail the working service delivered
+            </p>
+          )}
         </Card>
 
         <Card title={`DNS ${dnsOk ? "(both resolvers agree)" : "(mismatch)"}`}>
