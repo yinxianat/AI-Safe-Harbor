@@ -106,6 +106,9 @@ function describeFailure(err) {
   if (/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(text)) {
     return { reason: "smtp_host_not_found", hint: "SMTP_HOST does not resolve. Check it for typos." };
   }
+  // Checked before ENETUNREACH on purpose. A failure list that holds both means
+  // IPv4 was tried and timed out while a dual-stack AAAA record merely had no
+  // route — the IPv4 timeout is the actionable half.
   if (/ECONNREFUSED|ECONNECTION|ETIMEDOUT|ESOCKET|Greeting never received/i.test(text)) {
     return {
       reason: "smtp_unreachable",
@@ -117,6 +120,20 @@ function describeFailure(err) {
         "Distinguish the two before concluding: a blocked port generally refuses immediately or stalls far past 30s, " +
         "whereas a slow route eventually connects. Compare SMTP_PORT 587 and 465 before blaming the network. " +
         "Only if every port and both families fail is this a platform-level block, which needs an HTTPS email API such as Resend, SendGrid or Brevo.",
+    };
+  }
+  // Reached only when nothing above matched, i.e. no IPv4 address was tried or
+  // returned. The kernel refused instantly for want of a route, which is a
+  // different fix from a port that is blocked or slow.
+  if (/ENETUNREACH|EHOSTUNREACH/i.test(text)) {
+    return {
+      reason: "smtp_no_route",
+      hint:
+        "The host has no route to that address. An IPv6 target with a local address of " +
+        "':::0' means getaddrinfo returned AAAA records while the container has no IPv6 " +
+        "egress — connection attempts are ordered IPv4-first for exactly this reason, so " +
+        "seeing only IPv6 failures means getaddrinfo returned no A record at all. " +
+        "Run scripts/smtp-diag.js on the deployed host to confirm what it returns.",
     };
   }
   if (/EENVELOPE|550|553|Sender address rejected/i.test(text)) {
@@ -145,27 +162,48 @@ function smtpPort() {
   return parseInt(process.env.SMTP_PORT || "587", 10);
 }
 
-async function openSmtpSocket(host, port, timeoutMs) {
-  // dns.lookup uses getaddrinfo — same as Python's socket.create_connection.
-  const results = await dnsLookup(host, { all: true });
+function connectTo(address, family, port, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const sock = net.createConnection({ host: address, port, family });
+    const timer = setTimeout(() => {
+      sock.destroy();
+      reject(Object.assign(new Error(`Timeout connecting to ${address}:${port}`), { code: "ETIMEDOUT" }));
+    }, timeoutMs);
+    sock.on("connect", () => { clearTimeout(timer); resolve(sock); });
+    sock.on("error", (err) => { clearTimeout(timer); sock.destroy(); reject(err); });
+  });
+}
 
-  let lastErr;
-  for (const { address, family } of results) {
+async function openSmtpSocket(host, port, timeoutMs) {
+  // dns.lookup is getaddrinfo — the resolver Python's smtplib reaches through
+  // socket.create_connection. IPv4 is tried first because a container
+  // platform's public egress is routinely IPv4-only while getaddrinfo still
+  // returns AAAA records for a dual-stack host like Gmail; connecting to those
+  // fails instantly with ENETUNREACH and must not consume the whole budget.
+  const results = await dnsLookup(host, { all: true });
+  const ordered = [
+    ...results.filter((r) => r.family === 4),
+    ...results.filter((r) => r.family !== 4),
+  ];
+
+  // Every attempt is reported, not just the last. A single trailing ENETUNREACH
+  // told us nothing about whether any IPv4 address had been tried at all.
+  const failures = [];
+  for (const { address, family } of ordered) {
     try {
-      return await new Promise((resolve, reject) => {
-        const sock = net.createConnection({ host: address, port, family });
-        const timer = setTimeout(() => {
-          sock.destroy();
-          reject(Object.assign(new Error(`Timeout connecting to ${address}:${port}`), { code: "ETIMEDOUT" }));
-        }, timeoutMs);
-        sock.on("connect", () => { clearTimeout(timer); resolve(sock); });
-        sock.on("error", (err) => { clearTimeout(timer); sock.destroy(); reject(err); });
-      });
+      return await connectTo(address, family, port, timeoutMs);
     } catch (err) {
-      lastErr = err;
+      failures.push(`${address} -> ${err.code || err.message}`);
     }
   }
-  throw lastErr || new Error(`No addresses resolved for ${host}`);
+
+  if (!failures.length) throw new Error(`getaddrinfo returned no addresses for ${host}`);
+  // No `code` on purpose: the per-address codes are in the message, and
+  // describeFailure classifies on the combined text. Stamping one code here
+  // would mask them.
+  throw new Error(
+    `No address for ${host} accepted a connection on port ${port}: ${failures.join("; ")}`
+  );
 }
 
 function buildTransport(socket) {
