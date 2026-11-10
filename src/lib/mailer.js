@@ -86,19 +86,6 @@ export function deliveryHealth() {
   return { degraded: true, reason: lastFailure.reason };
 }
 
-// 0 means "let the resolver decide", which lets Node try each address the host
-// resolves to — the behaviour that makes a dual-stack mail host reachable when
-// only one family has a working route.
-//
-// Pinning this to 4 looked like the fix for an IPv6 route problem and was
-// actually a regression: it yields a single address with no fallback, whereas
-// leaving it unset keeps the IPv4 attempt as a fallback rather than the only
-// option. Set SMTP_IP_FAMILY=4 or 6 only to diagnose a specific path.
-function ipFamily() {
-  const parsed = parseInt(process.env.SMTP_IP_FAMILY ?? "", 10);
-  return [0, 4, 6].includes(parsed) ? parsed : 0;
-}
-
 // "smtp_failed" tells an operator nothing. These turn the provider's raw
 // response into something that names the actual fix, because the whole point
 // of persisting the error is to shorten the next diagnosis.
@@ -126,7 +113,7 @@ function describeFailure(err) {
         "A timeout here does NOT by itself prove the port is blocked — it is also what a slow egress path looks like, " +
         "and the connection budget is 30s precisely because a container platform can be much slower to connect than a laptop. " +
         "Distinguish the two before concluding: a blocked port generally refuses immediately or stalls far past 30s, " +
-        "whereas a slow route eventually connects. Try SMTP_IP_FAMILY=4 (then 6) to test one path at a time. " +
+        "whereas a slow route eventually connects. Compare SMTP_PORT 587 and 465 before blaming the network. " +
         "Only if every port and both families fail is this a platform-level block, which needs an HTTPS email API such as Resend, SendGrid or Brevo.",
     };
   }
@@ -139,6 +126,10 @@ function describeFailure(err) {
   return { reason: "smtp_failed", hint: "Unclassified SMTP failure; see detail." };
 }
 
+// The IP family is deliberately not set. Node already tries both families
+// (autoSelectFamily, on by default since Node 20), which is strictly better
+// than pinning one: a pinned family resolves to a single address with no
+// fallback if that path is down.
 function buildTransport() {
   const port = parseInt(process.env.SMTP_PORT || "587", 10);
   return nodemailer.createTransport({
@@ -149,7 +140,6 @@ function buildTransport() {
       user: smtpUser(),
       pass: smtpPass(),
     },
-    family: ipFamily(),
     ...TIMEOUTS,
   });
 }
@@ -161,7 +151,7 @@ function buildTransport() {
  * `sendMail` deliberately does not call this — it would double the round trips
  * on every message.
  *
- * @returns {Promise<{ok: boolean, error?: string, detail?: string, family?: number, host?: string}>}
+ * @returns {Promise<{ok: boolean, error?: string, detail?: string, host?: string}>}
  */
 export async function verifyTransport() {
   if (!smtpConfigured()) {
@@ -170,14 +160,13 @@ export async function verifyTransport() {
 
   try {
     await buildTransport().verify();
-    return { ok: true, family: ipFamily(), host: process.env.SMTP_HOST };
+    return { ok: true, host: process.env.SMTP_HOST };
   } catch (err) {
     const { reason, hint } = describeFailure(err);
     return {
       ok: false,
       error: reason,
       detail: `${hint}\n\nServer said: ${err?.code || ""} ${err?.message || err}`.trim(),
-      family: ipFamily(),
       host: process.env.SMTP_HOST,
     };
   }
