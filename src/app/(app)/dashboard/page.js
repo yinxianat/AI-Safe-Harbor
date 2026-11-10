@@ -73,6 +73,7 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [unread, setUnread] = useState(0);
   const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
@@ -117,14 +118,21 @@ export default function Dashboard() {
         }
 
         try {
-          const companionRes = await fetch("/api/companions");
+          const [companionRes, unreadRes] = await Promise.all([
+            fetch("/api/companions"),
+            fetch("/api/messages/unread"),
+          ]);
           if (!cancelled && companionRes.ok) {
             const cd = await companionRes.json();
             setInsight(cd.insight);
             setStats(cd.stats);
           }
+          if (!cancelled && unreadRes.ok) {
+            const ud = await unreadRes.json();
+            setUnread(ud.unread || 0);
+          }
         } catch {
-          // AI companion insight is optional
+          // AI companion insight and unread are optional
         }
       } catch {
         if (!cancelled) {
@@ -219,7 +227,7 @@ export default function Dashboard() {
           </svg>
         </ActionCard>
 
-        <ActionCard href="/inbox" title="Messages" detail={connected ? `Read messages from ${partnerName}` : "Received and sent messages"} tint="bg-emerald-100">
+        <ActionCard href="/inbox" title="Messages" detail={connected ? `Read messages from ${partnerName}` : "Received and sent messages"} tint="bg-emerald-100" badge={unread}>
           <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
           </svg>

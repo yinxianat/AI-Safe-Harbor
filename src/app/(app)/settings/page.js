@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import TrafficLight from "@/components/TrafficLight";
 
 const TONE_LABELS = {
@@ -15,9 +16,9 @@ const TONE_LABELS = {
 };
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [settings, setSettings] = useState([]);
   const [connections, setConnections] = useState([]);
-  // "" = defaults scope: boundaries that apply to everyone you connect with
   const [selectedConnection, setSelectedConnection] = useState("");
   const [tone, setTone] = useState("warm_and_gentle");
   const [validTones, setValidTones] = useState([]);
@@ -25,6 +26,10 @@ export default function SettingsPage() {
   const [customLabel, setCustomLabel] = useState("");
   const [customError, setCustomError] = useState(null);
   const [pageError, setPageError] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
 
   const fetchTopics = useCallback(async (connId) => {
     const url = connId
@@ -39,9 +44,10 @@ export default function SettingsPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [connRes, toneRes] = await Promise.all([
+        const [connRes, toneRes, meRes] = await Promise.all([
           fetch("/api/connections"),
           fetch("/api/settings/tone"),
+          fetch("/api/auth/me"),
         ]);
 
         if (cancelled) return;
@@ -53,6 +59,11 @@ export default function SettingsPage() {
             firstConn = data.connections[0].id;
             setSelectedConnection(firstConn);
           }
+        }
+        if (meRes.ok) {
+          const me = await meRes.json();
+          setProfile(me);
+          setNameInput(me.displayName || "");
         }
         if (toneRes.ok) {
           const data = await toneRes.json();
@@ -135,6 +146,33 @@ export default function SettingsPage() {
     });
   }
 
+  async function handleSaveName() {
+    setNameSaving(true);
+    try {
+      const res = await fetch("/api/auth/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName: nameInput.trim() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProfile(data);
+        setEditingName(false);
+      } else {
+        setPageError("Could not save your name. Please try again.");
+      }
+    } catch {
+      setPageError("Network error saving your name.");
+    } finally {
+      setNameSaving(false);
+    }
+  }
+
+  async function handleSignOut() {
+    await fetch("/api/auth/signout", { method: "POST" });
+    router.push("/");
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -184,6 +222,58 @@ export default function SettingsPage() {
           </select>
         </div>
       </div>
+
+      {profile && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-slate-900">Profile</h2>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-500">Display name</p>
+                {editingName ? (
+                  <div className="flex gap-2 mt-1">
+                    <input
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      maxLength={50}
+                      className="px-2 py-1 rounded-lg border border-gray-200 text-sm flex-1"
+                      autoFocus
+                    />
+                    <button
+                      onClick={handleSaveName}
+                      disabled={nameSaving}
+                      className="text-sm font-medium text-indigo-600 disabled:opacity-50"
+                    >
+                      {nameSaving ? "Saving…" : "Save"}
+                    </button>
+                    <button
+                      onClick={() => { setEditingName(false); setNameInput(profile.displayName || ""); }}
+                      className="text-sm text-slate-400"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-sm font-medium text-slate-800">
+                    {profile.displayName || <span className="text-slate-400 italic">Not set</span>}
+                    <button onClick={() => setEditingName(true)} className="ml-2 text-xs text-indigo-600 underline">Edit</button>
+                  </p>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Username</p>
+              <p className="text-sm font-medium text-slate-800">
+                {profile.username ? `@${profile.username}` : <span className="text-slate-400 italic">Not claimed</span>}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Email</p>
+              <p className="text-sm text-slate-600">{profile.email}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-4">
         <div>
@@ -270,6 +360,15 @@ export default function SettingsPage() {
             to hold them entirely.
           </p>
         </div>
+      </div>
+
+      <div className="pt-4 border-t border-gray-100">
+        <button
+          onClick={handleSignOut}
+          className="w-full py-3 text-sm font-medium text-red-600 hover:text-red-800 transition-colors"
+        >
+          Sign out
+        </button>
       </div>
     </div>
   );
