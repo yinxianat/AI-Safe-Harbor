@@ -10,6 +10,9 @@ datasource db {
 model User {
   id             String   @id @default(cuid())
   email          String   @unique
+  // Lowercase handle for finding people in-app. Null until claimed; sign-in
+  // stays on email, so this is identity-for-others, not authentication.
+  username       String?  @unique
   displayName    String?
   timezone       String   @default("America/Los_Angeles")
   // How this person prefers to be spoken TO. Read by the compose route from
@@ -18,12 +21,16 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  sentConnections     Connection[]  @relation("UserA")
-  receivedConnections Connection[]  @relation("UserB")
-  sentMessages        Message[]     @relation("Sender")
-  topicSettings       TopicSetting[]
-  magicTokens         MagicToken[]
-  sentInvites         MagicToken[]  @relation("InvitedBy")
+  sentConnections      Connection[]       @relation("UserA")
+  receivedConnections  Connection[]       @relation("UserB")
+  requestedConnections Connection[]       @relation("RequestedBy")
+  sentMessages         Message[]          @relation("Sender")
+  topicSettings        TopicSetting[]
+  topicDefaults        TopicDefault[]
+  magicTokens          MagicToken[]
+  sentInvites          MagicToken[]       @relation("InvitedBy")
+  knowMeEntries        KnowMeEntry[]
+  practiceSessions     PracticeSession[]
 }
 
 model MagicToken {
@@ -49,6 +56,10 @@ model Connection {
   userA            User     @relation("UserA", fields: [userAId], references: [id])
   userBId          String
   userB            User     @relation("UserB", fields: [userBId], references: [id])
+  // Who initiated, so a pending row renders as "sent" on one side and
+  // "accept/decline" on the other. Null on rows older than circle requests.
+  requestedById    String?
+  requestedBy      User?    @relation("RequestedBy", fields: [requestedById], references: [id])
   relationshipType String   @default("spouse")
   status           String   @default("pending")
   createdAt        DateTime @default(now())
@@ -73,6 +84,55 @@ model TopicSetting {
   createdAt      DateTime   @default(now())
 
   @@unique([connectionId, userId, topicName])
+}
+
+// A user's boundary answers from BEFORE any connection exists. Copied into
+// per-connection TopicSetting rows the moment a connection activates, so
+// boundaries are in force from the first message without a setup step the
+// new pair could forget. Kept as its own model rather than a nullable
+// TopicSetting.connectionId: Postgres allows many NULLs through a unique
+// index, which would quietly permit duplicate default rows.
+model TopicDefault {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  topicName      String
+  comfortLevel   String
+  isCustom       Boolean  @default(false)
+  sanitizedLabel String?
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, topicName])
+}
+
+// "Know Me" entries — each person shares bite-sized facts, preferences, and
+// stories about themselves. Circle members can read them; the AI uses them to
+// craft better rephrasings.
+model KnowMeEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  category  String   // "favorites", "love_languages", "pet_peeves", "stories", "about_me"
+  prompt    String   // the question or heading
+  answer    String   // the user's answer
+  isPublic  Boolean  @default(true) // visible to circle members
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Practice Pad sessions — a safe space to rehearse difficult conversations
+// with an AI partner before sending a real message.
+model PracticeSession {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  topic     String   // what the user wants to practice talking about
+  turns     String   // JSON array of {role, content} turns
+  aiTip     String?  // AI-generated tip after the session
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Persisted application errors. Rows are deduplicated by fingerprint and
@@ -115,6 +175,10 @@ model Message {
   aiModel          String?
   aiTokensUsed     Int?
   status           String     @default("draft")
+  // Receiver's one-tap feedback, from a curated set. One per message,
+  // changeable; the sender sees it on their Sent view.
+  reaction         String?
+  reactedAt        DateTime?
   createdAt        DateTime   @default(now())
   sentAt           DateTime?
 }

@@ -4,13 +4,31 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
+  { href: "/dashboard", label: "Home", icon: "home" },
   { href: "/inbox", label: "Inbox", icon: "inbox" },
   { href: "/compose", label: "Compose", icon: "compose" },
+  { href: "/circle", label: "Circle", icon: "circle" },
   { href: "/settings", label: "Settings", icon: "settings" },
 ];
 
 function NavIcon({ icon, active }) {
   const color = active ? "text-indigo-600" : "text-gray-400";
+
+  if (icon === "home") {
+    return (
+      <svg className={`w-6 h-6 ${color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h3m10-11v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+    );
+  }
+
+  if (icon === "circle") {
+    return (
+      <svg className={`w-6 h-6 ${color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6-4a3 3 0 11-3-3m-12 3a3 3 0 103-3" />
+      </svg>
+    );
+  }
 
   if (icon === "inbox") {
     return (

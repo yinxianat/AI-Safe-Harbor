@@ -114,3 +114,50 @@ export function isValidTopicKey(key) {
 export function getTopicLabel(key) {
   return BY_KEY.get(key)?.label ?? key;
 }
+
+/**
+ * Custom topics: user-entered boundaries beyond the preset ten. The label is
+ * the user's words; the key is derived from it; the checker matches on the
+ * label's own words, so a custom boundary is enforceable — storing one the
+ * checker would silently skip is the fail-open bug this registry exists to
+ * prevent.
+ */
+export const MAX_CUSTOM_TOPICS = 10;
+export const CUSTOM_KEY_PREFIX = "custom_";
+
+export function isCustomTopicKey(key) {
+  return typeof key === "string" && key.startsWith(CUSTOM_KEY_PREFIX);
+}
+
+/**
+ * @returns {{ok: true, label: string, key: string} | {ok: false, error: string}}
+ *   `error` is user-facing and names the fix.
+ */
+export function sanitizeCustomTopic(rawLabel) {
+  const cleaned = String(rawLabel ?? "")
+    .replace(/[^a-zA-Z0-9\s_-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 30)
+    .trim();
+
+  if (cleaned.length < 2) {
+    return { ok: false, error: "Give the topic a short name — letters and numbers, at least 2 characters." };
+  }
+
+  const key = CUSTOM_KEY_PREFIX + cleaned.toLowerCase().replace(/[\s-]+/g, "_");
+  if (isValidTopicKey(cleaned.toLowerCase().replace(/[\s-]+/g, "_"))) {
+    return { ok: false, error: "That topic already exists as a preset — set its level directly." };
+  }
+  return { ok: true, label: cleaned, key };
+}
+
+// The label's own words are the keyword list. Short words ("of", "my") would
+// match everything, so only words of 3+ characters count, plus the full
+// phrase for multi-word labels.
+export function customTopicKeywords(sanitizedLabel) {
+  const label = String(sanitizedLabel ?? "").toLowerCase().trim();
+  if (!label) return [];
+  const words = label.split(/\s+/).filter((w) => w.length >= 3);
+  return label.includes(" ") ? [label, ...words] : words.length ? words : [label];
+}

@@ -1,4 +1,4 @@
-import { getTopic } from "./topics.js";
+import { getTopic, customTopicKeywords } from "./topics.js";
 
 const EMPTY_RESULT = {
   allowed: true,
@@ -26,25 +26,32 @@ export function checkTopicBoundaries(messageText, receiverTopicSettings) {
     const key = String(setting.topicName ?? "").toLowerCase().replace(/\s+/g, "_");
     const topic = getTopic(key);
 
+    // A custom topic carries its own keywords: the words of its label.
+    const keywords = topic
+      ? topic.keywords
+      : setting.isCustom
+        ? customTopicKeywords(setting.sanitizedLabel)
+        : [];
+
     // A boundary we have no keywords for cannot be checked. Silently passing it
     // would deliver a message the receiver marked as off-limits, so surface it
     // instead. Writes are validated against the registry, so this means the
     // registry drifted — a bug, not user input.
-    if (!topic) {
+    if (keywords.length === 0) {
       if (setting.comfortLevel === "red" || setting.comfortLevel === "yellow") {
         unenforceable.push(key);
       }
       continue;
     }
 
-    const matched = topic.keywords.some((keyword) => lowerMessage.includes(keyword));
+    const matched = keywords.some((keyword) => lowerMessage.includes(keyword));
     if (!matched) continue;
 
-    detectedTopics.push(topic.key);
+    detectedTopics.push(topic?.key ?? key);
     if (setting.comfortLevel === "red") {
-      redTopics.push(topic.key);
+      redTopics.push(topic?.key ?? key);
     } else if (setting.comfortLevel === "yellow") {
-      yellowTopics.push(topic.key);
+      yellowTopics.push(topic?.key ?? key);
     }
   }
 

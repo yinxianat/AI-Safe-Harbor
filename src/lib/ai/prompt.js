@@ -7,6 +7,10 @@ const VALID_TONES = [
   "direct_and_clear",
   "playful_and_light",
   "calm_and_neutral",
+  "encouraging_and_supportive",
+  "brief_and_to_the_point",
+  "thoughtful_and_reflective",
+  "reassuring_and_patient",
 ];
 
 const TONE_DESCRIPTIONS = {
@@ -14,6 +18,10 @@ const TONE_DESCRIPTIONS = {
   direct_and_clear: "direct, clear, and concise",
   playful_and_light: "playful, light, and casual",
   calm_and_neutral: "calm, neutral, and balanced",
+  encouraging_and_supportive: "encouraging, supportive, and uplifting",
+  brief_and_to_the_point: "brief, efficient, and to the point",
+  thoughtful_and_reflective: "thoughtful, reflective, and considered",
+  reassuring_and_patient: "reassuring, patient, and steady",
 };
 
 export const DEFAULT_TONE = "warm_and_gentle";

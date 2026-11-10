@@ -1,5 +1,6 @@
 import { verifyMagicToken, consumeMagicToken, createSession } from "@/lib/auth.js";
 import { getBaseUrl } from "@/lib/base-url.js";
+import { findConnectionBetween, activateConnection } from "@/lib/circle.js";
 import prisma from "@/lib/db.js";
 import { NextResponse } from "next/server";
 
@@ -48,24 +49,22 @@ export async function GET(request) {
     return fail("cannot_invite_self");
   }
 
-  const existing = await prisma.connection.findFirst({
-    where: {
-      OR: [
-        { userAId: inviter.id, userBId: invitee.id },
-        { userAId: invitee.id, userBId: inviter.id },
-      ],
-    },
-  });
+  const existing = await findConnectionBetween(inviter.id, invitee.id);
 
   if (!existing) {
-    await prisma.connection.create({
-      data: { userAId: inviter.id, userBId: invitee.id, status: "active" },
+    const created = await prisma.connection.create({
+      data: {
+        userAId: inviter.id,
+        userBId: invitee.id,
+        requestedById: inviter.id,
+        status: "pending",
+      },
     });
+    // Activation also seeds both sides' topic boundaries from their
+    // pre-connection defaults — same path as accepting a circle request.
+    await activateConnection(created.id);
   } else if (existing.status !== "active") {
-    await prisma.connection.update({
-      where: { id: existing.id },
-      data: { status: "active" },
-    });
+    await activateConnection(existing.id);
   }
 
   const sessionToken = await createSession(invitee.id);

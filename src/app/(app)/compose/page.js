@@ -123,9 +123,16 @@ export default function ComposePage() {
 
       {connections.length === 0 && (
         <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl p-4 text-sm">
-          <p>You need to connect with a partner first.</p>
-          <a href="/invite" className="font-medium underline">Invite your partner</a>
+          <p className="font-medium">No one in your circle yet</p>
+          <p className="mt-1">Add someone to your circle first so you can send them a message.</p>
+          <a href="/circle" className="mt-2 inline-block font-medium underline">Go to Circle</a>
         </div>
+      )}
+
+      {connections.length === 1 && connections[0]?.partnerName && (
+        <p className="text-sm text-slate-500">
+          Writing to <span className="font-medium text-slate-700">{connections[0].partnerName}</span>
+        </p>
       )}
 
       <textarea

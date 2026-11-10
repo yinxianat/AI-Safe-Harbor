@@ -10,6 +10,7 @@ export async function GET(request) {
   return Response.json({
     id: user.id,
     email: user.email,
+    username: user.username || null,
     displayName: user.displayName,
     timezone: user.timezone,
   });
