@@ -294,10 +294,172 @@ export default function AdminPage() {
         </div>
       </section>
 
+      <EgressDiagnostic />
+
       <p className="mt-10 text-center text-xs text-slate-400">
         Findings are recomputed on every load, so they cannot go stale. A resolved entry
         reappears if the same problem happens again.
       </p>
     </div>
   );
+}
+
+// Egress diagnostic widget: what the container can and cannot reach for SMTP.
+// Does not auto-run — probes are ~5s each and would slow every dashboard
+// load. The operator clicks to ask, which is also when they actually need it.
+function EgressDiagnostic() {
+  const [state, setState] = useState({ kind: "idle" });
+
+  async function run() {
+    setState({ kind: "working" });
+    try {
+      const res = await fetch("/api/admin/diagnostics");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setState({ kind: "error", message: body.detail || `Request failed (${res.status}).` });
+        return;
+      }
+      setState({ kind: "ready", data: await res.json() });
+    } catch {
+      setState({ kind: "error", message: "Could not reach the server." });
+    }
+  }
+
+  return (
+    <section className="mt-8">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">Egress & delivery</h2>
+          <p className="mt-0.5 text-sm text-slate-500">
+            What this container can reach for SMTP, resolved two ways. Click to probe.
+          </p>
+        </div>
+        <button
+          onClick={run}
+          disabled={state.kind === "working"}
+          className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+        >
+          {state.kind === "working" ? "Probing…" : "Run diagnostic"}
+        </button>
+      </div>
+
+      {state.kind === "error" && (
+        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {state.message}
+        </p>
+      )}
+      {state.kind === "ready" && <DiagnosticResult data={state.data} />}
+    </section>
+  );
+}
+
+function DiagnosticResult({ data }) {
+  const dnsOk = data.dnsAgree;
+  const anyProbeOk = data.probes.some((p) => p.ok);
+
+  return (
+    <div className="mt-3 space-y-3">
+      <div
+        className={`rounded-xl border p-4 ${
+          anyProbeOk ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+            : "border-red-200 bg-red-50 text-red-800"
+        }`}
+      >
+        <p className="font-semibold">{data.summary}</p>
+        <p className="mt-0.5 text-xs opacity-70">
+          host {data.host} · {data.durationMs}ms · {data.node}
+          {data.commitSha ? ` · ${data.commitSha.slice(0, 7)}` : ""}
+          {data.fromCache ? ` · cached ${new Date(data.cachedAt).toLocaleTimeString()}` : ""}
+        </p>
+        {data.control && (
+          <p className="mt-1 text-xs opacity-70">
+            General egress control — {data.control.host}:{data.control.port}{" "}
+            {data.control.ok ? `reachable in ${data.control.ms}ms` : `FAILED (${data.control.code})`}
+          </p>
+        )}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <Card title="Interfaces">
+          {data.interfaces.length === 0 && <Dim>No external interfaces</Dim>}
+          {data.interfaces.map((i) => (
+            <Row key={`${i.name}-${i.address}`} left={`${i.name} · ${i.family}`} right={i.address} />
+          ))}
+          <p className="mt-2 text-xs text-slate-500">
+            IPv4 egress: {data.hasExternalIpv4 ? "yes" : "no"} · IPv6 egress:{" "}
+            {data.hasExternalIpv6 ? "yes" : "no"}
+          </p>
+        </Card>
+
+        <Card title={`DNS ${dnsOk ? "(both resolvers agree)" : "(mismatch)"}`}>
+          <p className="text-xs font-medium text-slate-500">getaddrinfo (used by the mailer)</p>
+          {Array.isArray(data.getaddrinfo)
+            ? data.getaddrinfo.map((r) => (
+                <Row key={r.address} left={`IPv${r.family}`} right={r.address} />
+              ))
+            : <Dim>error {data.getaddrinfo?.error}</Dim>}
+          <p className="mt-2 text-xs font-medium text-slate-500">c-ares (nodemailer default)</p>
+          {renderCares("A", data.cares.ipv4)}
+          {renderCares("AAAA", data.cares.ipv6)}
+        </Card>
+      </div>
+
+      <Card title="TCP probes">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase text-slate-400">
+                <th className="pb-1 pr-3 font-medium">Address</th>
+                <th className="pb-1 pr-3 font-medium">Port</th>
+                <th className="pb-1 pr-3 font-medium">Result</th>
+                <th className="pb-1 pr-3 font-medium">ms</th>
+                <th className="pb-1 font-medium">Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.probes.map((p) => (
+                <tr key={`${p.address}:${p.port}`} className="border-t border-slate-100">
+                  <td className="py-1 pr-3 font-mono text-xs">{p.address}</td>
+                  <td className="py-1 pr-3 font-mono text-xs">{p.port}</td>
+                  <td className={`py-1 pr-3 text-xs font-semibold ${p.ok ? "text-emerald-700" : "text-red-700"}`}>
+                    {p.ok ? "OK" : p.code}
+                  </td>
+                  <td className="py-1 pr-3 font-mono text-xs text-slate-500">{p.ms}</td>
+                  <td className="py-1 text-xs text-slate-500">{p.source}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function renderCares(label, value) {
+  if (!Array.isArray(value)) return <Dim>{label}: error {value?.error || "none"}</Dim>;
+  if (value.length === 0) return <Dim>{label}: (none)</Dim>;
+  return value.map((a) => <Row key={a} left={label} right={a} />);
+}
+
+function Card({ title, children }) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+      <p className="text-sm font-semibold text-slate-900">{title}</p>
+      <div className="mt-2 space-y-1">{children}</div>
+    </div>
+  );
+}
+
+function Row({ left, right }) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-sm">
+      <span className="text-slate-500">{left}</span>
+      <span className="font-mono text-xs text-slate-700">{right}</span>
+    </div>
+  );
+}
+
+function Dim({ children }) {
+  return <p className="text-xs italic text-slate-400">{children}</p>;
 }

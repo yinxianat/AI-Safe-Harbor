@@ -17,6 +17,7 @@ import nodemailer from "nodemailer";
 import { lookup as dnsLookup } from "node:dns/promises";
 import net from "node:net";
 import { isProduction } from "./env.js";
+import { diagnoseEgress } from "./egress-diagnostic.js";
 
 // SMTP_USERNAME/SMTP_PASSWORD are accepted alongside SMTP_USER/SMTP_PASS
 // because both are standard, and reading the wrong pair fails in the worst
@@ -225,6 +226,53 @@ function buildTransport(socket) {
   return nodemailer.createTransport(opts);
 }
 
+// A failure that only names auth, a sender address, or a known typo does not
+// benefit from a network diagnostic — it would waste ~5s and bury the real
+// cause under noise. Running the diagnostic for network-shaped failures only
+// is the point of this guard.
+function failureNeedsDiagnostic(reason) {
+  return reason === "smtp_unreachable" || reason === "smtp_no_route";
+}
+
+// A render that fits in the detail field of one log row. Structured output
+// lives in /api/admin/diagnostics; what the log needs is a terse summary plus
+// the few rows most often decisive — which addresses got tried on which
+// ports, and whether the control port came up — so a reader can diagnose
+// from the log entry itself.
+function summariseDiagnostic(d) {
+  if (!d) return "";
+  const probeLines = d.probes
+    .map((p) => `  ${p.address.padEnd(42)} :${p.port} ${p.ok ? "OK" : p.code}  ${p.ms}ms  (${p.source})`)
+    .join("\n");
+  return [
+    "",
+    `Diagnostic (${d.durationMs}ms${d.fromCache ? `, cached at ${d.cachedAt}` : ""}):`,
+    `  ${d.summary}`,
+    `  interfaces: ${d.interfaces.length ? d.interfaces.map((i) => `${i.name}:${i.family}:${i.address}`).join(", ") : "(none external)"}`,
+    `  getaddrinfo: ${Array.isArray(d.getaddrinfo) ? d.getaddrinfo.map((r) => `${r.address}(v${r.family})`).join(", ") : `error ${d.getaddrinfo?.error}`}`,
+    `  c-ares A: ${Array.isArray(d.cares.ipv4) ? d.cares.ipv4.join(", ") || "(none)" : `error ${d.cares.ipv4?.error}`}`,
+    `  c-ares AAAA: ${Array.isArray(d.cares.ipv6) ? d.cares.ipv6.join(", ") || "(none)" : `error ${d.cares.ipv6?.error}`}`,
+    probeLines,
+    `  control ${d.control.host}:${d.control.port} ${d.control.ok ? `OK ${d.control.ms}ms` : d.control.code} (general egress)`,
+    d.commitSha ? `  commit: ${d.commitSha}` : null,
+  ].filter((l) => l !== null).join("\n");
+}
+
+// Build the detail blob that goes into a log row or an admin response. The
+// diagnostic is attached only for network-shaped failures (see above) and is
+// best-effort: if it throws, we still return the original classified error.
+async function buildFailureDetail(reason, hint, err, host) {
+  const base = `${hint}\n\nServer said: ${err?.code || ""} ${err?.message || err}`.trim();
+  if (!host || !failureNeedsDiagnostic(reason)) return { detail: base };
+
+  try {
+    const d = await diagnoseEgress(host, [smtpPort(), smtpPort() === 587 ? 465 : 587]);
+    return { detail: `${base}\n${summariseDiagnostic(d)}`, diagnostic: d };
+  } catch {
+    return { detail: base };
+  }
+}
+
 /**
  * Open a session and authenticate without sending anything, so an operator can
  * tell a blocked port apart from a rejected password.
@@ -232,7 +280,7 @@ function buildTransport(socket) {
  * `sendMail` deliberately does not call this — it would double the round trips
  * on every message.
  *
- * @returns {Promise<{ok: boolean, error?: string, detail?: string, host?: string}>}
+ * @returns {Promise<{ok: boolean, error?: string, detail?: string, host?: string, diagnostic?: object}>}
  */
 export async function verifyTransport() {
   if (!smtpConfigured()) {
@@ -246,12 +294,8 @@ export async function verifyTransport() {
     return { ok: true, host };
   } catch (err) {
     const { reason, hint } = describeFailure(err);
-    return {
-      ok: false,
-      error: reason,
-      detail: `${hint}\n\nServer said: ${err?.code || ""} ${err?.message || err}`.trim(),
-      host,
-    };
+    const { detail, diagnostic } = await buildFailureDetail(reason, hint, err, host);
+    return { ok: false, error: reason, detail, host, ...(diagnostic ? { diagnostic } : {}) };
   }
 }
 
@@ -288,10 +332,7 @@ export async function sendMail({ to, subject, text, html }) {
     lastFailure = { reason, at: Date.now() };
     // console, not the logger — see the recursion note in the file header.
     console.error(`[mailer] ${reason}: ${err?.message}`);
-    return {
-      delivered: false,
-      error: reason,
-      detail: `${hint}\n\nServer said: ${err?.code || ""} ${err?.message || err}`.trim(),
-    };
+    const { detail } = await buildFailureDetail(reason, hint, err, process.env.SMTP_HOST);
+    return { delivered: false, error: reason, detail };
   }
 }
