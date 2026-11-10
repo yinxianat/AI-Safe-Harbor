@@ -3,19 +3,21 @@ import { getBaseUrl } from "@/lib/base-url.js";
 import { parseJsonBody, requireString } from "@/lib/http.js";
 import { sendMail, deliveryHealth } from "@/lib/mailer.js";
 import { logError } from "@/lib/logger.js";
+import { checkRateLimit } from "@/lib/rate-limit.js";
 
 export async function POST(request) {
   const body = await parseJsonBody(request);
 
-  // Always 200, whatever happens — the response must not reveal whether an
-  // address is registered, malformed, or failed to send.
-  //
-  // `deliveryDegraded` is the one exception, and only because it carries no
-  // per-address information: it is the same value for every caller, so it says
-  // "our mail system is down", never "this address does not exist". Without it
-  // the page confidently tells people to check an inbox that cannot receive
-  // anything, which is how a broken deployment looks like a working one.
   const ok = () => Response.json({ sent: true, deliveryDegraded: deliveryHealth().degraded });
+
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const limit = checkRateLimit(`magic-link:${ip}`, { maxRequests: 5, windowMs: 60_000 });
+  if (!limit.allowed) {
+    return Response.json(
+      { error: "rate_limited", retryAfter: limit.retryAfter },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
 
   if (!body.ok) {
     return ok();

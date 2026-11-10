@@ -75,6 +75,14 @@ function SignInForm() {
         body: JSON.stringify({ email: address }),
       });
 
+      if (res.status === 429) {
+        const data = await res.json().catch(() => ({}));
+        const wait = data.retryAfter || 60;
+        setProblem(`Too many requests. Please wait ${wait} seconds before trying again.`);
+        setCooldownUntil(Date.now() + wait * 1000);
+        return;
+      }
+
       if (!res.ok) {
         setProblem("We could not send the link just now. Please try again in a moment.");
         return;

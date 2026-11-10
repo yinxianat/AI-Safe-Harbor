@@ -9,6 +9,17 @@ const geistSans = Geist({
 export const metadata = {
   title: "Leeway",
   description: "Share safely with your closest person",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
+  themeColor: "#4f46e5",
+  appleWebApp: {
+    capable: true,
+    title: "Leeway",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({ children }) {

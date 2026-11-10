@@ -1,0 +1,18 @@
+{
+  "name": "Leeway",
+  "short_name": "Leeway",
+  "description": "Give each other room. AI-assisted messaging for two.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
