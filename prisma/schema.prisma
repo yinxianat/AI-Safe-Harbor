@@ -75,6 +75,30 @@ model TopicSetting {
   @@unique([connectionId, userId, topicName])
 }
 
+// Persisted application errors. Rows are deduplicated by fingerprint and
+// counted, so an outage producing 500 identical failures is ONE row with
+// count=500 rather than 500 rows nobody can read.
+model LogEntry {
+  id          String    @id @default(cuid())
+  level       String // "warn" | "error" | "critical"
+  source      String // logger name, e.g. "api.messages.compose"
+  // The message TEMPLATE, with no varying data in it. Varying values belong in
+  // `detail`, because anything interpolated here would break the fingerprint
+  // and turn one recurring problem into thousands of distinct ones.
+  message     String
+  detail      String? // redacted context for this occurrence
+  fingerprint String
+  count       Int       @default(1)
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  alertedAt   DateTime? // last time an admin alert was sent for this fingerprint
+  resolvedAt  DateTime?
+
+  @@unique([fingerprint])
+  @@index([lastSeenAt])
+  @@index([level, lastSeenAt])
+}
+
 model Message {
   id               String     @id @default(cuid())
   senderId         String

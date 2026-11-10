@@ -1,5 +1,5 @@
 {
-  "name": "safeharbor",
+  "name": "leeway",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -11,7 +11,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "test": "node --experimental-vm-modules node_modules/.bin/jest tests/topic-checker.test.js tests/topics.test.js tests/feature-flags.test.js tests/ai-provider-chain.test.js tests/ai-boundaries.test.js",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest tests/topic-checker.test.js tests/topics.test.js tests/feature-flags.test.js tests/ai-provider-chain.test.js tests/ai-boundaries.test.js tests/monitoring.test.js",
     "test:ai": "node --experimental-vm-modules node_modules/.bin/jest tests/ai-quality.test.js tests/ai-injection.test.js --runInBand",
     "test:all": "node --experimental-vm-modules node_modules/.bin/jest --runInBand"
   },

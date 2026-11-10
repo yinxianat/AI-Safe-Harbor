@@ -1,12 +1,21 @@
-# SafeHarbor
+# Leeway
+
+**Give each other room.**
 
 A private, AI-assisted messaging app for two people. Each person sets how open they are
 to discussing particular topics; messages are checked against those boundaries and
 rephrased to match the recipient's preferred tone before the sender approves and sends
 them.
 
-Built as a 3-hour MVP from `PLANS/safeharbor-dev-plan.md`. This README is the orientation
-document for anyone — human or AI agent — picking the codebase up cold.
+The name works on both of its meanings: *leeward* is the sheltered side of a boat, and
+giving someone *leeway* is extending them grace. The app does both.
+
+For the product explanation aimed at users rather than developers, see the `/about` page
+(`src/app/about/page.js`) — it also doubles as a specification, since every "Leeway will
+never…" guarantee on it is enforced server-side and covered by a test.
+
+Built from the plans in `PLANS/`. This README is the orientation document for anyone —
+human or AI agent — picking the codebase up cold.
 
 ---
 
@@ -77,11 +86,11 @@ Nothing is delivered without the sender explicitly approving it.
 ### Setup
 
 ```bash
-cd safeharbor
+cd leeway
 npm install                    # postinstall runs `prisma generate`
 
-createdb safeharbor            # create the local database
-createdb safeharbor_test       # used by integration tests
+createdb leeway            # create the local database
+createdb leeway_test       # used by integration tests
 ```
 
 Create **two** env files. They are read by different tools (this catches people out —
@@ -90,14 +99,14 @@ see [Non-obvious things](#non-obvious-things-that-will-trip-you-up)):
 **`.env`** — read by the Prisma CLI only:
 
 ```env
-DATABASE_URL="postgresql://YOUR_USERNAME@localhost:5432/safeharbor"
+DATABASE_URL="postgresql://YOUR_USERNAME@localhost:5432/leeway"
 ```
 
 **`.env.local`** — read by the Next.js app:
 
 ```env
-DATABASE_URL="postgresql://YOUR_USERNAME@localhost:5432/safeharbor"
-TEST_DATABASE_URL="postgresql://YOUR_USERNAME@localhost:5432/safeharbor_test"
+DATABASE_URL="postgresql://YOUR_USERNAME@localhost:5432/leeway"
+TEST_DATABASE_URL="postgresql://YOUR_USERNAME@localhost:5432/leeway_test"
 AI_PROVIDER_CHAIN="gemini,anthropic"
 GEMINI_API_KEY="your-google-ai-studio-key"
 ANTHROPIC_API_KEY=""
@@ -157,7 +166,7 @@ terminal — it signs you in as the second user and creates the connection.
 ## Codebase map
 
 ```
-safeharbor/
+leeway/
 ├── prisma/
 │   ├── schema.prisma              # Source of truth for the data model
 │   └── migrations/                # Versioned SQL — commit these
@@ -174,6 +183,11 @@ safeharbor/
 │   │   ├── mailer.js              # SMTP with console fallback for local dev
 │   │   ├── feature-flags.js       # Static flags gating Phase 2 features
 │   │   ├── base-url.js            # Public URL resolution (required in production)
+│   │   ├── logger.js              # Persisted errors, deduped; NEVER throws
+│   │   ├── alerts.js              # Admin email; error channel is deduped
+│   │   ├── diagnostics.js         # Findings + metrics, derived on every read
+│   │   ├── redact.js              # Strips emails/keys/tokens before logging
+│   │   ├── admin-auth.js          # Admin token check; fails CLOSED
 │   │   └── ai/                    # Provider-agnostic AI layer
 │   │       ├── index.js           # rephraseMessage() + REGISTRY + chain logic
 │   │       ├── prompt.js          # Prompt build + injection sanitization
@@ -192,6 +206,9 @@ safeharbor/
 │   ├── app/
 │   │   ├── layout.js              # Root layout, fonts, viewport
 │   │   ├── page.js                # Landing + magic-link request (public)
+│   │   ├── about/                 # Product explanation (public, static) —
+│   │   │                          # its "never does" list is a spec, not copy
+│   │   ├── admin/                 # Ops dashboard (token-gated)
 │   │   │
 │   │   ├── (app)/                 # Route group: every page here requires auth
 │   │   │   ├── layout.js          # Wraps children in AuthGuard + BottomNav
@@ -202,7 +219,8 @@ safeharbor/
 │   │   │   └── invite/            # Invite your partner
 │   │   │
 │   │   └── api/
-│   │       ├── health/            # Deploy healthcheck (app + DB)
+│   │       ├── health/            # Deploy healthcheck: fatal vs degraded
+│   │       ├── admin/             # overview + error log (token-gated)
 │   │       ├── auth/
 │   │       │   ├── request-link/  # POST email → send/log magic link
 │   │       │   ├── verify/        # GET token → set session cookie, redirect
@@ -428,7 +446,7 @@ exits 1 is worse than no script.
 
 ## Deployment
 
-See **`PLANS/safeharbor-deployment-plan.md`** for the full walkthrough.
+See **`PLANS/leeway-deployment-plan.md`** for the full walkthrough.
 
 Short version: Railway, with a PostgreSQL service in the same project. `railway.json`
 already defines the build, the `prisma migrate deploy` pre-deploy step, the start
@@ -440,8 +458,75 @@ Verify a deploy with:
 
 ```bash
 curl https://<your-domain>/api/health
-# {"status":"ok","database":"connected"}
+# {"status":"ok","database":"connected","fatal":[],"warnings":[]}
 ```
+
+---
+
+## Monitoring in production
+
+Without this layer, a deployed error goes to `console.error` and disappears into a log
+stream nobody is watching. Four pieces address that.
+
+### 1. Errors are persisted and deduplicated
+
+`src/lib/logger.js` writes to the `LogEntry` table, keyed by a fingerprint of
+`source + message`. An outage producing 500 identical failures becomes **one row with
+`count: 500`**, not 500 rows.
+
+That only works if the message is a constant:
+
+```js
+// Right — one fingerprint, a running count
+logError("api.messages.compose", "could not reach provider", err.message);
+
+// Wrong — a new fingerprint per occurrence, and the signal is buried
+logError("api.messages.compose", `could not reach ${provider} at ${time}`);
+```
+
+Varying data belongs in the third argument, which is stored as `detail`.
+
+### 2. Logging can never take down a request
+
+Two guarantees, both learned from the failure mode they prevent:
+
+- **It never throws.** A logger that can fail a request turns a small problem into an
+  outage, at exactly the worst moment.
+- **It never recurses.** After five consecutive database write failures the logger
+  disables itself for 60 seconds and falls back to stderr — otherwise a dead database
+  adds a second failure to every request. Relatedly, `mailer.js` deliberately does *not*
+  import the logger: the alert path is `logger → alerts → mailer`, so routing a delivery
+  failure back into the logger would recurse forever.
+
+### 3. Nothing identifying is written to a log
+
+Everything passes through `src/lib/redact.js` first, which strips connection strings,
+API keys, bearer tokens, JWTs and long hex tokens, and masks emails to `a***@domain`.
+Logs outlive requests and get read by people.
+
+### 4. The admin dashboard
+
+`/admin`, gated by `ADMIN_TOKEN`:
+
+- **Findings** — configuration and runtime problems with a suggested fix for each
+- **Activity** — users, connections, message outcomes, AI tokens
+- **Error log** — grouped by fingerprint with occurrence counts
+
+Findings are **derived on every read**, never stored. A stored finding that some cleanup
+job forgot to update silently misleads; a derived one is always current. Resolving an
+entry doesn't delete it, and it reappears if the problem recurs — a resolution that can
+permanently silence a recurring fault is worse than none.
+
+**Admin auth fails closed.** If `ADMIN_TOKEN` is unset the endpoints return **503**, not
+public access. Getting that backwards would expose the error log and metrics to anyone
+who guessed the URL.
+
+| Variable | Effect if unset |
+|----------|-----------------|
+| `ADMIN_TOKEN` | `/admin` returns 503 — closed, never open |
+| `ADMIN_EMAIL` | Errors are recorded and visible, but nobody is emailed |
+| `ALERTS_ENABLED` | Defaults on; `"false"` records without emailing |
+| `LOG_PERSISTENCE` | Defaults on; `"false"` disables DB writes |
 
 ---
 

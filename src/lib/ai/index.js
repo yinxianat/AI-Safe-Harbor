@@ -3,6 +3,7 @@ import anthropic from "./providers/anthropic.js";
 import openai from "./providers/openai.js";
 import { buildSystemPrompt } from "./prompt.js";
 import { REFUSAL } from "./errors.js";
+import { logError, logWarn } from "../logger.js";
 
 // ---------------------------------------------------------------------------
 // To add a provider: write src/lib/ai/providers/<name>.js implementing the
@@ -89,12 +90,23 @@ export async function rephraseMessage(rawMessage, receiverSettings) {
           provider: provider.name,
         };
       }
-      console.error(
-        `AI provider ${provider.name} unavailable:`,
+      // Constant message so every occurrence shares one fingerprint; the
+      // varying provider name and cause go in the detail.
+      logWarn(
+        `ai.provider.${provider.name}`,
+        "AI provider unavailable, trying next in chain",
         err?.cause?.message || err?.message
       );
     }
   }
+
+  // Every provider failed. This is the state that holds user messages as
+  // drafts, so it is worth an admin alert rather than a log line nobody reads.
+  logError(
+    "ai.chain",
+    "every AI provider in the chain failed",
+    `chain=${chain.map((p) => p.name).join(",")}`
+  );
 
   return { rephrased: null, error: "ai_unavailable" };
 }

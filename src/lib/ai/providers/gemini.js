@@ -1,4 +1,4 @@
-import { ProviderError, INFRASTRUCTURE, REFUSAL } from "../errors.js";
+import { ProviderError, INFRASTRUCTURE, REFUSAL, classifyHttp } from "../errors.js";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -37,7 +37,10 @@ const geminiProvider = {
 
     if (!response.ok) {
       const body = await response.text().catch(() => "");
-      const kind = response.status === 400 ? REFUSAL : INFRASTRUCTURE;
+      // Gemini signals content blocks with HTTP 200 (see below), so a non-2xx
+      // here is a transport or configuration problem — never a verdict on the
+      // content. Notably an invalid key arrives as 400 / API_KEY_INVALID.
+      const kind = classifyHttp(response.status, body, { refusalOn400: false });
       throw new ProviderError(kind, "gemini", new Error(`${response.status} ${body}`));
     }
 

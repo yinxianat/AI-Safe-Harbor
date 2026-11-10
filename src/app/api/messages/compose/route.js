@@ -4,6 +4,7 @@ import { findAccessibleConnection, getPartnerId } from "@/lib/connections.js";
 import prisma from "@/lib/db.js";
 import { checkTopicBoundaries } from "@/lib/topic-checker.js";
 import { rephraseMessage } from "@/lib/ai/index.js";
+import { logCritical } from "@/lib/logger.js";
 
 const MAX_MESSAGE_LENGTH = 5000;
 
@@ -43,9 +44,11 @@ export async function POST(request) {
   const boundaryCheck = checkTopicBoundaries(contentRaw, receiverSettings);
 
   if (boundaryCheck.unenforceable?.length > 0) {
-    console.error(
-      "Topic registry drift — boundaries that cannot be enforced:",
-      boundaryCheck.unenforceable
+    // A boundary the checker cannot evaluate is a silent safety failure.
+    logCritical(
+      "api.messages.compose",
+      "topic registry drift: boundaries that cannot be enforced",
+      boundaryCheck.unenforceable.join(",")
     );
   }
 

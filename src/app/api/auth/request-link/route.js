@@ -2,6 +2,7 @@ import { generateMagicToken } from "@/lib/auth.js";
 import { getBaseUrl } from "@/lib/base-url.js";
 import { parseJsonBody, requireString } from "@/lib/http.js";
 import { sendMail } from "@/lib/mailer.js";
+import { logError } from "@/lib/logger.js";
 
 export async function POST(request) {
   const body = await parseJsonBody(request);
@@ -23,14 +24,18 @@ export async function POST(request) {
     const { plaintext } = await generateMagicToken(email, "login");
     const magicLink = `${getBaseUrl(request)}/api/auth/verify?token=${plaintext}`;
 
-    await sendMail({
+    const delivery = await sendMail({
       to: email,
-      subject: "SafeHarbor — Sign In Link",
+      subject: "Leeway — Sign In Link",
       text: `Click to sign in: ${magicLink}\n\nThis link expires in 15 minutes.`,
       html: `<p>Click to sign in: <a href="${magicLink}">${magicLink}</a></p><p>This link expires in 15 minutes.</p>`,
     });
+
+    if (delivery.error) {
+      logError("api.auth.request-link", "sign-in email could not be delivered", delivery.error);
+    }
   } catch (err) {
-    console.error("Magic link error:", err.message);
+    logError("api.auth.request-link", "could not issue magic link", err?.message);
   }
 
   return ok();

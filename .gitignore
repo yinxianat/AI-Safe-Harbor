@@ -58,8 +58,8 @@ node_modules/
 # ---------------------------------------------------------------------------
 .next/
 out/
-build/
-dist/
+/build/
+/dist/
 *.tsbuildinfo
 next-env.d.ts
 
@@ -79,17 +79,17 @@ src/generated/
 # ---------------------------------------------------------------------------
 # Tests and coverage
 # ---------------------------------------------------------------------------
-coverage/
-.nyc_output/
+/coverage/
+/.nyc_output/
 
 # ---------------------------------------------------------------------------
 # Agent / AI tooling scaffolding
 # `prisma init` auto-installs ~100 skill doc files. They are not needed to
 # build, run, or deploy the app. Project-level .claude config stays committable.
 # ---------------------------------------------------------------------------
-.agents/
-.windsurf/
-.cursor/
+/.agents/
+/.windsurf/
+/.cursor/
 .claude/skills/
 skills-lock.json
 
@@ -116,10 +116,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-logs/
-tmp/
-temp/
-.cache/
+/logs/
+/tmp/
+/temp/
+/.cache/
 
 # ---------------------------------------------------------------------------
 # Deploy platform local state
@@ -133,8 +133,8 @@ temp/
 # The patterns below are defensive: if the folder is ever copied or moved in
 # here, `git add -A` must still not pick it up.
 # ---------------------------------------------------------------------------
-PLANS/
-plans/
+/PLANS/
+/plans/
 LESSONS.md
 LESSONS.pdf
 *-dev-plan.md
@@ -145,7 +145,10 @@ LESSONS.pdf
 *-deployment-plan.pdf
 
 # Scratch / working notes
-scratch/
-notes/
+# NOTE: every directory pattern here is anchored with a leading slash. An
+# unanchored `logs/` matches at ANY depth and silently excluded the
+# src/app/api/admin/logs/ route — it built locally and vanished from the deploy.
+/scratch/
+/notes/
 TODO.local.md
 *.local.md

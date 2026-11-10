@@ -35,8 +35,11 @@ export async function sendMail({ to, subject, text, html }) {
 
     return { delivered: true };
   } catch (err) {
-    // Logged without the recipient address — see the masking note in LESSONS.
-    console.error("SMTP delivery failed:", err?.message);
+    // console, NOT the logger. This module is called by the alerting path
+    // (logger -> alerts -> mailer); routing a delivery failure back into the
+    // logger would recurse forever. Callers that are not the alert path check
+    // the return value and log it themselves.
+    console.error("[mailer] SMTP delivery failed:", err?.message);
     return { delivered: false, error: "smtp_failed" };
   }
 }

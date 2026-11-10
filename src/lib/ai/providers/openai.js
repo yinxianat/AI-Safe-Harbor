@@ -1,4 +1,4 @@
-import { ProviderError, INFRASTRUCTURE, REFUSAL } from "../errors.js";
+import { ProviderError, INFRASTRUCTURE, REFUSAL, classifyHttp } from "../errors.js";
 
 // Implemented against the REST endpoint with `fetch` rather than the `openai`
 // SDK, so adding a fallback provider costs no extra dependency.
@@ -40,7 +40,7 @@ const openaiProvider = {
 
     if (!response.ok) {
       const body = await response.text().catch(() => "");
-      const kind = response.status === 400 ? REFUSAL : INFRASTRUCTURE;
+      const kind = classifyHttp(response.status, body, { refusalOn400: true });
       throw new ProviderError(kind, "openai", new Error(`${response.status} ${body}`));
     }
 

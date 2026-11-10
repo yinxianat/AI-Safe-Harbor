@@ -7,7 +7,7 @@ const geistSans = Geist({
 });
 
 export const metadata = {
-  title: "SafeHarbor",
+  title: "Leeway",
   description: "Share safely with your closest person",
 };
 

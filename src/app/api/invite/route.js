@@ -2,6 +2,7 @@ import { getSessionUser, generateMagicToken } from "@/lib/auth.js";
 import { getBaseUrl } from "@/lib/base-url.js";
 import { parseJsonBody, badRequest, requireString } from "@/lib/http.js";
 import { sendMail } from "@/lib/mailer.js";
+import { logError } from "@/lib/logger.js";
 import prisma from "@/lib/db.js";
 
 export async function POST(request) {
@@ -44,12 +45,16 @@ export async function POST(request) {
   const inviteLink = `${getBaseUrl(request)}/api/invite/accept?token=${plaintext}`;
   const inviterName = user.displayName || "Someone";
 
-  await sendMail({
+  const delivery = await sendMail({
     to: email,
-    subject: `${inviterName} invited you to SafeHarbor`,
-    text: `You've been invited to connect on SafeHarbor.\n\nAccept: ${inviteLink}\n\nThis link expires in 15 minutes.`,
-    html: `<p>${inviterName} invited you to connect on SafeHarbor.</p><p><a href="${inviteLink}">Accept Invitation</a></p><p>This link expires in 15 minutes.</p>`,
+    subject: `${inviterName} invited you to Leeway`,
+    text: `You've been invited to connect on Leeway.\n\nAccept: ${inviteLink}\n\nThis link expires in 15 minutes.`,
+    html: `<p>${inviterName} invited you to connect on Leeway.</p><p><a href="${inviteLink}">Accept Invitation</a></p><p>This link expires in 15 minutes.</p>`,
   });
+
+  if (delivery.error) {
+    logError("api.invite", "invitation email could not be delivered", delivery.error);
+  }
 
   return Response.json({ sent: true });
 }

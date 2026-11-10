@@ -1,5 +1,5 @@
 // Provider-chain behaviour, exercised without any network calls.
-import { ProviderError, INFRASTRUCTURE, REFUSAL } from "../src/lib/ai/errors.js";
+import { ProviderError, INFRASTRUCTURE, REFUSAL, classifyHttp } from "../src/lib/ai/errors.js";
 import { REGISTRY, resolveChain } from "../src/lib/ai/index.js";
 import {
   sanitizeTone,
@@ -181,5 +181,57 @@ describe("System prompt construction", () => {
   test("reports no sensitive topics as 'none'", () => {
     const prompt = buildSystemPrompt({ tonePreference: "warm_and_gentle", yellowTopics: [] });
     expect(prompt).toContain("none");
+  });
+});
+
+// Regression: an invalid Gemini API key arrives as HTTP 400 / API_KEY_INVALID,
+// not 401. Classifying every 400 as a refusal halted the provider chain, so one
+// typo'd key silently held every message as a draft and the fallback provider
+// was never tried. Body below is the real response from the live API.
+describe("Error classification does not let misconfiguration halt failover", () => {
+
+  const GEMINI_BAD_KEY = JSON.stringify({
+    error: {
+      code: 400,
+      message: "API key not valid. Please pass a valid API key.",
+      status: "INVALID_ARGUMENT",
+      details: [{ reason: "API_KEY_INVALID", domain: "googleapis.com" }],
+    },
+  });
+
+  test("Gemini invalid-key 400 is infrastructure, so the chain continues", () => {
+    expect(classifyHttp(400, GEMINI_BAD_KEY, { refusalOn400: false })).toBe(INFRASTRUCTURE);
+  });
+
+  test("an invalid key is infrastructure even where 400 can mean refusal", () => {
+    expect(classifyHttp(400, GEMINI_BAD_KEY, { refusalOn400: true })).toBe(INFRASTRUCTURE);
+  });
+
+  test("quota and billing problems fail over rather than halting", () => {
+    for (const body of [
+      '{"error":{"message":"You exceeded your current quota"}}',
+      '{"error":{"message":"billing account not configured"}}',
+      '{"error":{"message":"Rate limit reached"}}',
+      '{"error":{"message":"insufficient_quota"}}',
+      '{"error":{"message":"permission denied"}}',
+    ]) {
+      expect(classifyHttp(400, body)).toBe(INFRASTRUCTURE);
+    }
+  });
+
+  test("auth and server statuses are always infrastructure", () => {
+    for (const status of [401, 403, 429, 500, 502, 503, 504]) {
+      expect(classifyHttp(status, "")).toBe(INFRASTRUCTURE);
+    }
+  });
+
+  test("a genuine content rejection is still a refusal", () => {
+    const body = '{"error":{"message":"Your request was rejected as a result of our safety system"}}';
+    expect(classifyHttp(400, body, { refusalOn400: true })).toBe(REFUSAL);
+  });
+
+  test("Gemini never treats a non-2xx as a refusal (it blocks with 200)", () => {
+    const body = '{"error":{"message":"Your request was rejected by the safety system"}}';
+    expect(classifyHttp(400, body, { refusalOn400: false })).toBe(INFRASTRUCTURE);
   });
 });

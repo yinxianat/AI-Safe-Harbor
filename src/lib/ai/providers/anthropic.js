@@ -1,4 +1,4 @@
-import { ProviderError, INFRASTRUCTURE, REFUSAL } from "../errors.js";
+import { ProviderError, INFRASTRUCTURE, REFUSAL, classifyHttp } from "../errors.js";
 
 const DEFAULT_MODEL = "claude-sonnet-4-5";
 const ENDPOINT = "https://api.anthropic.com/v1/messages";
@@ -41,9 +41,9 @@ const anthropicProvider = {
 
     if (!response.ok) {
       const body = await response.text().catch(() => "");
-      // 400 means the request was rejected on its merits; 401/429/5xx are
-      // infrastructure and worth failing over to the next provider.
-      const kind = response.status === 400 ? REFUSAL : INFRASTRUCTURE;
+      // A 400 can be a genuine content rejection, but only once we've ruled out
+      // key/quota problems — those must fail over, not halt the chain.
+      const kind = classifyHttp(response.status, body, { refusalOn400: true });
       throw new ProviderError(kind, "anthropic", new Error(`${response.status} ${body}`));
     }
 

@@ -46,7 +46,7 @@ export default function InvitePage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Invite Partner</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Send an invitation to connect on SafeHarbor
+          Send an invitation to connect on Leeway
         </p>
       </div>
 
