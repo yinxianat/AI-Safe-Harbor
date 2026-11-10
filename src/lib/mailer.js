@@ -8,6 +8,18 @@ import nodemailer from "nodemailer";
 // down with it — the caller decides what the user sees, and for both the login
 // and invite flows that is a success response either way (the response must
 // not reveal whether an address exists or whether delivery worked).
+// The address recipients see. SMTP_FROM allows a display name
+// ("Leeway <you@gmail.com>"); without it we fall back to the bare login
+// address, which is functional but shows up as a raw mailbox in the inbox.
+//
+// Most providers, Gmail included, require the address inside SMTP_FROM to be
+// one the authenticated account is allowed to send as — usually SMTP_USER
+// itself or a verified alias. A mismatch is rejected at send time or silently
+// rewritten, so keep them the same unless you have set up an alias.
+function fromAddress() {
+  return process.env.SMTP_FROM || process.env.SMTP_USER;
+}
+
 export async function sendMail({ to, subject, text, html }) {
   if (!process.env.SMTP_HOST) {
     console.log(`\n--- email to ${to} ---\n${subject}\n${text}\n`);
@@ -26,7 +38,7 @@ export async function sendMail({ to, subject, text, html }) {
     });
 
     await transporter.sendMail({
-      from: process.env.SMTP_USER,
+      from: fromAddress(),
       to,
       subject,
       text,
