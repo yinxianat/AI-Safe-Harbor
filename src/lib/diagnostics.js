@@ -181,6 +181,14 @@ export async function getMetrics() {
     prisma.message.aggregate({ _sum: { aiTokensUsed: true } }),
   ]);
 
+  const [aiSucceeded, aiFailed, aiRefused, providerBreakdown, heldByReason] = await Promise.all([
+    prisma.message.count({ where: { contentRephrased: { not: null }, createdAt: { gte: since } } }),
+    prisma.message.count({ where: { heldReason: "ai_failed", createdAt: { gte: since } } }),
+    prisma.message.count({ where: { heldReason: "content_refused", createdAt: { gte: since } } }),
+    prisma.message.groupBy({ by: ["aiProvider"], _count: true, where: { createdAt: { gte: since }, aiProvider: { not: null } } }),
+    prisma.message.groupBy({ by: ["heldReason"], _count: true, where: { status: "held" } }),
+  ]);
+
   return {
     users,
     connections,
@@ -190,6 +198,14 @@ export async function getMetrics() {
     messagesLast24h: recent,
     aiTokensTotal: tokens._sum.aiTokensUsed ?? 0,
     aiProviders: resolveChain().map((p) => ({ name: p.name, model: p.defaultModel() })),
+    aiPipeline: {
+      succeeded24h: aiSucceeded,
+      failed24h: aiFailed,
+      refused24h: aiRefused,
+      successRate: recent > 0 ? Math.round((aiSucceeded / Math.max(aiSucceeded + aiFailed + aiRefused, 1)) * 100) : null,
+      byProvider: providerBreakdown.map((p) => ({ provider: p.aiProvider, count: p._count })),
+    },
+    heldReasons: heldByReason.map((r) => ({ reason: r.heldReason || "unknown", count: r._count })),
   };
 }
 

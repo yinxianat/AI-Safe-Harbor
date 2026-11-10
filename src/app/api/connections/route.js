@@ -13,8 +13,8 @@ export async function GET(request) {
       OR: [{ userAId: user.id }, { userBId: user.id }],
     },
     include: {
-      userA: { select: { id: true, displayName: true, email: true } },
-      userB: { select: { id: true, displayName: true, email: true } },
+      userA: { select: { id: true, displayName: true, username: true, email: true } },
+      userB: { select: { id: true, displayName: true, username: true, email: true } },
     },
   });
 
@@ -23,7 +23,7 @@ export async function GET(request) {
     return {
       id: c.id,
       partnerId: partner.id,
-      partnerName: partner.displayName || partner.email,
+      partnerName: partner.displayName || (partner.username ? `@${partner.username}` : partner.email),
       relationshipType: c.relationshipType,
       createdAt: c.createdAt.toISOString(),
     };

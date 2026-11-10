@@ -153,7 +153,7 @@ export default function AdminPage() {
     );
   }
 
-  const { findings, metrics, logs, environment, generatedAt, viewer } = state.data;
+  const { findings, metrics, logs, environment, generatedAt, viewer, userIssues } = state.data;
   const worst = findings?.find((f) => f.severity === "high");
 
   return (
@@ -208,6 +208,72 @@ export default function AdminPage() {
               value={metrics.aiProviders.length}
               hint={metrics.aiProviders.map((p) => p.name).join(" to ") || "none"}
             />
+          </div>
+        </section>
+      )}
+
+      {metrics?.aiPipeline && (
+        <section className="mt-8">
+          <h2 className="text-lg font-semibold text-slate-900">AI Pipeline (last 24h)</h2>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Stat label="Succeeded" value={metrics.aiPipeline.succeeded24h} />
+            <Stat label="Failed" value={metrics.aiPipeline.failed24h} hint="ai_failed" />
+            <Stat label="Refused" value={metrics.aiPipeline.refused24h} hint="content policy" />
+            <Stat
+              label="Success rate"
+              value={metrics.aiPipeline.successRate !== null ? `${metrics.aiPipeline.successRate}%` : "—"}
+            />
+          </div>
+          {metrics.aiPipeline.byProvider.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {metrics.aiPipeline.byProvider.map((p) => (
+                <span key={p.provider} className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
+                  {p.provider}: {p.count} calls
+                </span>
+              ))}
+            </div>
+          )}
+          {metrics.heldReasons?.length > 0 && (
+            <div className="mt-3">
+              <p className="text-sm font-medium text-slate-700">Held reasons (all time):</p>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {metrics.heldReasons.map((r) => (
+                  <span key={r.reason} className="rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs text-amber-700">
+                    {r.reason}: {r.count}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {userIssues && (userIssues.heldPerUser?.length > 0 || userIssues.draftsPerUser?.length > 0) && (
+        <section className="mt-8">
+          <h2 className="text-lg font-semibold text-slate-900">Per-user issues (last 7 days)</h2>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            {userIssues.heldPerUser?.length > 0 && (
+              <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+                <p className="text-sm font-medium text-slate-700 mb-2">Most held messages</p>
+                {userIssues.heldPerUser.map((u, i) => (
+                  <div key={i} className="flex justify-between text-sm py-1 border-b border-slate-50 last:border-0">
+                    <span className="text-slate-600 truncate">{u.name}</span>
+                    <span className="font-medium text-slate-800">{u.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {userIssues.draftsPerUser?.length > 0 && (
+              <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+                <p className="text-sm font-medium text-slate-700 mb-2">Most unsent drafts</p>
+                {userIssues.draftsPerUser.map((u, i) => (
+                  <div key={i} className="flex justify-between text-sm py-1 border-b border-slate-50 last:border-0">
+                    <span className="text-slate-600 truncate">{u.name}</span>
+                    <span className="font-medium text-slate-800">{u.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
       )}

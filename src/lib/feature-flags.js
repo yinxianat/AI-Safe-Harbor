@@ -1,9 +1,9 @@
 const FEATURE_FLAGS = {
   paymentsEnabled: false,
-  companionsEnabled: false,
-  practicepadEnabled: false,
+  companionsEnabled: true,
+  practicepadEnabled: true,
   toneTunerEnabled: true,
-  knowMeDashboard: false,
+  knowMeDashboard: true,
   photoUploads: false,
   pushNotifications: false,
 };

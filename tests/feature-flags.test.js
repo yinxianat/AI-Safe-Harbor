@@ -14,11 +14,11 @@ describe("Feature Flags", () => {
     expect(isEnabled("nonExistentFlag")).toBe(false);
   });
 
-  test("companions are disabled (Phase 2)", () => {
-    expect(isEnabled("companionsEnabled")).toBe(false);
+  test("companions are enabled", () => {
+    expect(isEnabled("companionsEnabled")).toBe(true);
   });
 
-  test("practice pad is disabled (Phase 2)", () => {
-    expect(isEnabled("practicepadEnabled")).toBe(false);
+  test("practice pad is enabled", () => {
+    expect(isEnabled("practicepadEnabled")).toBe(true);
   });
 });
