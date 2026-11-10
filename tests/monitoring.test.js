@@ -159,22 +159,30 @@ describe("No application source is excluded from the repository", () => {
     expect(ignored).toEqual([]);
   });
 
-  test("every API route file is tracked", async () => {
+  // Asks whether each route COULD be committed, not whether it already has
+  // been. A brand-new route is untracked until it is staged, which is normal;
+  // an *ignored* route is the real defect, because `git add -A` skips it and
+  // the endpoint 404s in production while working perfectly in development.
+  // That is exactly how an unanchored `logs/` pattern hid an admin route.
+  test("no API route file is excluded by gitignore", async () => {
     const { execSync } = await import("child_process");
-
-    const tracked = new Set(
-      execSync("git ls-files -- src/app/api", { encoding: "utf8" })
-        .split("\n")
-        .filter(Boolean)
-    );
 
     const onDisk = execSync("find src/app/api -name route.js", { encoding: "utf8" })
       .split("\n")
       .filter(Boolean);
 
     expect(onDisk.length).toBeGreaterThan(0);
-    for (const file of onDisk) {
-      expect(tracked.has(file)).toBe(true);
+
+    // check-ignore exits 1 when nothing matches, which is the passing case.
+    let ignoredRoutes = "";
+    try {
+      ignoredRoutes = execSync("git check-ignore -- " + onDisk.join(" "), {
+        encoding: "utf8",
+      });
+    } catch {
+      ignoredRoutes = "";
     }
+
+    expect(ignoredRoutes.split("\n").filter(Boolean)).toEqual([]);
   });
 });

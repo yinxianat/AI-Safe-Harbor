@@ -49,6 +49,25 @@ const TIMEOUTS = {
   socketTimeout: 15_000,
 };
 
+// Force IPv4 unless explicitly overridden.
+//
+// smtp.gmail.com publishes both A and AAAA records. Node 17+ defaults to
+// `verbatim: true` DNS ordering, so it may try the IPv6 address first. Many
+// container platforms (Railway among them) hand the container an IPv6 address
+// with no working egress route, so that attempt does not fail fast — it hangs
+// until the connection timeout. The symptom is a connect timeout with no
+// authentication error, which reads as "the mail server is unreachable" even
+// though the credentials and host are perfectly correct and the same settings
+// work from a laptop.
+//
+// Set SMTP_IP_FAMILY=6 to force IPv6, or 0 to use the system default.
+function ipFamily() {
+  const raw = process.env.SMTP_IP_FAMILY;
+  if (raw === undefined || raw === "") return 4;
+  const parsed = parseInt(raw, 10);
+  return [0, 4, 6].includes(parsed) ? parsed : 4;
+}
+
 // "smtp_failed" tells an operator nothing. These turn the provider's raw
 // response into something that names the actual fix, because the whole point
 // of persisting the error is to shorten the next diagnosis.
@@ -70,7 +89,12 @@ function describeFailure(err) {
   if (/ECONNREFUSED|ECONNECTION|ETIMEDOUT|ESOCKET|Greeting never received/i.test(text)) {
     return {
       reason: "smtp_unreachable",
-      hint: "Could not establish a session with the mail server. Check SMTP_HOST and SMTP_PORT (587 for STARTTLS, 465 for TLS).",
+      hint:
+        "Could not open a session with the mail server, and the credentials were never tested. " +
+        "Check SMTP_HOST and SMTP_PORT (587 for STARTTLS, 465 for TLS). " +
+        "If the same settings work from a laptop but time out here, the host is reachable and this is the deploy platform, not the configuration: " +
+        "either outbound SMTP is blocked on the current plan (Railway blocks it below Pro), or the connection went out over IPv6 with no return route. " +
+        "This app forces IPv4 already; if it is a plan-level block, no SMTP port will work and delivery has to move to an HTTPS email API such as Resend, SendGrid or Postmark.",
     };
   }
   if (/EENVELOPE|550|553|Sender address rejected/i.test(text)) {
@@ -82,6 +106,45 @@ function describeFailure(err) {
   return { reason: "smtp_failed", hint: "Unclassified SMTP failure; see detail." };
 }
 
+function buildTransport() {
+  const port = parseInt(process.env.SMTP_PORT || "587", 10);
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port,
+    secure: port === 465,
+    auth: {
+      user: smtpUser(),
+      pass: smtpPass(),
+    },
+    family: ipFamily(),
+    ...TIMEOUTS,
+  });
+}
+
+// Opens a session and authenticates WITHOUT sending anything, so an operator
+// can tell a blocked port apart from a rejected password. Used by the admin
+// diagnostic endpoint; `sendMail` does not call it, because that would double
+// the round trips on every message.
+export async function verifyTransport() {
+  if (!smtpConfigured()) {
+    return { ok: false, error: "smtp_not_configured", detail: "SMTP_HOST, user and password must all be set." };
+  }
+
+  try {
+    await buildTransport().verify();
+    return { ok: true, family: ipFamily(), host: process.env.SMTP_HOST };
+  } catch (err) {
+    const { reason, hint } = describeFailure(err);
+    return {
+      ok: false,
+      error: reason,
+      detail: `${hint}\n\nServer said: ${err?.code || ""} ${err?.message || err}`.trim(),
+      family: ipFamily(),
+      host: process.env.SMTP_HOST,
+    };
+  }
+}
+
 export async function sendMail({ to, subject, text, html }) {
   if (!process.env.SMTP_HOST) {
     console.log(`\n--- email to ${to} ---\n${subject}\n${text}\n`);
@@ -89,16 +152,7 @@ export async function sendMail({ to, subject, text, html }) {
   }
 
   try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || "587", 10),
-      secure: parseInt(process.env.SMTP_PORT || "587", 10) === 465,
-      auth: {
-        user: smtpUser(),
-        pass: smtpPass(),
-      },
-      ...TIMEOUTS,
-    });
+    const transporter = buildTransport();
 
     await transporter.sendMail({
       from: fromAddress(),
