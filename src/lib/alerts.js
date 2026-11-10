@@ -1,4 +1,5 @@
 import { sendMail } from "./mailer.js";
+import { getAdminEmails } from "./admin-auth.js";
 
 // Two channels, deliberately separate:
 //
@@ -53,8 +54,11 @@ export async function notifyAdmin({ channel = CHANNEL.EVENT, subject, body }) {
   try {
     if (!alertsEnabled()) return { sent: false, reason: "alerts_disabled" };
 
-    const to = process.env.ADMIN_EMAIL;
-    if (!to) return { sent: false, reason: "no_admin_email" };
+    // Alerts go to the same people who hold the admin role, so there is one
+    // list to keep current instead of two that drift apart.
+    const admins = getAdminEmails();
+    if (admins.length === 0) return { sent: false, reason: "no_admin_configured" };
+    const to = admins.join(", ");
 
     if (channel === CHANNEL.ERROR && shouldSuppress(subject)) {
       return { sent: false, reason: "deduplicated" };

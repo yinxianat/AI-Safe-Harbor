@@ -13,7 +13,7 @@ export const FINDING_TITLES = {
   missing_base_url: "BASE_URL is not set in production",
   no_ai_provider: "No AI provider is configured",
   single_ai_provider: "No AI fallback provider configured",
-  no_admin_email: "No admin alert address configured",
+  no_admin_email: "No administrators configured",
   smtp_not_configured: "Email delivery is not configured",
   errors_logged: "Errors recorded recently",
   critical_logged: "Critical errors recorded recently",
@@ -70,13 +70,13 @@ export async function getFindings() {
     });
   }
 
-  if (!process.env.ADMIN_EMAIL) {
+  if (!process.env.ADMIN_EMAILS) {
     add({
       severity: "medium",
       code: "no_admin_email",
       subject: null,
-      detail: "Errors are recorded but nobody is notified.",
-      remediation: "Set ADMIN_EMAIL.",
+      detail: "No one can open /admin and no error alerts are sent.",
+      remediation: "Set ADMIN_EMAILS to a comma-separated list of administrator addresses.",
     });
   }
 

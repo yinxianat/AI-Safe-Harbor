@@ -1,10 +1,10 @@
-import { checkAdmin } from "@/lib/admin-auth.js";
+import { requireAdmin } from "@/lib/admin-auth.js";
 import { getRecentLogs } from "@/lib/diagnostics.js";
 import { parseJsonBody, badRequest, requireString } from "@/lib/http.js";
 import prisma from "@/lib/db.js";
 
 export async function GET(request) {
-  const auth = checkAdmin(request);
+  const auth = await requireAdmin(request);
   if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(request.url);
@@ -17,7 +17,7 @@ export async function GET(request) {
 // automatically if the same fingerprint occurs again — a resolution that can
 // silence a recurring fault permanently is worse than no resolution at all.
 export async function POST(request) {
-  const auth = checkAdmin(request);
+  const auth = await requireAdmin(request);
   if (!auth.ok) return auth.response;
 
   const body = await parseJsonBody(request);

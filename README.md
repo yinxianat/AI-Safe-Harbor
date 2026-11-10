@@ -506,7 +506,7 @@ Logs outlive requests and get read by people.
 
 ### 4. The admin dashboard
 
-`/admin`, gated by `ADMIN_TOKEN`:
+`/admin`, gated by the `ADMIN_EMAILS` allow-list:
 
 - **Findings** — configuration and runtime problems with a suggested fix for each
 - **Activity** — users, connections, message outcomes, AI tokens
@@ -517,14 +517,22 @@ job forgot to update silently misleads; a derived one is always current. Resolvi
 entry doesn't delete it, and it reappears if the problem recurs — a resolution that can
 permanently silence a recurring fault is worse than none.
 
-**Admin auth fails closed.** If `ADMIN_TOKEN` is unset the endpoints return **503**, not
-public access. Getting that backwards would expose the error log and metrics to anyone
-who guessed the URL.
+**Admin is a role, not a password.** `ADMIN_EMAILS` lists who holds it. An admin signs in
+through the normal magic-link flow and is recognised by the address on their session, so
+there is no second credential to distribute or rotate — and the dashboard header shows
+which account is viewing, which a shared password could never tell you.
+
+The list lives in the environment rather than the database so admin cannot be granted
+from inside the app: a compromised account cannot promote itself. The cost is a redeploy
+to change it, which is the right trade at this scale.
+
+**It fails closed.** An empty list means *nobody* is an admin, never everybody. The
+endpoints distinguish three cases: `503` (no admins configured), `401` (not signed in),
+`403` (signed in, not an admin) — and a `403` never reveals who *is* an admin.
 
 | Variable | Effect if unset |
 |----------|-----------------|
-| `ADMIN_TOKEN` | `/admin` returns 503 — closed, never open |
-| `ADMIN_EMAIL` | Errors are recorded and visible, but nobody is emailed |
+| `ADMIN_EMAILS` | `/admin` returns 503 for everyone, and no alerts are sent |
 | `ALERTS_ENABLED` | Defaults on; `"false"` records without emailing |
 | `LOG_PERSISTENCE` | Defaults on; `"false"` disables DB writes |
 

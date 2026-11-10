@@ -1,9 +1,9 @@
-import { checkAdmin } from "@/lib/admin-auth.js";
+import { requireAdmin } from "@/lib/admin-auth.js";
 import { getFindings, getMetrics, getRecentLogs } from "@/lib/diagnostics.js";
 import { logError } from "@/lib/logger.js";
 
 export async function GET(request) {
-  const auth = checkAdmin(request);
+  const auth = await requireAdmin(request);
   if (!auth.ok) return auth.response;
 
   // Each source is fetched independently: a diagnostic that needs a healthy
@@ -27,6 +27,9 @@ export async function GET(request) {
   return Response.json({
     generatedAt: new Date().toISOString(),
     environment: process.env.NODE_ENV || "development",
+    // Shown in the header so it is obvious which account is being used — the
+    // thing a shared password could never tell you.
+    viewer: auth.user.email,
     findings,
     metrics,
     logs,

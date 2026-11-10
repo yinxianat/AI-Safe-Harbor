@@ -1,6 +1,6 @@
 import { redact, maskEmail } from "../src/lib/redact.js";
 import { FINDING_TITLES } from "../src/lib/diagnostics.js";
-import { checkAdmin } from "../src/lib/admin-auth.js";
+import { getAdminEmails, isAdminEmail } from "../src/lib/admin-auth.js";
 
 function req(headers = {}) {
   const lower = Object.fromEntries(
@@ -56,46 +56,62 @@ describe("Log redaction", () => {
   });
 });
 
-describe("Admin auth fails closed", () => {
+describe("Admin role by email", () => {
   const saved = { ...process.env };
   afterEach(() => { process.env = { ...saved }; });
 
-  // The important one: no token configured must mean DENIED, never "open to
-  // everyone". Getting this backwards exposes the error log and metrics.
-  test("returns 503, not access, when ADMIN_TOKEN is unset", () => {
-    delete process.env.ADMIN_TOKEN;
-    const result = checkAdmin(req({ authorization: "Bearer anything" }));
-    expect(result.ok).toBe(false);
-    expect(result.response.status).toBe(503);
+  // The important one: an empty list must mean NOBODY is an admin, never
+  // everybody. Getting this backwards publishes the error log and metrics.
+  test("no ADMIN_EMAILS means nobody is an admin", () => {
+    delete process.env.ADMIN_EMAILS;
+    expect(getAdminEmails()).toEqual([]);
+    expect(isAdminEmail("anyone@example.com")).toBe(false);
   });
 
-  test("an empty ADMIN_TOKEN is also closed", () => {
-    process.env.ADMIN_TOKEN = "   ";
-    expect(checkAdmin(req({ authorization: "Bearer   " })).ok).toBe(false);
+  test("an empty or whitespace list is still closed", () => {
+    for (const value of ["", "   ", ",,,", " , , "]) {
+      process.env.ADMIN_EMAILS = value;
+      expect(getAdminEmails()).toEqual([]);
+      expect(isAdminEmail("anyone@example.com")).toBe(false);
+    }
   });
 
-  test("rejects a wrong token", () => {
-    process.env.ADMIN_TOKEN = "correct-token-value";
-    const result = checkAdmin(req({ authorization: "Bearer wrong-token-value" }));
-    expect(result.ok).toBe(false);
-    expect(result.response.status).toBe(401);
+  test("recognises an address on the list", () => {
+    process.env.ADMIN_EMAILS = "alice@example.com,bob@example.com";
+    expect(isAdminEmail("alice@example.com")).toBe(true);
+    expect(isAdminEmail("bob@example.com")).toBe(true);
   });
 
-  test("rejects a missing token", () => {
-    process.env.ADMIN_TOKEN = "correct-token-value";
-    expect(checkAdmin(req({})).ok).toBe(false);
+  test("rejects an address not on the list", () => {
+    process.env.ADMIN_EMAILS = "alice@example.com";
+    expect(isAdminEmail("eve@example.com")).toBe(false);
   });
 
-  test("accepts the correct token via header or cookie", () => {
-    process.env.ADMIN_TOKEN = "correct-token-value";
-    expect(checkAdmin(req({ authorization: "Bearer correct-token-value" })).ok).toBe(true);
-    expect(checkAdmin(req({ cookie: "admin_token=correct-token-value" })).ok).toBe(true);
+  // Casing and padding must not let someone in, nor lock a real admin out.
+  test("comparison is case-insensitive and trims whitespace", () => {
+    process.env.ADMIN_EMAILS = "  Alice@Example.COM , bob@example.com  ";
+    expect(isAdminEmail("alice@example.com")).toBe(true);
+    expect(isAdminEmail("ALICE@EXAMPLE.COM")).toBe(true);
+    expect(isAdminEmail("  alice@example.com  ")).toBe(true);
+    expect(isAdminEmail("BOB@example.com")).toBe(true);
   });
 
-  test("a length-mismatched token does not throw", () => {
-    process.env.ADMIN_TOKEN = "short";
-    expect(() => checkAdmin(req({ authorization: "Bearer muchlongertoken" }))).not.toThrow();
-    expect(checkAdmin(req({ authorization: "Bearer muchlongertoken" })).ok).toBe(false);
+  test("ignores malformed entries rather than trusting them", () => {
+    process.env.ADMIN_EMAILS = "not-an-email,alice@example.com,also bad";
+    expect(getAdminEmails()).toEqual(["alice@example.com"]);
+    expect(isAdminEmail("not-an-email")).toBe(false);
+  });
+
+  test("deduplicates repeated entries", () => {
+    process.env.ADMIN_EMAILS = "a@x.com,A@X.com, a@x.com";
+    expect(getAdminEmails()).toEqual(["a@x.com"]);
+  });
+
+  test("non-string input does not throw", () => {
+    process.env.ADMIN_EMAILS = "alice@example.com";
+    for (const v of [null, undefined, 42, {}, []]) {
+      expect(isAdminEmail(v)).toBe(false);
+    }
   });
 });
 

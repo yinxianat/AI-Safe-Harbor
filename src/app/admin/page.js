@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 
 const SEVERITY_STYLE = {
   high: "border-red-200 bg-red-50 text-red-800",
@@ -24,142 +25,129 @@ function Stat({ label, value, hint }) {
   );
 }
 
-// Read once during initialisation rather than setting state from an effect,
-// which would trigger a cascading re-render. Guarded because sessionStorage is
-// absent during server rendering and can throw in a private window.
-function savedToken() {
-  if (typeof window === "undefined") return "";
-  try {
-    return sessionStorage.getItem("leeway_admin_token") || "";
-  } catch {
-    return "";
-  }
+function Gate({ title, children }) {
+  return (
+    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-5 text-center">
+      <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
+      <div className="mt-2 text-sm text-slate-600">{children}</div>
+    </div>
+  );
 }
 
-// Pure: performs the request and reports the outcome. Holds no state, so it
-// can be called from an effect without triggering a cascading render.
-async function fetchOverview(t) {
+// Pure: performs the request and reports the outcome, so it can be called from
+// an effect without setting state synchronously.
+async function fetchOverview() {
   try {
-    const res = await fetch("/api/admin/overview", {
-      headers: { Authorization: `Bearer ${t}` },
-    });
-
+    const res = await fetch("/api/admin/overview");
     if (res.status === 503) {
       const body = await res.json().catch(() => ({}));
-      return { error: body.detail || "Admin is not configured on this deployment." };
+      return { gate: "unconfigured", message: body.detail };
     }
-    if (res.status === 401) return { error: "That token was not accepted." };
-    if (!res.ok) return { error: `Request failed (${res.status}).` };
-
+    if (res.status === 401) return { gate: "signed_out" };
+    if (res.status === 403) return { gate: "forbidden" };
+    if (!res.ok) return { gate: "error", message: `Request failed (${res.status}).` };
     return { data: await res.json() };
   } catch {
-    return { error: "Could not reach the server." };
-  }
-}
-
-function remember(t) {
-  try {
-    sessionStorage.setItem("leeway_admin_token", t);
-  } catch {
-    // Private window or blocked storage — the dashboard still works, the token
-    // just isn't remembered for the next load.
+    return { gate: "error", message: "Could not reach the server." };
   }
 }
 
 export default function AdminPage() {
-  const [token, setToken] = useState(savedToken);
-  const [data, setData] = useState(null);
-  const [status, setStatus] = useState("idle");
-  const [error, setError] = useState(null);
+  const [state, setState] = useState({ status: "loading" });
 
-  const apply = useCallback((result, t) => {
-    if (result.error) {
-      setError(result.error);
-      setStatus("error");
-      return;
-    }
-    setData(result.data);
-    setStatus("ready");
-    remember(t);
+  const load = useCallback(async () => {
+    const result = await fetchOverview();
+    setState(
+      result.data
+        ? { status: "ready", data: result.data }
+        : { status: result.gate, message: result.message }
+    );
   }, []);
 
-  const load = useCallback(
-    async (t) => {
-      setStatus("loading");
-      setError(null);
-      apply(await fetchOverview(t), t);
-    },
-    [apply]
-  );
-
-  // Every state update happens after an await, never synchronously in the
-  // effect body.
   useEffect(() => {
-    const saved = savedToken();
-    if (!saved) return;
-
     let cancelled = false;
-    fetchOverview(saved).then((result) => {
-      if (!cancelled) apply(result, saved);
+    fetchOverview().then((result) => {
+      if (cancelled) return;
+      setState(
+        result.data
+          ? { status: "ready", data: result.data }
+          : { status: result.gate, message: result.message }
+      );
     });
-
     return () => {
       cancelled = true;
     };
-  }, [apply]);
+  }, []);
 
   async function resolveLog(id) {
     await fetch("/api/admin/logs", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
-    load(token);
+    load();
   }
 
-  if (status !== "ready") {
+  if (state.status === "loading") {
     return (
-      <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-5">
-        <h1 className="text-2xl font-bold text-slate-900">Leeway admin</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Enter the <code className="rounded bg-slate-100 px-1">ADMIN_TOKEN</code> set on
-          this deployment.
-        </p>
-
-        {error && (
-          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        <form
-          className="mt-5 space-y-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            load(token);
-          }}
-        >
-          <input
-            type="password"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder="Admin token"
-            aria-label="Admin token"
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <button
-            type="submit"
-            disabled={status === "loading" || !token}
-            className="w-full rounded-xl bg-indigo-600 py-3 font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {status === "loading" ? "Checking…" : "Open dashboard"}
-          </button>
-        </form>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
       </div>
     );
   }
 
-  const { findings, metrics, logs, environment, generatedAt } = data;
+  if (state.status === "unconfigured") {
+    return (
+      <Gate title="Admin is not configured">
+        <p>
+          No administrators are set for this deployment. Add{" "}
+          <code className="rounded bg-slate-100 px-1">ADMIN_EMAILS</code> to the
+          environment and redeploy.
+        </p>
+      </Gate>
+    );
+  }
+
+  if (state.status === "signed_out") {
+    return (
+      <Gate title="Sign in required">
+        <p>Administrators are recognised by the address on their account.</p>
+        <Link
+          href="/"
+          className="mt-4 inline-block rounded-xl bg-indigo-600 px-5 py-2.5 font-medium text-white hover:bg-indigo-700"
+        >
+          Go to sign in
+        </Link>
+      </Gate>
+    );
+  }
+
+  if (state.status === "forbidden") {
+    return (
+      <Gate title="Not available">
+        <p>This account does not have administrator access.</p>
+        <Link href="/dashboard" className="mt-4 inline-block text-indigo-600 underline">
+          Back to Leeway
+        </Link>
+      </Gate>
+    );
+  }
+
+  if (state.status === "error") {
+    return (
+      <Gate title="Something went wrong">
+        <p>{state.message}</p>
+        <button
+          onClick={load}
+          className="mt-4 rounded-xl border border-slate-200 px-4 py-2 font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Try again
+        </button>
+      </Gate>
+    );
+  }
+
+  const { findings, metrics, logs, environment, generatedAt, viewer } = state.data;
   const worst = findings?.find((f) => f.severity === "high");
 
   return (
@@ -168,11 +156,13 @@ export default function AdminPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Leeway admin</h1>
           <p className="mt-0.5 text-sm text-slate-500">
-            {environment} · generated {new Date(generatedAt).toLocaleString()}
+            {environment}
+            {viewer ? ` · ${viewer}` : ""} · generated{" "}
+            {new Date(generatedAt).toLocaleString()}
           </p>
         </div>
         <button
-          onClick={() => load(token)}
+          onClick={load}
           className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           Refresh
@@ -210,7 +200,7 @@ export default function AdminPage() {
             <Stat
               label="Providers"
               value={metrics.aiProviders.length}
-              hint={metrics.aiProviders.map((p) => p.name).join(" → ") || "none"}
+              hint={metrics.aiProviders.map((p) => p.name).join(" to ") || "none"}
             />
           </div>
         </section>
@@ -220,9 +210,7 @@ export default function AdminPage() {
         <h2 className="text-lg font-semibold text-slate-900">
           Findings {findings ? `(${findings.length})` : ""}
         </h2>
-        {!findings && (
-          <p className="mt-2 text-sm text-red-600">Could not compute findings.</p>
-        )}
+        {!findings && <p className="mt-2 text-sm text-red-600">Could not compute findings.</p>}
         {findings?.length === 0 && (
           <p className="mt-2 text-sm text-slate-500">Nothing to report.</p>
         )}
@@ -259,9 +247,7 @@ export default function AdminPage() {
           occurred.
         </p>
         {!logs && <p className="mt-2 text-sm text-red-600">Could not read the log.</p>}
-        {logs?.length === 0 && (
-          <p className="mt-2 text-sm text-slate-500">Nothing logged.</p>
-        )}
+        {logs?.length === 0 && <p className="mt-2 text-sm text-slate-500">Nothing logged.</p>}
         <div className="mt-3 space-y-2">
           {logs?.map((l) => (
             <div
@@ -285,7 +271,7 @@ export default function AdminPage() {
               </div>
               <p className="mt-2 text-sm font-medium text-slate-800">{l.message}</p>
               {l.detail && (
-                <pre className="mt-1 overflow-x-auto whitespace-pre-wrap wrap-break-word rounded bg-slate-50 p-2 font-mono text-xs text-slate-600">
+                <pre className="mt-1 overflow-x-auto wrap-break-word whitespace-pre-wrap rounded bg-slate-50 p-2 font-mono text-xs text-slate-600">
                   {l.detail}
                 </pre>
               )}
