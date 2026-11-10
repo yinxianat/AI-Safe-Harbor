@@ -1,12 +1,17 @@
 import { isProduction } from "./env.js";
 
-// Magic links are bearer credentials, so the host they point at must never be
-// taken from a request header an attacker controls. Sending
-// `Host: attacker.com` with a victim's email would otherwise mail that victim
-// a genuine, valid token aimed at the attacker's domain.
-//
-// In production BASE_URL is therefore required. Header derivation is a
-// development-only convenience.
+/**
+ * The origin that magic links are built from.
+ *
+ * Magic links are bearer credentials, so this must never come from a request
+ * header an attacker controls: `Host: attacker.com` with a victim's address
+ * would mail that victim a genuine, valid token aimed at the attacker.
+ *
+ * BASE_URL is therefore required in production; header derivation is a
+ * development-only convenience.
+ *
+ * @throws if BASE_URL is unset in production.
+ */
 export function getBaseUrl(request) {
   if (process.env.BASE_URL) {
     return process.env.BASE_URL.replace(/\/$/, "");

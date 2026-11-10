@@ -1,16 +1,17 @@
 import { getSessionUser } from "./auth.js";
 
-// Admin is a ROLE, held by named people, not a shared password.
-//
-// ADMIN_EMAILS lists who holds it. An admin signs in through the normal
-// magic-link flow and is recognised by the address on their session, so there
-// is no second credential to distribute, rotate, or leak — and the audit
-// question "who looked at this?" has an answer.
-//
-// The list lives in the environment rather than the database so that granting
-// admin cannot be done from inside the app: a compromised account cannot
-// promote itself. The cost is a redeploy to change the list, which at this
-// scale is the right trade.
+/**
+ * Admin is a role held by named people, not a shared password.
+ *
+ * ADMIN_EMAILS lists who holds it. An admin signs in through the normal
+ * magic-link flow and is recognised by the address on their session, so there
+ * is no second credential to distribute, rotate or leak — and the audit
+ * question "who looked at this?" has an answer.
+ *
+ * The list lives in the environment rather than the database so that admin
+ * cannot be granted from inside the app: a compromised account cannot promote
+ * itself. The cost is a redeploy to change it, which at this scale is right.
+ */
 
 export function getAdminEmails() {
   const raw = process.env.ADMIN_EMAILS || "";

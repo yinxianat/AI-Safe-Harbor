@@ -5,12 +5,14 @@ import { buildSystemPrompt } from "./prompt.js";
 import { REFUSAL } from "./errors.js";
 import { logError, logWarn } from "../logger.js";
 
-// ---------------------------------------------------------------------------
-// To add a provider: write src/lib/ai/providers/<name>.js implementing the
-// adapter contract (see any existing one), then add one line here. Nothing
-// else in the codebase changes — the prompt, sanitization, return shape, and
-// database columns are all provider-independent.
-// ---------------------------------------------------------------------------
+/**
+ * Provider registry and failover chain.
+ *
+ * To add a provider: write `src/lib/ai/providers/<name>.js` implementing the
+ * adapter contract (copy any existing one), then add one line below. Nothing
+ * else changes — the prompt, sanitization, return shape and database columns
+ * are all provider-independent.
+ */
 export const REGISTRY = {
   gemini,
   anthropic,

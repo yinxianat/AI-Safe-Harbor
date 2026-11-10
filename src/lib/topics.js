@@ -1,10 +1,12 @@
-// Single source of truth for topics.
-//
-// Previously the key list, the keyword map, and the display labels lived in
-// three separate files. A topic present in one but missing from the keyword map
-// would be accepted as a Red boundary and then silently never matched — a
-// fail-OPEN violation of the app's core guarantee. Keeping them in one record
-// makes that drift impossible, and `tests/topics.test.js` enforces coverage.
+/**
+ * Single source of truth for topics.
+ *
+ * The key list, keyword map and display labels previously lived in three
+ * separate files. A topic present in one but missing from the keyword map was
+ * accepted as a Red boundary and then silently never matched — a fail-open
+ * violation of the app's core guarantee. One record per topic makes that drift
+ * impossible, and `tests/topics.test.js` enforces coverage.
+ */
 
 export const TOPICS = [
   {

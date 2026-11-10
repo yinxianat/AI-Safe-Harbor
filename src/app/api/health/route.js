@@ -2,13 +2,18 @@ import prisma from "@/lib/db.js";
 import { resolveChain } from "@/lib/ai/index.js";
 import { smtpUser, smtpPass } from "@/lib/mailer.js";
 
-// Railway marks a deploy healthy from this endpoint, so it must assert that
-// the app is actually USABLE — not merely that the process started.
-//
-// Checking only the database let a misconfigured deploy go green: with no
-// JWT_SECRET the server booted, reported 200, and then failed every sign-in;
-// with no BASE_URL it accepted sign-in requests and silently produced no
-// email. Both looked perfectly healthy from the outside.
+/**
+ * Deploy healthcheck. The platform marks a release healthy from this endpoint,
+ * so it must assert the app is actually usable, not merely that the process
+ * started.
+ *
+ * Checking only the database let a misconfigured deploy go green: with no
+ * JWT_SECRET the server booted, returned 200, then failed every sign-in; with
+ * no BASE_URL it accepted sign-in requests and silently produced no email.
+ *
+ * @returns 503 with `fatal` when the app cannot work, 200 otherwise —
+ *   `warnings` are degradations that still leave it serving.
+ */
 export async function GET() {
   const fatal = [];
   const warnings = [];

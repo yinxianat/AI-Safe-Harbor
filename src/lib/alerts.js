@@ -1,15 +1,17 @@
 import { sendMail } from "./mailer.js";
 import { getAdminEmails } from "./admin-auth.js";
 
-// Two channels, deliberately separate:
-//
-//   ERROR — raised automatically when something breaks. Deduplicated, because
-//           one outage must produce one email, not one per affected request.
-//   EVENT — raised explicitly for things worth knowing (first signup, provider
-//           chain exhausted). NOT deduplicated: the caller chose to send it.
-//
-// Alert delivery never throws. An alert about a failure must not itself become
-// a failure, and it must never route back through the logger that called it.
+/**
+ * Admin notifications, on two deliberately separate channels:
+ *
+ *   ERROR — raised automatically when something breaks. Deduplicated, because
+ *           one outage must produce one email, not one per affected request.
+ *   EVENT — raised explicitly for things worth knowing (first signup, provider
+ *           chain exhausted). Not deduplicated: the caller chose to send it.
+ *
+ * Delivery never throws. An alert about a failure must not become a failure
+ * itself, and must never route back through the logger that called it.
+ */
 export const CHANNEL = {
   ERROR: "error",
   EVENT: "event",

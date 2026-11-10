@@ -1,13 +1,17 @@
 import { requireAdmin } from "@/lib/admin-auth.js";
 import { verifyTransport } from "@/lib/mailer.js";
 
-// Answers the one question the logs could not: is delivery failing because the
-// credentials are wrong, or because this host cannot reach the mail server at
-// all? Those have completely different fixes, and guessing between them from a
-// generic "smtp_failed" wasted a day.
-//
-// Opens a session and authenticates; sends nothing. Admin-only, because the
-// response names the configured host.
+/**
+ * SMTP connectivity diagnostic.
+ *
+ * Answers the one question the logs could not: is delivery failing because the
+ * credentials are wrong, or because this host cannot reach the mail server at
+ * all? Those have entirely different fixes, and guessing between them from a
+ * generic "smtp_failed" cost a day.
+ *
+ * Opens a session and authenticates; sends nothing. Admin-only, because the
+ * response names the configured host.
+ */
 export async function GET(request) {
   const auth = await requireAdmin(request);
   if (!auth.ok) return auth.response;

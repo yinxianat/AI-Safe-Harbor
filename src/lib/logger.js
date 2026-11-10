@@ -3,14 +3,14 @@ import prisma from "./db.js";
 import { redact } from "./redact.js";
 import { notifyAdmin, CHANNEL } from "./alerts.js";
 
-// ---------------------------------------------------------------------------
-// Design rules, both learned the hard way:
-//
-//   1. Logging NEVER throws. A logger that can fail a request turns a minor
-//      problem into an outage, and it fails exactly when things are worst.
-//   2. Logging never recurses. If the database is the thing that is broken, we
-//      must not try to log that failure to the database.
-// ---------------------------------------------------------------------------
+/**
+ * Error logging. Two design rules, both learned the hard way:
+ *
+ *   1. Logging never throws. A logger that can fail a request turns a minor
+ *      problem into an outage, exactly when things are already worst.
+ *   2. Logging never recurses. If the database is what broke, we must not try
+ *      to log that failure to the database.
+ */
 
 export const LEVEL = { WARN: "warn", ERROR: "error", CRITICAL: "critical" };
 
