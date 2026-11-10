@@ -118,6 +118,12 @@ export default function AdminPage() {
         >
           Go to sign in
         </Link>
+        <Link
+          href="/admin/pin"
+          className="mt-3 inline-block text-sm text-slate-500 hover:text-slate-700 hover:underline"
+        >
+          Email delivery broken? Use the admin PIN
+        </Link>
       </Gate>
     );
   }
