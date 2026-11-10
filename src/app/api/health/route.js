@@ -1,5 +1,6 @@
 import prisma from "@/lib/db.js";
 import { resolveChain } from "@/lib/ai/index.js";
+import { smtpUser, smtpPass } from "@/lib/mailer.js";
 
 // Railway marks a deploy healthy from this endpoint, so it must assert that
 // the app is actually USABLE — not merely that the process started.
@@ -9,21 +10,29 @@ import { resolveChain } from "@/lib/ai/index.js";
 // with no BASE_URL it accepted sign-in requests and silently produced no
 // email. Both looked perfectly healthy from the outside.
 export async function GET() {
-  // Fatal: the app cannot serve its purpose at all. Returning 503 keeps
-  // Railway from routing traffic to a broken release.
   const fatal = [];
-  // Degraded: something is wrong and worth surfacing, but the app still works.
-  // These must NOT fail the healthcheck — a missing AI key means messages are
-  // held as drafts, which is the designed fallback, not an outage. Failing the
-  // deploy over it would turn a degraded feature into a total blackout.
   const warnings = [];
 
+  // "Can I connect?" and "is there a schema?" are different questions, and the
+  // second is the one that matters. `SELECT 1` succeeds against a completely
+  // empty database, so a deployment whose migrations never ran reported
+  // itself healthy while every real query failed.
   let database = "connected";
   try {
-    await prisma.$queryRaw`SELECT 1`;
-  } catch {
-    database = "unreachable";
-    fatal.push("database_unreachable");
+    await prisma.user.count();
+  } catch (err) {
+    // Postgres 42P01 = undefined_table: we reached the database but the schema
+    // is not there, which almost always means migrations have not been applied.
+    const missingSchema =
+      err?.code === "P2021" || /42P01|does not exist/i.test(err?.message || "");
+
+    if (missingSchema) {
+      database = "no_schema";
+      fatal.push("migrations_not_applied");
+    } else {
+      database = "unreachable";
+      fatal.push("database_unreachable");
+    }
   }
 
   for (const name of ["JWT_SECRET", "MAGIC_LINK_SECRET"]) {
@@ -35,7 +44,15 @@ export async function GET() {
   }
 
   if (resolveChain().length === 0) warnings.push("no_ai_provider");
-  if (!process.env.SMTP_HOST) warnings.push("smtp_not_configured");
+
+  // A host with no credentials is worse than no host at all: the app tries to
+  // send, the provider rejects it, and the user is told to check an inbox that
+  // will never receive anything.
+  if (!process.env.SMTP_HOST) {
+    warnings.push("smtp_not_configured");
+  } else if (!smtpUser() || !smtpPass()) {
+    warnings.push("smtp_credentials_incomplete");
+  }
 
   const status = fatal.length > 0 ? "unhealthy" : warnings.length > 0 ? "degraded" : "ok";
 

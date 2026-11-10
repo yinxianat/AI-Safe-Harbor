@@ -16,8 +16,28 @@ import nodemailer from "nodemailer";
 // one the authenticated account is allowed to send as — usually SMTP_USER
 // itself or a verified alias. A mismatch is rejected at send time or silently
 // rewritten, so keep them the same unless you have set up an alias.
+// SMTP_USERNAME / SMTP_PASSWORD are accepted as aliases because they are at
+// least as common a convention as USER / PASS, and getting it wrong fails in
+// the worst possible way: the transport is created, Gmail rejects the
+// credentials, and the user sees "check your email" for a message that was
+// never sent. Accepting both removes a whole class of silent misconfiguration.
+export function smtpUser() {
+  return process.env.SMTP_USER || process.env.SMTP_USERNAME || "";
+}
+
+export function smtpPass() {
+  return process.env.SMTP_PASS || process.env.SMTP_PASSWORD || "";
+}
+
+// True when SMTP is configured well enough to actually authenticate.
+// SMTP_HOST alone is not enough — that was the gap that let a deployment with
+// no credentials report itself healthy.
+export function smtpConfigured() {
+  return Boolean(process.env.SMTP_HOST && smtpUser() && smtpPass());
+}
+
 function fromAddress() {
-  return process.env.SMTP_FROM || process.env.SMTP_USER;
+  return process.env.SMTP_FROM || smtpUser();
 }
 
 export async function sendMail({ to, subject, text, html }) {
@@ -32,8 +52,8 @@ export async function sendMail({ to, subject, text, html }) {
       port: parseInt(process.env.SMTP_PORT || "587", 10),
       secure: false,
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        user: smtpUser(),
+        pass: smtpPass(),
       },
     });
 
