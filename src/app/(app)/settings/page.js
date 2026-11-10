@@ -24,6 +24,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [customLabel, setCustomLabel] = useState("");
   const [customError, setCustomError] = useState(null);
+  const [pageError, setPageError] = useState(null);
 
   const fetchTopics = useCallback(async (connId) => {
     const url = connId
@@ -37,28 +38,34 @@ export default function SettingsPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [connRes, toneRes] = await Promise.all([
-        fetch("/api/connections"),
-        fetch("/api/settings/tone"),
-      ]);
+      try {
+        const [connRes, toneRes] = await Promise.all([
+          fetch("/api/connections"),
+          fetch("/api/settings/tone"),
+        ]);
 
-      if (cancelled) return;
-      let firstConn = "";
-      if (connRes.ok) {
-        const data = await connRes.json();
-        setConnections(data.connections || []);
-        if (data.connections?.length > 0) {
-          firstConn = data.connections[0].id;
-          setSelectedConnection(firstConn);
+        if (cancelled) return;
+        let firstConn = "";
+        if (connRes.ok) {
+          const data = await connRes.json();
+          setConnections(data.connections || []);
+          if (data.connections?.length > 0) {
+            firstConn = data.connections[0].id;
+            setSelectedConnection(firstConn);
+          }
         }
+        if (toneRes.ok) {
+          const data = await toneRes.json();
+          setTone(data.tonePreference);
+          setValidTones(data.validTones || []);
+        } else {
+          setPageError("Could not load your preferences. Some defaults may be shown.");
+        }
+        const topics = await fetchTopics(firstConn);
+        if (!cancelled && topics) setSettings(topics);
+      } catch {
+        if (!cancelled) setPageError("Could not connect to the server. Check your connection and try again.");
       }
-      if (toneRes.ok) {
-        const data = await toneRes.json();
-        setTone(data.tonePreference);
-        setValidTones(data.validTones || []);
-      }
-      const topics = await fetchTopics(firstConn);
-      if (!cancelled && topics) setSettings(topics);
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -141,6 +148,15 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-8">
+      {pageError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
+          <p>{pageError}</p>
+          <button onClick={() => setPageError(null)} className="text-xs font-medium underline mt-1">
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <div className="space-y-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Settings</h1>

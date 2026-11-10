@@ -104,6 +104,7 @@ export default function CirclePage() {
   const [results, setResults] = useState(null);
   const [searching, setSearching] = useState(false);
   const [busy, setBusy] = useState(null);
+  const [error, setError] = useState(null);
 
   const fetchCircle = useCallback(async () => {
     const res = await fetch("/api/circle");
@@ -149,13 +150,21 @@ export default function CirclePage() {
 
   async function act(key, fn) {
     setBusy(key);
+    setError(null);
     try {
-      await fn();
+      const res = await fn();
+      if (res && !res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.detail || data.error || "Something went wrong. Please try again.");
+        return;
+      }
       await loadCircle();
       if (query.trim().length >= 2) {
-        const res = await fetch(`/api/users/search?q=${encodeURIComponent(query.trim())}`);
-        if (res.ok) setResults((await res.json()).results);
+        const searchRes = await fetch(`/api/users/search?q=${encodeURIComponent(query.trim())}`);
+        if (searchRes.ok) setResults((await searchRes.json()).results);
       }
+    } catch {
+      setError("Network error. Check your connection and try again.");
     } finally {
       setBusy(null);
     }
@@ -190,6 +199,15 @@ export default function CirclePage() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
+          <p>{error}</p>
+          <button onClick={() => setError(null)} className="text-xs font-medium underline mt-1">
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Your Circle</h1>
         <p className="text-sm text-slate-500 mt-1">

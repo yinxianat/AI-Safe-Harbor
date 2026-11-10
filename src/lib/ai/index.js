@@ -113,4 +113,114 @@ export async function rephraseMessage(rawMessage, receiverSettings) {
   return { rephrased: null, error: "ai_unavailable" };
 }
 
+/**
+ * Practice Pad: AI plays the role of a conversation partner so the user can
+ * rehearse what they want to say. The full conversation history is serialized
+ * into a single user message (providers only expose `complete`, not multi-turn).
+ */
+export async function practiceChat(topic, turns) {
+  const chain = resolveChain();
+  if (chain.length === 0) {
+    return { reply: null, error: "ai_unavailable" };
+  }
+
+  const system = [
+    "You are a practice conversation partner in a safe relationship app called Leeway.",
+    "The user wants to rehearse talking about a sensitive topic before sending a real message.",
+    `Topic they want to practice: "${topic}"`,
+    "",
+    "Rules:",
+    "- Play the role of their partner, responding naturally and honestly.",
+    "- If they say something hurtful, gently point it out and suggest a kinder way.",
+    "- Keep responses short (1-3 sentences) so the conversation feels natural.",
+    "- Stay in character. Do NOT break the fourth wall or say you are an AI.",
+    "- Be warm but realistic — do not always agree.",
+  ].join("\n");
+
+  const history = turns
+    .map((t) => `${t.role === "user" ? "Them" : "You"}: ${t.content}`)
+    .join("\n");
+
+  const userMessage = history
+    ? `Conversation so far:\n${history}\n\nRespond as the partner.`
+    : "Start the conversation by asking what's on their mind about this topic.";
+
+  for (const provider of chain) {
+    try {
+      const result = await provider.complete({
+        system,
+        userMessage,
+        model: provider.defaultModel(),
+        maxTokens: maxTokens(),
+      });
+      return {
+        reply: result.text,
+        tokensUsed: result.tokensUsed,
+        model: result.model,
+        provider: provider.name,
+      };
+    } catch (err) {
+      if (err?.kind === REFUSAL) {
+        return { reply: null, error: "content_refused", provider: provider.name };
+      }
+      logWarn(
+        `ai.provider.${provider.name}`,
+        "AI provider unavailable, trying next in chain",
+        err?.cause?.message || err?.message
+      );
+    }
+  }
+
+  return { reply: null, error: "ai_unavailable" };
+}
+
+/**
+ * AI Companion: generates a brief, supportive insight based on the user's
+ * recent messaging patterns and Know Me entries.
+ */
+export async function generateInsight(context) {
+  const chain = resolveChain();
+  if (chain.length === 0) {
+    return { insight: null, error: "ai_unavailable" };
+  }
+
+  const system = [
+    "You are a gentle relationship coach in a safe communication app called Leeway.",
+    "Based on the user's recent activity, generate ONE brief, supportive insight or tip.",
+    "",
+    "Rules:",
+    "- Keep it to 1-2 sentences.",
+    "- Be encouraging, never judgmental.",
+    "- Reference specific patterns if provided (e.g. 'You've been great about discussing finances openly').",
+    "- Suggest small, actionable steps when appropriate.",
+    "- Never diagnose or give clinical advice.",
+  ].join("\n");
+
+  for (const provider of chain) {
+    try {
+      const result = await provider.complete({
+        system,
+        userMessage: context,
+        model: provider.defaultModel(),
+        maxTokens: 256,
+      });
+      return {
+        insight: result.text,
+        provider: provider.name,
+      };
+    } catch (err) {
+      if (err?.kind === REFUSAL) {
+        return { insight: null, error: "content_refused" };
+      }
+      logWarn(
+        `ai.provider.${provider.name}`,
+        "AI provider unavailable, trying next in chain",
+        err?.cause?.message || err?.message
+      );
+    }
+  }
+
+  return { insight: null, error: "ai_unavailable" };
+}
+
 export { buildSystemPrompt };
