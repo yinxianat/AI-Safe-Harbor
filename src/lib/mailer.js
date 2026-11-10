@@ -14,6 +14,8 @@
  * alert path is logger -> alerts -> mailer, so that would recurse.
  */
 import nodemailer from "nodemailer";
+import { lookup as dnsLookup } from "node:dns/promises";
+import net from "node:net";
 import { isProduction } from "./env.js";
 
 // SMTP_USERNAME/SMTP_PASSWORD are accepted alongside SMTP_USER/SMTP_PASS
@@ -126,22 +128,62 @@ function describeFailure(err) {
   return { reason: "smtp_failed", hint: "Unclassified SMTP failure; see detail." };
 }
 
-// The IP family is deliberately not set. Node already tries both families
-// (autoSelectFamily, on by default since Node 20), which is strictly better
-// than pinning one: a pinned family resolves to a single address with no
-// fallback if that path is down.
-function buildTransport() {
-  const port = parseInt(process.env.SMTP_PORT || "587", 10);
-  return nodemailer.createTransport({
+// Nodemailer resolves DNS with dns.resolve4/resolve6 (c-ares), which bypasses
+// the system resolver. On containers whose IPv4 reachability comes through
+// NAT64 or a platform-managed overlay, c-ares returns raw addresses the
+// container cannot route, while the C-library getaddrinfo (dns.lookup) returns
+// addresses that work — because getaddrinfo honours /etc/resolv.conf, nsswitch
+// and any DNS64 synthesis the platform provides. Python's smtplib uses
+// getaddrinfo, which is why the same credentials succeed from a Python service
+// on the same host and fail from Node.
+//
+// The fix: resolve the hostname ourselves with dns.lookup (getaddrinfo), open a
+// plain TCP socket to the first reachable address, and hand the connected
+// socket to nodemailer via the `connection` option. Nodemailer then handles
+// EHLO, STARTTLS, AUTH and the message exactly as before.
+function smtpPort() {
+  return parseInt(process.env.SMTP_PORT || "587", 10);
+}
+
+async function openSmtpSocket(host, port, timeoutMs) {
+  // dns.lookup uses getaddrinfo — same as Python's socket.create_connection.
+  const results = await dnsLookup(host, { all: true });
+
+  let lastErr;
+  for (const { address, family } of results) {
+    try {
+      return await new Promise((resolve, reject) => {
+        const sock = net.createConnection({ host: address, port, family });
+        const timer = setTimeout(() => {
+          sock.destroy();
+          reject(Object.assign(new Error(`Timeout connecting to ${address}:${port}`), { code: "ETIMEDOUT" }));
+        }, timeoutMs);
+        sock.on("connect", () => { clearTimeout(timer); resolve(sock); });
+        sock.on("error", (err) => { clearTimeout(timer); sock.destroy(); reject(err); });
+      });
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error(`No addresses resolved for ${host}`);
+}
+
+function buildTransport(socket) {
+  const port = smtpPort();
+  const opts = {
     host: process.env.SMTP_HOST,
     port,
     secure: port === 465,
-    auth: {
-      user: smtpUser(),
-      pass: smtpPass(),
-    },
-    ...TIMEOUTS,
-  });
+    auth: { user: smtpUser(), pass: smtpPass() },
+    greetingTimeout: TIMEOUTS.greetingTimeout,
+    socketTimeout: TIMEOUTS.socketTimeout,
+  };
+  if (socket) {
+    opts.connection = socket;
+  } else {
+    opts.connectionTimeout = TIMEOUTS.connectionTimeout;
+  }
+  return nodemailer.createTransport(opts);
 }
 
 /**
@@ -158,16 +200,18 @@ export async function verifyTransport() {
     return { ok: false, error: "smtp_not_configured", detail: "SMTP_HOST, user and password must all be set." };
   }
 
+  const host = process.env.SMTP_HOST;
   try {
-    await buildTransport().verify();
-    return { ok: true, host: process.env.SMTP_HOST };
+    const socket = await openSmtpSocket(host, smtpPort(), TIMEOUTS.connectionTimeout);
+    await buildTransport(socket).verify();
+    return { ok: true, host };
   } catch (err) {
     const { reason, hint } = describeFailure(err);
     return {
       ok: false,
       error: reason,
       detail: `${hint}\n\nServer said: ${err?.code || ""} ${err?.message || err}`.trim(),
-      host: process.env.SMTP_HOST,
+      host,
     };
   }
 }
@@ -186,7 +230,9 @@ export async function sendMail({ to, subject, text, html }) {
   }
 
   try {
-    const transporter = buildTransport();
+    const host = process.env.SMTP_HOST;
+    const socket = await openSmtpSocket(host, smtpPort(), TIMEOUTS.connectionTimeout);
+    const transporter = buildTransport(socket);
 
     await transporter.sendMail({
       from: fromAddress(),

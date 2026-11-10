@@ -1,6 +1,6 @@
 import prisma from "@/lib/db.js";
 import { resolveChain } from "@/lib/ai/index.js";
-import { smtpUser, smtpPass } from "@/lib/mailer.js";
+import { smtpUser, smtpPass, deliveryHealth } from "@/lib/mailer.js";
 
 /**
  * Deploy healthcheck. The platform marks a release healthy from this endpoint,
@@ -57,6 +57,15 @@ export async function GET() {
     warnings.push("smtp_not_configured");
   } else if (!smtpUser() || !smtpPass()) {
     warnings.push("smtp_credentials_incomplete");
+  } else {
+    // Complete settings are not working settings. This endpoint reported "ok"
+    // throughout a period when no email could leave the host at all, because
+    // every check it ran was a check on configuration. The last real send
+    // result is the only evidence that delivery works, and reading it costs
+    // nothing — a live connection test belongs in /api/admin/smtp-test, not in
+    // the path a platform polls to decide whether to keep the deploy.
+    const mail = deliveryHealth();
+    if (mail.degraded) warnings.push(mail.reason);
   }
 
   const status = fatal.length > 0 ? "unhealthy" : warnings.length > 0 ? "degraded" : "ok";
