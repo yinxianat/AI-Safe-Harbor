@@ -134,6 +134,50 @@ export default function AboutPage() {
       </section>
 
       <section className="mt-12">
+        <h2 className="text-xl font-bold text-slate-900">Beyond messaging</h2>
+        <div className="mt-5 space-y-5">
+          <div className="flex gap-4">
+            <div className="mt-1 h-8 w-8 shrink-0 rounded-lg bg-violet-100 flex items-center justify-center text-violet-600 text-sm font-bold">
+              K
+            </div>
+            <div>
+              <p className="font-semibold text-slate-800">Know Me</p>
+              <p className="mt-0.5 text-sm leading-relaxed text-slate-600">
+                Share bite-sized facts about yourself &mdash; favorites, love languages, pet
+                peeves, stories. Your person can browse them, and the AI uses them to craft
+                rephrasings that feel more like you.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <div className="mt-1 h-8 w-8 shrink-0 rounded-lg bg-teal-100 flex items-center justify-center text-teal-600 text-sm font-bold">
+              P
+            </div>
+            <div>
+              <p className="font-semibold text-slate-800">Practice Pad</p>
+              <p className="mt-0.5 text-sm leading-relaxed text-slate-600">
+                Rehearse a difficult conversation with an AI partner before sending the real
+                message. Get tips on phrasing, try different approaches, build confidence.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <div className="mt-1 h-8 w-8 shrink-0 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 text-sm font-bold">
+              C
+            </div>
+            <div>
+              <p className="font-semibold text-slate-800">Your Circle</p>
+              <p className="mt-0.5 text-sm leading-relaxed text-slate-600">
+                Find your person by their @username, send a request, and connect. Each
+                connection gets its own topic boundaries, so you can be at different levels
+                of openness with different people.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-12">
         <h2 className="text-xl font-bold text-slate-900">Who it&rsquo;s for</h2>
         <p className="mt-3 text-base leading-relaxed text-slate-700">
           Two people who matter to each other and want to keep it that way. Partners,
