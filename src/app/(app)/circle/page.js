@@ -3,6 +3,123 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
+const MOOD_STYLES = {
+  calm: { dot: "bg-blue-400", label: "Calm" },
+  happy: { dot: "bg-emerald-400", label: "Happy" },
+  energetic: { dot: "bg-orange-400", label: "Energetic" },
+  low: { dot: "bg-slate-400", label: "Low" },
+  neutral: { dot: "bg-violet-400", label: "Neutral" },
+};
+
+const TONE_LABELS = {
+  warm_and_gentle: "Warm & gentle",
+  direct_and_clear: "Direct & clear",
+  playful_and_light: "Playful & light",
+  calm_and_neutral: "Calm & neutral",
+  encouraging_and_supportive: "Encouraging",
+  brief_and_to_the_point: "Brief & direct",
+  thoughtful_and_reflective: "Thoughtful",
+  reassuring_and_patient: "Reassuring",
+};
+
+function timeAgo(dateStr) {
+  if (!dateStr) return "";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function PersonCard({ person }) {
+  const name = person.displayName || (person.username ? `@${person.username}` : "Your person");
+  const moodStyle = MOOD_STYLES[person.statusMood] || MOOD_STYLES.neutral;
+  const bs = person.boundarySummary || { red: 0, yellow: 0, green: 0 };
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="p-5 space-y-4">
+        {/* Name and status */}
+        <div>
+          <h2 className="text-lg font-bold text-slate-900">{name}</h2>
+          {person.username && person.displayName && (
+            <p className="text-sm text-slate-500">@{person.username}</p>
+          )}
+        </div>
+
+        {person.statusText ? (
+          <div className="flex items-start gap-2.5">
+            <span className={`w-2.5 h-2.5 rounded-full ${moodStyle.dot} mt-1.5 shrink-0`} />
+            <div>
+              <p className="text-sm text-slate-700">{person.statusText}</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {moodStyle.label} · {timeAgo(person.statusUpdatedAt)}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-400 italic">No status right now</p>
+        )}
+
+        {/* Tone preference */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500">Prefers:</span>
+          <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+            {TONE_LABELS[person.tonePreference] || "Warm & gentle"}
+          </span>
+        </div>
+
+        {/* Boundary summary */}
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-slate-500">Boundaries:</span>
+          <div className="flex items-center gap-2">
+            {bs.red > 0 && (
+              <span className="flex items-center gap-1 text-xs">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                <span className="text-red-700 font-medium">{bs.red}</span>
+              </span>
+            )}
+            {bs.yellow > 0 && (
+              <span className="flex items-center gap-1 text-xs">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                <span className="text-amber-700 font-medium">{bs.yellow}</span>
+              </span>
+            )}
+            {bs.green > 0 && (
+              <span className="flex items-center gap-1 text-xs">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <span className="text-emerald-700 font-medium">{bs.green}</span>
+              </span>
+            )}
+            {bs.red === 0 && bs.yellow === 0 && bs.green === 0 && (
+              <span className="text-xs text-slate-400">No boundaries set</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex border-t border-gray-100">
+        <Link
+          href={`/them?connectionId=${person.connectionId}`}
+          className="flex-1 text-center text-sm font-medium text-indigo-600 py-3 hover:bg-indigo-50 transition-colors"
+        >
+          View Profile
+        </Link>
+        <div className="w-px bg-gray-100" />
+        <Link
+          href={`/circle/settings?connectionId=${person.connectionId}`}
+          className="flex-1 text-center text-sm font-medium text-slate-600 py-3 hover:bg-slate-50 transition-colors"
+        >
+          Guardian Settings
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function PersonRow({ person, action }) {
   const name = person.displayName || (person.username ? `@${person.username}` : person.email || "Someone");
   return (
@@ -133,7 +250,6 @@ export default function CirclePage() {
   useEffect(() => {
     const q = query.trim();
     if (q.length < 2) {
-      // Runs in the cleanup/next-tick path instead of synchronously
       const frame = requestAnimationFrame(() => setResults(null));
       return () => cancelAnimationFrame(frame);
     }
@@ -213,13 +329,83 @@ export default function CirclePage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Your Circle</h1>
         <p className="text-sm text-slate-500 mt-1">
-          The people you share with. Find someone, send a request, connect.
+          Your people and how you relate to each of them.
         </p>
       </div>
 
-      <UsernameCard me={me} onClaimed={(username) => setMe((m) => ({ ...m, username }))} />
+      {/* Members as rich cards */}
+      {circle.members.length > 0 && (
+        <div className="space-y-4">
+          {circle.members.map((p) => (
+            <PersonCard key={p.connectionId} person={p} />
+          ))}
+        </div>
+      )}
 
+      {circle.members.length === 0 && circle.incoming.length === 0 && circle.outgoing.length === 0 && (
+        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-6 text-center space-y-3">
+          <p className="text-base text-indigo-800 font-medium">No one in your circle yet</p>
+          <p className="text-sm text-indigo-600">
+            Search below or invite someone to get started.
+          </p>
+        </div>
+      )}
+
+      {circle.incoming.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Wants to connect</h2>
+          {circle.incoming.map((p) => (
+            <PersonRow
+              key={p.connectionId}
+              person={p}
+              action={
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => respond(p.connectionId, "accept")}
+                    disabled={busy !== null}
+                    className="text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    onClick={() => respond(p.connectionId, "decline")}
+                    disabled={busy !== null}
+                    className="text-sm border border-gray-200 text-slate-600 px-3 py-1.5 rounded-lg disabled:opacity-50"
+                  >
+                    Decline
+                  </button>
+                </div>
+              }
+            />
+          ))}
+        </div>
+      )}
+
+      {circle.outgoing.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Waiting on them</h2>
+          {circle.outgoing.map((p) => (
+            <PersonRow
+              key={p.connectionId}
+              person={p}
+              action={
+                <button
+                  onClick={() => cancel(p.connectionId)}
+                  disabled={busy !== null}
+                  className="text-sm text-slate-500 underline disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              }
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Search / Invite */}
       <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Find someone</h2>
+        <UsernameCard me={me} onClaimed={(username) => setMe((m) => ({ ...m, username }))} />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -262,83 +448,6 @@ export default function CirclePage() {
             }
           />
         ))}
-      </div>
-
-      {circle.incoming.length > 0 && (
-        <div className="space-y-2">
-          <h2 className="text-lg font-semibold text-slate-900">Wants to connect with you</h2>
-          {circle.incoming.map((p) => (
-            <PersonRow
-              key={p.connectionId}
-              person={p}
-              action={
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => respond(p.connectionId, "accept")}
-                    disabled={busy !== null}
-                    className="text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
-                  >
-                    Accept
-                  </button>
-                  <button
-                    onClick={() => respond(p.connectionId, "decline")}
-                    disabled={busy !== null}
-                    className="text-sm border border-gray-200 text-slate-600 px-3 py-1.5 rounded-lg disabled:opacity-50"
-                  >
-                    Decline
-                  </button>
-                </div>
-              }
-            />
-          ))}
-        </div>
-      )}
-
-      {circle.outgoing.length > 0 && (
-        <div className="space-y-2">
-          <h2 className="text-lg font-semibold text-slate-900">Waiting on them</h2>
-          {circle.outgoing.map((p) => (
-            <PersonRow
-              key={p.connectionId}
-              person={p}
-              action={
-                <button
-                  onClick={() => cancel(p.connectionId)}
-                  disabled={busy !== null}
-                  className="text-sm text-slate-500 underline disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-              }
-            />
-          ))}
-        </div>
-      )}
-
-      <div className="space-y-2">
-        <h2 className="text-lg font-semibold text-slate-900">In your circle</h2>
-        {circle.members.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            No one yet. Search above, or{" "}
-            <Link href="/invite" className="underline">invite by email</Link> if they&apos;re not on
-            Leeway.
-          </p>
-        ) : (
-          circle.members.map((p) => (
-            <PersonRow
-              key={p.connectionId}
-              person={p}
-              action={
-                <Link
-                  href="/settings"
-                  className="text-sm text-indigo-600 underline"
-                >
-                  Boundaries
-                </Link>
-              }
-            />
-          ))
-        )}
       </div>
     </div>
   );

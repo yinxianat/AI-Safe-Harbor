@@ -47,7 +47,7 @@ export async function GET(request) {
   }
 
   return withSessionCookie(
-    NextResponse.redirect(new URL("/them", baseUrl)),
+    NextResponse.redirect(new URL("/circle", baseUrl)),
     result.session
   );
 }

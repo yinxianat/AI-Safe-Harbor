@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 
 const NAV_ITEMS = [
-  { href: "/them", label: "Them", icon: "them" },
+  { href: "/circle", label: "Circle", icon: "circle" },
   { href: "/inbox", label: "Inbox", icon: "inbox" },
   { href: "/compose", label: "Compose", icon: "compose" },
   { href: "/me", label: "Me", icon: "me" },
@@ -14,10 +14,10 @@ const NAV_ITEMS = [
 function NavIcon({ icon, active }) {
   const color = active ? "text-indigo-600" : "text-gray-400";
 
-  if (icon === "them") {
+  if (icon === "circle") {
     return (
       <svg className={`w-6 h-6 ${color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6-4a3 3 0 11-3-3" />
       </svg>
     );
   }

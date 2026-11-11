@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import TrafficLight from "@/components/TrafficLight";
 
 const MOOD_OPTIONS = [
   { key: "calm", dot: "bg-blue-400", label: "Calm" },
@@ -11,17 +10,6 @@ const MOOD_OPTIONS = [
   { key: "low", dot: "bg-slate-400", label: "Low" },
   { key: "neutral", dot: "bg-violet-400", label: "Neutral" },
 ];
-
-const TONE_LABELS = {
-  warm_and_gentle: "Warm & gentle",
-  direct_and_clear: "Direct & clear",
-  playful_and_light: "Playful & light",
-  calm_and_neutral: "Calm & neutral",
-  encouraging_and_supportive: "Encouraging & supportive",
-  brief_and_to_the_point: "Brief & to the point",
-  thoughtful_and_reflective: "Thoughtful & reflective",
-  reassuring_and_patient: "Reassuring & patient",
-};
 
 const CATEGORY_LABELS = {
   about_me: "About Me",
@@ -96,37 +84,20 @@ export default function MePage() {
   const [newPrompt, setNewPrompt] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
 
-  // Tone & Boundaries
-  const [tone, setTone] = useState("warm_and_gentle");
-  const [validTones, setValidTones] = useState([]);
-  const [connections, setConnections] = useState([]);
-  const [selectedConnection, setSelectedConnection] = useState("");
-  const [topicSettings, setTopicSettings] = useState([]);
-  const [customLabel, setCustomLabel] = useState("");
-  const [customError, setCustomError] = useState(null);
+  // Wall expansion
+  const [wallExpanded, setWallExpanded] = useState(false);
 
   // Profile editing
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [nameSaving, setNameSaving] = useState(false);
 
-  const fetchTopics = useCallback(async (connId) => {
-    const url = connId
-      ? `/api/settings/topics?connectionId=${connId}`
-      : "/api/settings/topics";
-    const res = await fetch(url);
-    if (res.ok) return (await res.json()).settings || [];
-    return null;
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [meRes, toneRes, connRes, knowMeRes, wallRes] = await Promise.all([
+        const [meRes, knowMeRes, wallRes] = await Promise.all([
           fetch("/api/auth/me"),
-          fetch("/api/settings/tone"),
-          fetch("/api/connections"),
           fetch("/api/knowme"),
           fetch("/api/wall"),
         ]);
@@ -140,20 +111,6 @@ export default function MePage() {
           setStatusText(me.statusText || "");
           setStatusMood(me.statusMood || "neutral");
         }
-        if (toneRes.ok) {
-          const data = await toneRes.json();
-          setTone(data.tonePreference);
-          setValidTones(data.validTones || []);
-        }
-        let firstConn = "";
-        if (connRes.ok) {
-          const data = await connRes.json();
-          setConnections(data.connections || []);
-          if (data.connections?.length > 0) {
-            firstConn = data.connections[0].id;
-            setSelectedConnection(firstConn);
-          }
-        }
         if (knowMeRes.ok) {
           const data = await knowMeRes.json();
           setKnowMeEntries(data.entries || []);
@@ -162,26 +119,13 @@ export default function MePage() {
           const data = await wallRes.json();
           setWallPosts(data.posts || []);
         }
-
-        const topics = await fetchTopics(firstConn);
-        if (!cancelled && topics) setTopicSettings(topics);
       } catch {
-        if (!cancelled) setError("Could not load your settings.");
+        if (!cancelled) setError("Could not load your profile.");
       }
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [fetchTopics]);
-
-  useEffect(() => {
-    if (loading) return;
-    let cancelled = false;
-    (async () => {
-      const topics = await fetchTopics(selectedConnection);
-      if (!cancelled && topics) setTopicSettings(topics);
-    })();
-    return () => { cancelled = true; };
-  }, [selectedConnection, fetchTopics, loading]);
+  }, []);
 
   // --- Status handlers ---
   async function handleSaveStatus() {
@@ -275,61 +219,6 @@ export default function MePage() {
     } catch { /* ignore */ }
   }
 
-  // --- Tone & boundary handlers ---
-  async function handleToneChange(newTone) {
-    setTone(newTone);
-    await fetch("/api/settings/tone", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tonePreference: newTone }),
-    });
-  }
-
-  function scopeBody(extra) {
-    return JSON.stringify(
-      selectedConnection ? { connectionId: selectedConnection, ...extra } : extra
-    );
-  }
-
-  async function handleToggle(topicName, newLevel) {
-    setTopicSettings((prev) =>
-      prev.map((s) => (s.topicName === topicName ? { ...s, comfortLevel: newLevel } : s))
-    );
-    await fetch("/api/settings/topics", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: scopeBody({ topicName, comfortLevel: newLevel }),
-    });
-  }
-
-  async function handleAddCustom(e) {
-    e.preventDefault();
-    setCustomError(null);
-    const res = await fetch("/api/settings/topics", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: scopeBody({ customLabel, comfortLevel: "yellow" }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setCustomError(data.detail || "Could not add that topic.");
-      return;
-    }
-    setCustomLabel("");
-    const topics = await fetchTopics(selectedConnection);
-    if (topics) setTopicSettings(topics);
-  }
-
-  async function handleRemoveCustom(topicName) {
-    await fetch("/api/settings/topics", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: scopeBody({ topicName }),
-    });
-    const topics = await fetchTopics(selectedConnection);
-    if (topics) setTopicSettings(topics);
-  }
-
   // --- Profile handlers ---
   async function handleSaveName() {
     setNameSaving(true);
@@ -361,9 +250,8 @@ export default function MePage() {
     );
   }
 
-  const customs = topicSettings.filter((s) => s.isCustom);
-  const presets = topicSettings.filter((s) => !s.isCustom);
   const filteredEntries = knowMeEntries.filter((e) => e.category === activeCategory);
+  const visiblePosts = wallExpanded ? wallPosts : wallPosts.slice(0, 2);
   const suggestedPrompts = (PROMPTS[activeCategory] || []).filter(
     (p) => !knowMeEntries.some((e) => e.prompt === p && e.category === activeCategory)
   );
@@ -452,9 +340,9 @@ export default function MePage() {
           </div>
         </form>
 
-        {wallPosts.length > 0 && (
+        {visiblePosts.length > 0 && (
           <div className="space-y-2">
-            {wallPosts.map((post) => (
+            {visiblePosts.map((post) => (
               <div key={post.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 group">
                 <p className="text-sm text-slate-800 whitespace-pre-wrap">{post.text}</p>
                 <div className="flex items-center justify-between mt-2">
@@ -473,6 +361,14 @@ export default function MePage() {
               </div>
             ))}
           </div>
+        )}
+        {wallPosts.length > 2 && (
+          <button
+            onClick={() => setWallExpanded(!wallExpanded)}
+            className="text-sm text-indigo-600 font-medium"
+          >
+            {wallExpanded ? "Show less" : `View all ${wallPosts.length} posts`}
+          </button>
         )}
       </Section>
 
@@ -562,104 +458,6 @@ export default function MePage() {
         )}
       </Section>
 
-      {/* --- Tone & Boundaries --- */}
-      <Section title="How messages arrive for you">
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-          <label htmlFor="tone" className="block text-sm font-medium text-slate-800 mb-1">
-            Preferred tone
-          </label>
-          <p className="text-xs text-slate-500 mb-3">
-            Messages sent to you are tuned to this tone.
-          </p>
-          <select
-            id="tone"
-            value={tone}
-            onChange={(e) => handleToneChange(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm"
-          >
-            {validTones.map((t) => (
-              <option key={t} value={t}>{TONE_LABELS[t] || t}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-800">Topic boundaries</h3>
-            <p className="text-xs text-slate-500 mt-1">
-              These control what reaches you. Tap any topic to change it.
-            </p>
-          </div>
-
-          {connections.length > 1 && (
-            <select
-              value={selectedConnection}
-              onChange={(e) => setSelectedConnection(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm"
-            >
-              {connections.map((c) => (
-                <option key={c.id} value={c.id}>With {c.partnerName}</option>
-              ))}
-              <option value="">Defaults for new people</option>
-            </select>
-          )}
-
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {presets.map((setting) => (
-              <TrafficLight
-                key={setting.topicName}
-                topicName={setting.topicName}
-                label={setting.label}
-                comfortLevel={setting.comfortLevel}
-                onToggle={handleToggle}
-              />
-            ))}
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-slate-800">Your own topics</h3>
-            {customs.length > 0 && (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {customs.map((setting) => (
-                  <div key={setting.topicName} className="relative">
-                    <TrafficLight
-                      topicName={setting.topicName}
-                      label={setting.label}
-                      comfortLevel={setting.comfortLevel}
-                      onToggle={handleToggle}
-                    />
-                    <button
-                      onClick={() => handleRemoveCustom(setting.topicName)}
-                      aria-label={`Remove ${setting.label}`}
-                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-200 text-slate-600 text-xs leading-6 text-center shadow"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <form onSubmit={handleAddCustom} className="flex gap-2">
-              <input
-                value={customLabel}
-                onChange={(e) => setCustomLabel(e.target.value)}
-                placeholder="Add a topic, e.g. wedding planning"
-                maxLength={30}
-                className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm"
-              />
-              <button
-                type="submit"
-                disabled={!customLabel.trim()}
-                className="bg-indigo-600 text-white text-sm font-medium px-4 rounded-lg disabled:opacity-50"
-              >
-                Add
-              </button>
-            </form>
-            {customError && <p className="text-sm text-red-600">{customError}</p>}
-          </div>
-        </div>
-      </Section>
-
       {/* --- Profile --- */}
       {profile && (
         <Section title="Profile">
@@ -701,18 +499,6 @@ export default function MePage() {
             </div>
           </div>
 
-          <a
-            href="/circle"
-            className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow"
-          >
-            <svg className="w-6 h-6 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6-4a3 3 0 11-3-3m-12 3a3 3 0 103-3" />
-            </svg>
-            <div>
-              <p className="text-sm font-semibold text-slate-800">Your Circle</p>
-              <p className="text-xs text-slate-500">Manage connections and find people</p>
-            </div>
-          </a>
         </Section>
       )}
 
