@@ -303,7 +303,7 @@ export default function SettingsPage() {
           </select>
         )}
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {presets.map((setting) => (
             <TrafficLight
               key={setting.topicName}
@@ -318,7 +318,7 @@ export default function SettingsPage() {
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-slate-800">Your own topics</h3>
           {customs.length > 0 && (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {customs.map((setting) => (
                 <div key={setting.topicName} className="relative">
                   <TrafficLight

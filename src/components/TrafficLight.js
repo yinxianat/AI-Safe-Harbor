@@ -33,7 +33,7 @@ export default function TrafficLight({ topicName, label, comfortLevel, onToggle 
   return (
     <button
       onClick={handleClick}
-      className="flex flex-col items-center p-4 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow min-w-25 min-h-25 active:scale-95"
+      className="flex flex-col items-center p-3 sm:p-4 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow active:scale-95"
     >
       <div className={`w-10 h-10 rounded-full ${style.bg} ring-4 ${style.ring} mb-2 transition-colors`} />
       <span className="text-sm font-medium text-gray-800">{displayLabel}</span>

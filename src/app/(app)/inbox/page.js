@@ -43,7 +43,7 @@ function HeldCard({ message, onRetry, retrying }) {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-slate-700">{message.partnerName}</p>
           <p className="text-sm text-slate-600 mt-1">{message.contentPreview}</p>
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex flex-wrap items-center gap-2 mt-2">
             <span className={`text-xs px-2 py-0.5 rounded-full ${
               message.heldReason === "red_topic"
                 ? "bg-red-100 text-red-700"
@@ -52,7 +52,7 @@ function HeldCard({ message, onRetry, retrying }) {
               {HELD_REASON_LABELS[message.heldReason] || message.heldReason}
             </span>
             {message.topicTags?.length > 0 && (
-              <span className="text-xs text-slate-400">{message.topicTags.join(", ")}</span>
+              <span className="text-xs text-slate-400 truncate">{message.topicTags.join(", ")}</span>
             )}
           </div>
           <p className="text-xs text-slate-400 mt-1">

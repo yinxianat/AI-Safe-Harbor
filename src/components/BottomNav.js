@@ -88,7 +88,7 @@ export default function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center min-w-[64px] min-h-[44px] px-3 py-1 rounded-lg transition-colors relative ${
+              className={`flex flex-col items-center justify-center min-w-0 min-h-[44px] px-2 sm:px-3 py-1 rounded-lg transition-colors relative ${
                 active ? "text-indigo-600" : "text-gray-400 hover:text-gray-600"
               }`}
             >

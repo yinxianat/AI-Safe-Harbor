@@ -191,7 +191,7 @@ export default function Dashboard() {
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
             {partnerName}&apos;s bandwidth
           </p>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
             <span className="text-sm">
               <span className="inline-block w-3 h-3 rounded-full bg-emerald-500 mr-1.5 align-middle" />
               {topicSummary.green} open
