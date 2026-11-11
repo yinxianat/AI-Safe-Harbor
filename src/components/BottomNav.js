@@ -6,8 +6,7 @@ import { useState, useEffect } from "react";
 
 const NAV_ITEMS = [
   { href: "/circle", label: "Circle", icon: "circle" },
-  { href: "/inbox", label: "Inbox", icon: "inbox" },
-  { href: "/compose", label: "Compose", icon: "compose" },
+  { href: "/chat", label: "Chat", icon: "chat" },
   { href: "/me", label: "Me", icon: "me" },
 ];
 
@@ -22,18 +21,10 @@ function NavIcon({ icon, active }) {
     );
   }
 
-  if (icon === "inbox") {
+  if (icon === "chat") {
     return (
       <svg className={`w-6 h-6 ${color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-      </svg>
-    );
-  }
-
-  if (icon === "compose") {
-    return (
-      <svg className={`w-6 h-6 ${color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
       </svg>
     );
   }
@@ -84,7 +75,7 @@ export default function BottomNav() {
             >
               <div className="relative">
                 <NavIcon icon={item.icon} active={active} />
-                {item.icon === "inbox" && unread > 0 && (
+                {item.icon === "chat" && unread > 0 && (
                   <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1">
                     {unread > 99 ? "99+" : unread}
                   </span>

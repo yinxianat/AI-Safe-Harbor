@@ -281,18 +281,28 @@ export default function ThemPage() {
           </div>
         )}
 
-        {/* Wall */}
+        {/* Wall — "All About Me" posts, shown prominently above other profile data */}
         {wall && wall.length > 0 && (
           <div className="space-y-2">
-            <h2 className="text-sm font-semibold text-amber-700">{name}&apos;s Wall</h2>
-            {wall.slice(0, 3).map((post) => (
-              <div key={post.id} className="bg-white/70 rounded-xl border border-amber-100 p-4">
-                <p className="text-sm text-slate-800 whitespace-pre-wrap">{post.text}</p>
-                <span className="text-xs text-slate-400 mt-2 block">
-                  {new Date(post.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                </span>
-              </div>
-            ))}
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-amber-700">{name}&apos;s Wall</h2>
+              <span className="text-xs text-amber-500 bg-amber-100 px-2 py-0.5 rounded-full">{wall.length} post{wall.length !== 1 ? "s" : ""}</span>
+            </div>
+            <div className="space-y-2 max-h-80 overflow-y-auto rounded-xl">
+              {wall.map((post) => (
+                <div key={post.id} className="bg-white/70 rounded-xl border border-amber-100 p-4">
+                  <p className="text-sm text-slate-800 whitespace-pre-wrap">{post.text}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    {post.mood && (
+                      <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">{post.mood}</span>
+                    )}
+                    <span className="text-xs text-slate-400">
+                      {new Date(post.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -482,10 +492,10 @@ export default function ThemPage() {
       {/* Send message CTA */}
       <div className="pt-4">
         <Link
-          href="/compose"
+          href={`/chat/${connectionId}`}
           className="block bg-indigo-600 text-white text-center font-medium py-3 rounded-xl hover:bg-indigo-700 transition-colors"
         >
-          Send {name} a message
+          Message {name}
         </Link>
       </div>
     </div>

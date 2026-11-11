@@ -103,17 +103,24 @@ function PersonCard({ person }) {
       {/* Actions */}
       <div className="flex border-t border-gray-100">
         <Link
-          href={`/them?connectionId=${person.connectionId}`}
+          href={`/chat/${person.connectionId}`}
           className="flex-1 text-center text-sm font-medium text-indigo-600 py-3 hover:bg-indigo-50 transition-colors"
         >
-          View Profile
+          Message
+        </Link>
+        <div className="w-px bg-gray-100" />
+        <Link
+          href={`/them?connectionId=${person.connectionId}`}
+          className="flex-1 text-center text-sm font-medium text-slate-600 py-3 hover:bg-slate-50 transition-colors"
+        >
+          Profile
         </Link>
         <div className="w-px bg-gray-100" />
         <Link
           href={`/circle/settings?connectionId=${person.connectionId}`}
           className="flex-1 text-center text-sm font-medium text-slate-600 py-3 hover:bg-slate-50 transition-colors"
         >
-          Guardian Settings
+          Guardian
         </Link>
       </div>
     </div>
