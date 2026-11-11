@@ -109,7 +109,7 @@ export default function ThemPage() {
 
         const [partnerRes, toneRes] = await Promise.all([
           fetch(`/api/partner?connectionId=${connId}`),
-          fetch("/api/settings/tone"),
+          fetch(`/api/settings/tone?connectionId=${connId}`),
         ]);
         if (cancelled) return;
 
@@ -140,7 +140,7 @@ export default function ThemPage() {
     await fetch("/api/settings/tone", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tonePreference: newTone }),
+      body: JSON.stringify({ tonePreference: newTone, connectionId }),
     });
   }
 

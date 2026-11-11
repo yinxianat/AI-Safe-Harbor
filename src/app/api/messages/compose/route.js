@@ -37,9 +37,12 @@ export async function POST(request) {
 
   const receiverId = getPartnerId(connection, user.id);
 
-  const [receiver, receiverSettings] = await Promise.all([
+  const [receiver, receiverSettings, receiverConnPref] = await Promise.all([
     prisma.user.findUnique({ where: { id: receiverId } }),
     prisma.topicSetting.findMany({ where: { connectionId, userId: receiverId } }),
+    prisma.connectionPreference.findUnique({
+      where: { connectionId_userId: { connectionId, userId: receiverId } },
+    }),
   ]);
 
   const boundaryCheck = checkTopicBoundaries(contentRaw, receiverSettings);
@@ -89,7 +92,10 @@ export async function POST(request) {
   // Run AI topic analysis and rephrasing in parallel to avoid double latency.
   const [aiTopicCheck, aiResult] = await Promise.all([
     analyzeTopics(contentRaw, nonGreenTopics).catch(() => ({ verdict: "skip", flaggedTopics: [] })),
-    rephraseMessage(contentRaw, { tonePreference: receiver?.tonePreference, yellowTopics }),
+    rephraseMessage(contentRaw, {
+      tonePreference: receiverConnPref?.tonePreference || receiver?.tonePreference,
+      yellowTopics,
+    }),
   ]);
 
   // AI caught a red topic that keywords missed — hold the message.

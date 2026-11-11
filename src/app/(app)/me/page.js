@@ -21,6 +21,73 @@ const CATEGORY_EXAMPLES = {
   stories: "e.g. A memory that shaped who I am",
 };
 
+function VisibilityPicker({ connections, selected, onChange }) {
+  if (connections.length === 0) return null;
+
+  const isEveryone = selected.length === 0;
+
+  function toggle(connId) {
+    if (selected.includes(connId)) {
+      onChange(selected.filter((id) => id !== connId));
+    } else {
+      onChange([...selected, connId]);
+    }
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs text-slate-500">Visible to:</p>
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          onClick={() => onChange([])}
+          className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+            isEveryone
+              ? "bg-indigo-600 text-white border-indigo-600"
+              : "bg-white text-slate-500 border-gray-200"
+          }`}
+        >
+          Everyone
+        </button>
+        {connections.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => toggle(c.id)}
+            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+              selected.includes(c.id)
+                ? "bg-indigo-600 text-white border-indigo-600"
+                : "bg-white text-slate-500 border-gray-200"
+            }`}
+          >
+            {c.partnerName}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VisibilityLabel({ connections, visibleTo, onEdit }) {
+  if (!visibleTo || visibleTo.length === 0) {
+    return (
+      <button onClick={onEdit} className="text-xs text-slate-400 hover:text-indigo-600 transition-colors">
+        Everyone
+      </button>
+    );
+  }
+
+  const names = visibleTo
+    .map((id) => connections.find((c) => c.id === id)?.partnerName)
+    .filter(Boolean);
+
+  return (
+    <button onClick={onEdit} className="text-xs text-slate-400 hover:text-indigo-600 transition-colors">
+      {names.length > 0 ? names.join(", ") : "Limited"}
+    </button>
+  );
+}
+
 export default function MePage() {
   const router = useRouter();
 
@@ -35,6 +102,7 @@ export default function MePage() {
 
   const [wallPosts, setWallPosts] = useState([]);
   const [newPost, setNewPost] = useState("");
+  const [newPostVisibility, setNewPostVisibility] = useState([]);
   const [postSaving, setPostSaving] = useState(false);
   const [wallExpanded, setWallExpanded] = useState(false);
 
@@ -43,19 +111,23 @@ export default function MePage() {
   const [adding, setAdding] = useState(false);
   const [newPrompt, setNewPrompt] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
+  const [newEntryVisibility, setNewEntryVisibility] = useState([]);
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [nameSaving, setNameSaving] = useState(false);
 
+  const [connections, setConnections] = useState([]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [meRes, knowMeRes, wallRes] = await Promise.all([
+        const [meRes, knowMeRes, wallRes, connRes] = await Promise.all([
           fetch("/api/auth/me"),
           fetch("/api/knowme"),
           fetch("/api/wall"),
+          fetch("/api/connections"),
         ]);
         if (cancelled) return;
         if (meRes.ok) {
@@ -67,6 +139,7 @@ export default function MePage() {
         }
         if (knowMeRes.ok) setKnowMeEntries((await knowMeRes.json()).entries || []);
         if (wallRes.ok) setWallPosts((await wallRes.json()).posts || []);
+        if (connRes.ok) setConnections((await connRes.json()).connections || []);
       } catch {
         if (!cancelled) setError("Could not load your profile.");
       }
@@ -96,15 +169,30 @@ export default function MePage() {
       const res = await fetch("/api/wall", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: newPost }),
+        body: JSON.stringify({ text: newPost, visibleTo: newPostVisibility }),
       });
       if (res.ok) {
         const post = await res.json();
         setWallPosts((prev) => [post, ...prev]);
         setNewPost("");
+        setNewPostVisibility([]);
       }
     } catch { /* ignore */ }
     setPostSaving(false);
+  }
+
+  async function handleUpdatePostVisibility(postId, visibleTo) {
+    try {
+      const res = await fetch("/api/wall", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId, visibleTo }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setWallPosts((prev) => prev.map((p) => (p.id === postId ? updated : p)));
+      }
+    } catch { /* ignore */ }
   }
 
   async function handleDeletePost(postId) {
@@ -125,13 +213,19 @@ export default function MePage() {
       const res = await fetch("/api/knowme", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category: activeCategory, prompt: newPrompt, answer: newAnswer }),
+        body: JSON.stringify({
+          category: activeCategory,
+          prompt: newPrompt,
+          answer: newAnswer,
+          visibleTo: newEntryVisibility,
+        }),
       });
       if (res.ok) {
         const data = await res.json();
         setKnowMeEntries((prev) => [...prev, data.entry]);
         setNewPrompt("");
         setNewAnswer("");
+        setNewEntryVisibility([]);
         setAdding(false);
       }
     } catch { /* ignore */ }
@@ -145,6 +239,21 @@ export default function MePage() {
         body: JSON.stringify({ id, answer }),
       });
       if (res.ok) setKnowMeEntries((prev) => prev.map((e) => (e.id === id ? { ...e, answer } : e)));
+    } catch { /* ignore */ }
+  }
+
+  async function handleUpdateEntryVisibility(id, visibleTo) {
+    try {
+      const res = await fetch("/api/knowme", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, visibleTo }),
+      });
+      if (res.ok) {
+        setKnowMeEntries((prev) =>
+          prev.map((e) => (e.id === id ? { ...e, visibleTo } : e))
+        );
+      }
     } catch { /* ignore */ }
   }
 
@@ -280,38 +389,40 @@ export default function MePage() {
       {/* --- Wall (compact) --- */}
       <div className="space-y-2">
         <p className="text-xs font-semibold text-slate-500 uppercase">Wall</p>
-        <form onSubmit={handleNewPost} className="flex gap-2">
-          <input
-            value={newPost}
-            onChange={(e) => setNewPost(e.target.value)}
-            placeholder="Share something with your person..."
-            maxLength={280}
-            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <button
-            type="submit"
-            disabled={!newPost.trim() || postSaving}
-            className="bg-indigo-600 text-white text-xs font-medium px-3 rounded-lg disabled:opacity-50"
-          >
-            {postSaving ? "..." : "Post"}
-          </button>
+        <form onSubmit={handleNewPost} className="space-y-2">
+          <div className="flex gap-2">
+            <input
+              value={newPost}
+              onChange={(e) => setNewPost(e.target.value)}
+              placeholder="Share something with your person..."
+              maxLength={280}
+              className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              type="submit"
+              disabled={!newPost.trim() || postSaving}
+              className="bg-indigo-600 text-white text-xs font-medium px-3 rounded-lg disabled:opacity-50"
+            >
+              {postSaving ? "..." : "Post"}
+            </button>
+          </div>
+          {connections.length > 1 && (
+            <VisibilityPicker
+              connections={connections}
+              selected={newPostVisibility}
+              onChange={setNewPostVisibility}
+            />
+          )}
         </form>
 
         {visiblePosts.map((post) => (
-          <div key={post.id} className="bg-white rounded-lg border border-gray-100 px-3 py-2 flex items-start justify-between gap-2 group">
-            <div className="min-w-0">
-              <p className="text-sm text-slate-800 whitespace-pre-wrap">{post.text}</p>
-              <span className="text-xs text-slate-400">
-                {new Date(post.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-              </span>
-            </div>
-            <button
-              onClick={() => handleDeletePost(post.id)}
-              className="text-xs text-red-400 opacity-0 group-hover:opacity-100 shrink-0 mt-1"
-            >
-              Delete
-            </button>
-          </div>
+          <WallPostCard
+            key={post.id}
+            post={post}
+            connections={connections}
+            onDelete={handleDeletePost}
+            onUpdateVisibility={handleUpdatePostVisibility}
+          />
         ))}
         {wallPosts.length > 2 && (
           <button
@@ -350,7 +461,14 @@ export default function MePage() {
         )}
 
         {filteredEntries.map((entry) => (
-          <KnowMeCard key={entry.id} entry={entry} onEdit={handleEditEntry} onDelete={handleDeleteEntry} />
+          <KnowMeCard
+            key={entry.id}
+            entry={entry}
+            connections={connections}
+            onEdit={handleEditEntry}
+            onDelete={handleDeleteEntry}
+            onUpdateVisibility={handleUpdateEntryVisibility}
+          />
         ))}
 
         {adding ? (
@@ -370,9 +488,16 @@ export default function MePage() {
               maxLength={2000}
               className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+            {connections.length > 1 && (
+              <VisibilityPicker
+                connections={connections}
+                selected={newEntryVisibility}
+                onChange={setNewEntryVisibility}
+              />
+            )}
             <div className="flex gap-2">
               <button type="submit" disabled={!newAnswer.trim()} className="bg-indigo-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50">Save</button>
-              <button type="button" onClick={() => { setAdding(false); setNewPrompt(""); setNewAnswer(""); }} className="text-xs text-slate-500">Cancel</button>
+              <button type="button" onClick={() => { setAdding(false); setNewPrompt(""); setNewAnswer(""); setNewEntryVisibility([]); }} className="text-xs text-slate-500">Cancel</button>
             </div>
           </form>
         ) : (
@@ -388,9 +513,70 @@ export default function MePage() {
   );
 }
 
-function KnowMeCard({ entry, onEdit, onDelete }) {
+function WallPostCard({ post, connections, onDelete, onUpdateVisibility }) {
+  const [editingVis, setEditingVis] = useState(false);
+  const [localVis, setLocalVis] = useState(post.visibleTo || []);
+
+  function handleSaveVis() {
+    onUpdateVisibility(post.id, localVis);
+    setEditingVis(false);
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-100 px-3 py-2 space-y-1 group">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm text-slate-800 whitespace-pre-wrap">{post.text}</p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-xs text-slate-400">
+              {new Date(post.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+            </span>
+            {connections.length > 1 && (
+              <>
+                <span className="text-xs text-slate-300">·</span>
+                <VisibilityLabel
+                  connections={connections}
+                  visibleTo={post.visibleTo}
+                  onEdit={() => { setLocalVis(post.visibleTo || []); setEditingVis(!editingVis); }}
+                />
+              </>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={() => onDelete(post.id)}
+          className="text-xs text-red-400 opacity-0 group-hover:opacity-100 shrink-0 mt-1"
+        >
+          Delete
+        </button>
+      </div>
+      {editingVis && (
+        <div className="pt-1 space-y-2">
+          <VisibilityPicker
+            connections={connections}
+            selected={localVis}
+            onChange={setLocalVis}
+          />
+          <div className="flex gap-2">
+            <button onClick={handleSaveVis} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded">Save</button>
+            <button onClick={() => setEditingVis(false)} className="text-xs text-slate-500">Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function KnowMeCard({ entry, connections, onEdit, onDelete, onUpdateVisibility }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(entry.answer);
+  const [editingVis, setEditingVis] = useState(false);
+  const [localVis, setLocalVis] = useState(entry.visibleTo || []);
+
+  function handleSaveVis() {
+    onUpdateVisibility(entry.id, localVis);
+    setEditingVis(false);
+  }
 
   return (
     <div className="bg-white rounded-lg border border-gray-100 px-3 py-2 space-y-1">
@@ -411,10 +597,34 @@ function KnowMeCard({ entry, onEdit, onDelete }) {
         </div>
       ) : (
         <div className="flex justify-between items-start gap-2">
-          <p className="text-sm text-slate-800 whitespace-pre-wrap">{entry.answer}</p>
+          <div className="min-w-0">
+            <p className="text-sm text-slate-800 whitespace-pre-wrap">{entry.answer}</p>
+            {connections.length > 1 && (
+              <div className="mt-0.5">
+                <VisibilityLabel
+                  connections={connections}
+                  visibleTo={entry.visibleTo}
+                  onEdit={() => { setLocalVis(entry.visibleTo || []); setEditingVis(!editingVis); }}
+                />
+              </div>
+            )}
+          </div>
           <div className="flex gap-2 shrink-0">
             <button onClick={() => setEditing(true)} className="text-xs text-indigo-600">Edit</button>
             <button onClick={() => onDelete(entry.id)} className="text-xs text-red-400">Del</button>
+          </div>
+        </div>
+      )}
+      {editingVis && !editing && (
+        <div className="pt-1 space-y-2">
+          <VisibilityPicker
+            connections={connections}
+            selected={localVis}
+            onChange={setLocalVis}
+          />
+          <div className="flex gap-2">
+            <button onClick={handleSaveVis} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded">Save</button>
+            <button onClick={() => setEditingVis(false)} className="text-xs text-slate-500">Cancel</button>
           </div>
         </div>
       )}
