@@ -3,13 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const MOOD_OPTIONS = [
-  { key: "calm", dot: "bg-blue-400", label: "Calm" },
-  { key: "happy", dot: "bg-emerald-400", label: "Happy" },
-  { key: "energetic", dot: "bg-orange-400", label: "Energetic" },
-  { key: "low", dot: "bg-slate-400", label: "Low" },
-  { key: "neutral", dot: "bg-violet-400", label: "Neutral" },
-];
+const MOOD_OPTIONS = ["calm", "happy", "energetic", "low", "neutral"];
 
 const CATEGORY_LABELS = {
   about_me: "About Me",
@@ -19,44 +13,13 @@ const CATEGORY_LABELS = {
   stories: "Stories",
 };
 
-const PROMPTS = {
-  about_me: [
-    "Something most people don't know about me",
-    "What I need when I'm stressed",
-    "How I like to be comforted",
-    "My communication style",
-  ],
-  favorites: [
-    "My comfort food",
-    "A song that always lifts me up",
-    "My favorite way to spend a weekend",
-    "A movie or show I could rewatch forever",
-  ],
-  love_languages: [
-    "What makes me feel most loved",
-    "How I naturally show love",
-    "A small thing that means a lot to me",
-  ],
-  pet_peeves: [
-    "Something that frustrates me (that I wish I could explain calmly)",
-    "A misunderstanding that keeps happening",
-    "What I need when I'm annoyed",
-  ],
-  stories: [
-    "A memory that shaped who I am",
-    "Something funny that happened to us",
-    "A moment I felt really understood",
-  ],
+const CATEGORY_EXAMPLES = {
+  about_me: "e.g. What I need when I'm stressed, How I like to be comforted",
+  favorites: "e.g. My comfort food, A song that lifts me up",
+  love_languages: "e.g. What makes me feel most loved",
+  pet_peeves: "e.g. A misunderstanding that keeps happening",
+  stories: "e.g. A memory that shaped who I am",
 };
-
-function Section({ title, children }) {
-  return (
-    <div className="space-y-3">
-      <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">{title}</h2>
-      {children}
-    </div>
-  );
-}
 
 export default function MePage() {
   const router = useRouter();
@@ -65,29 +28,22 @@ export default function MePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Status
   const [statusText, setStatusText] = useState("");
   const [statusMood, setStatusMood] = useState("neutral");
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusDirty, setStatusDirty] = useState(false);
 
-  // Wall
   const [wallPosts, setWallPosts] = useState([]);
   const [newPost, setNewPost] = useState("");
-  const [newPostMood, setNewPostMood] = useState(null);
   const [postSaving, setPostSaving] = useState(false);
+  const [wallExpanded, setWallExpanded] = useState(false);
 
-  // Know Me
   const [knowMeEntries, setKnowMeEntries] = useState([]);
   const [activeCategory, setActiveCategory] = useState("about_me");
   const [adding, setAdding] = useState(false);
   const [newPrompt, setNewPrompt] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
 
-  // Wall expansion
-  const [wallExpanded, setWallExpanded] = useState(false);
-
-  // Profile editing
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [nameSaving, setNameSaving] = useState(false);
@@ -101,9 +57,7 @@ export default function MePage() {
           fetch("/api/knowme"),
           fetch("/api/wall"),
         ]);
-
         if (cancelled) return;
-
         if (meRes.ok) {
           const me = await meRes.json();
           setProfile(me);
@@ -111,14 +65,8 @@ export default function MePage() {
           setStatusText(me.statusText || "");
           setStatusMood(me.statusMood || "neutral");
         }
-        if (knowMeRes.ok) {
-          const data = await knowMeRes.json();
-          setKnowMeEntries(data.entries || []);
-        }
-        if (wallRes.ok) {
-          const data = await wallRes.json();
-          setWallPosts(data.posts || []);
-        }
+        if (knowMeRes.ok) setKnowMeEntries((await knowMeRes.json()).entries || []);
+        if (wallRes.ok) setWallPosts((await wallRes.json()).posts || []);
       } catch {
         if (!cancelled) setError("Could not load your profile.");
       }
@@ -127,7 +75,6 @@ export default function MePage() {
     return () => { cancelled = true; };
   }, []);
 
-  // --- Status handlers ---
   async function handleSaveStatus() {
     setStatusSaving(true);
     try {
@@ -141,7 +88,6 @@ export default function MePage() {
     setStatusSaving(false);
   }
 
-  // --- Wall handlers ---
   async function handleNewPost(e) {
     e.preventDefault();
     if (!newPost.trim()) return;
@@ -150,13 +96,11 @@ export default function MePage() {
       const res = await fetch("/api/wall", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: newPost, mood: newPostMood }),
+        body: JSON.stringify({ text: newPost }),
       });
       if (res.ok) {
-        const post = await res.json();
-        setWallPosts((prev) => [post, ...prev]);
+        setWallPosts((prev) => [await res.json(), ...prev]);
         setNewPost("");
-        setNewPostMood(null);
       }
     } catch { /* ignore */ }
     setPostSaving(false);
@@ -173,7 +117,6 @@ export default function MePage() {
     } catch { /* ignore */ }
   }
 
-  // --- Know Me handlers ---
   async function handleAddEntry(e) {
     e.preventDefault();
     if (!newPrompt.trim() || !newAnswer.trim()) return;
@@ -184,8 +127,7 @@ export default function MePage() {
         body: JSON.stringify({ category: activeCategory, prompt: newPrompt, answer: newAnswer }),
       });
       if (res.ok) {
-        const data = await res.json();
-        setKnowMeEntries((prev) => [...prev, data.entry]);
+        setKnowMeEntries((prev) => [...prev, (await res.json()).entry]);
         setNewPrompt("");
         setNewAnswer("");
         setAdding(false);
@@ -200,9 +142,7 @@ export default function MePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, answer }),
       });
-      if (res.ok) {
-        setKnowMeEntries((prev) => prev.map((e) => (e.id === id ? { ...e, answer } : e)));
-      }
+      if (res.ok) setKnowMeEntries((prev) => prev.map((e) => (e.id === id ? { ...e, answer } : e)));
     } catch { /* ignore */ }
   }
 
@@ -213,13 +153,10 @@ export default function MePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
-      if (res.ok) {
-        setKnowMeEntries((prev) => prev.filter((e) => e.id !== id));
-      }
+      if (res.ok) setKnowMeEntries((prev) => prev.filter((e) => e.id !== id));
     } catch { /* ignore */ }
   }
 
-  // --- Profile handlers ---
   async function handleSaveName() {
     setNameSaving(true);
     try {
@@ -228,11 +165,7 @@ export default function MePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ displayName: nameInput.trim() }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(data);
-        setEditingName(false);
-      }
+      if (res.ok) { setProfile(await res.json()); setEditingName(false); }
     } catch { /* ignore */ }
     setNameSaving(false);
   }
@@ -252,44 +185,81 @@ export default function MePage() {
 
   const filteredEntries = knowMeEntries.filter((e) => e.category === activeCategory);
   const visiblePosts = wallExpanded ? wallPosts : wallPosts.slice(0, 2);
-  const suggestedPrompts = (PROMPTS[activeCategory] || []).filter(
-    (p) => !knowMeEntries.some((e) => e.prompt === p && e.category === activeCategory)
-  );
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-slate-900">Me</h1>
-
+    <div className="space-y-5">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
           <p>{error}</p>
           <button onClick={() => setError(null)} className="text-xs font-medium underline mt-1">Dismiss</button>
         </div>
       )}
 
-      {/* --- Status --- */}
-      <Section title="Your status">
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
-          <input
-            value={statusText}
-            onChange={(e) => { setStatusText(e.target.value); setStatusDirty(true); }}
-            placeholder="What's on your mind right now?"
-            maxLength={200}
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <div className="flex flex-wrap gap-2">
+      {/* --- Header: Name + Username --- */}
+      <div className="flex items-center justify-between">
+        <div>
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <input
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                maxLength={50}
+                className="px-2 py-1 rounded-lg border border-gray-200 text-lg font-bold w-40"
+                autoFocus
+              />
+              <button onClick={handleSaveName} disabled={nameSaving} className="text-sm font-medium text-indigo-600">
+                {nameSaving ? "..." : "Save"}
+              </button>
+              <button onClick={() => { setEditingName(false); setNameInput(profile?.displayName || ""); }} className="text-sm text-slate-400">
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-baseline gap-2">
+              <h1 className="text-xl font-bold text-slate-900">
+                {profile?.displayName || "Me"}
+              </h1>
+              <button onClick={() => setEditingName(true)} className="text-xs text-indigo-600">Edit</button>
+            </div>
+          )}
+          {profile?.username && (
+            <p className="text-sm text-slate-500">@{profile.username}</p>
+          )}
+          {profile?.email && (
+            <p className="text-xs text-slate-400">{profile.email}</p>
+          )}
+        </div>
+        <button
+          onClick={handleSignOut}
+          className="text-xs text-red-500 font-medium"
+        >
+          Sign out
+        </button>
+      </div>
+
+      {/* --- Status (compact) --- */}
+      <div className="bg-white rounded-lg border border-gray-100 p-3 space-y-2">
+        <p className="text-xs font-semibold text-slate-500 uppercase">Status</p>
+        <input
+          value={statusText}
+          onChange={(e) => { setStatusText(e.target.value); setStatusDirty(true); }}
+          placeholder="How are you feeling? Calm, happy, energetic, low, neutral..."
+          maxLength={200}
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <div className="flex items-center justify-between">
+          <div className="flex gap-1">
             {MOOD_OPTIONS.map((m) => (
               <button
-                key={m.key}
-                onClick={() => { setStatusMood(m.key); setStatusDirty(true); }}
-                className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border transition-colors ${
-                  statusMood === m.key
-                    ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                    : "border-gray-200 text-slate-500 hover:border-gray-300"
+                key={m}
+                onClick={() => { setStatusMood(m); setStatusDirty(true); }}
+                className={`text-xs px-2 py-1 rounded-full transition-colors ${
+                  statusMood === m
+                    ? "bg-indigo-600 text-white"
+                    : "bg-gray-100 text-slate-500"
                 }`}
               >
-                <span className={`w-2 h-2 rounded-full ${m.dot}`} />
-                {m.label}
+                {m.charAt(0).toUpperCase() + m.slice(1)}
               </button>
             ))}
           </div>
@@ -297,96 +267,73 @@ export default function MePage() {
             <button
               onClick={handleSaveStatus}
               disabled={statusSaving}
-              className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
+              className="bg-indigo-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
             >
-              {statusSaving ? "Saving…" : "Update status"}
+              {statusSaving ? "..." : "Save"}
             </button>
           )}
         </div>
-      </Section>
+      </div>
 
-      {/* --- Wall --- */}
-      <Section title="Your wall">
-        <form onSubmit={handleNewPost} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
-          <textarea
+      {/* --- Wall (compact) --- */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-slate-500 uppercase">Wall</p>
+        <form onSubmit={handleNewPost} className="flex gap-2">
+          <input
             value={newPost}
             onChange={(e) => setNewPost(e.target.value)}
-            placeholder="Share what's on your mind — your person will see this…"
-            rows={2}
+            placeholder="Share something with your person..."
             maxLength={280}
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
-          <div className="flex items-center justify-between">
-            <div className="flex gap-1.5">
-              {MOOD_OPTIONS.map((m) => (
-                <button
-                  key={m.key}
-                  type="button"
-                  onClick={() => setNewPostMood(newPostMood === m.key ? null : m.key)}
-                  className={`w-6 h-6 rounded-full ${m.dot} ${
-                    newPostMood === m.key ? "ring-2 ring-indigo-400 ring-offset-1" : "opacity-40 hover:opacity-70"
-                  } transition-opacity`}
-                  title={m.label}
-                />
-              ))}
-            </div>
-            <button
-              type="submit"
-              disabled={!newPost.trim() || postSaving}
-              className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
-            >
-              {postSaving ? "Posting…" : "Post"}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={!newPost.trim() || postSaving}
+            className="bg-indigo-600 text-white text-xs font-medium px-3 rounded-lg disabled:opacity-50"
+          >
+            {postSaving ? "..." : "Post"}
+          </button>
         </form>
 
-        {visiblePosts.length > 0 && (
-          <div className="space-y-2">
-            {visiblePosts.map((post) => (
-              <div key={post.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 group">
-                <p className="text-sm text-slate-800 whitespace-pre-wrap">{post.text}</p>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-slate-400">
-                    {new Date(post.createdAt).toLocaleDateString(undefined, {
-                      month: "short", day: "numeric",
-                    })}
-                  </span>
-                  <button
-                    onClick={() => handleDeletePost(post.id)}
-                    className="text-xs text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
+        {visiblePosts.map((post) => (
+          <div key={post.id} className="bg-white rounded-lg border border-gray-100 px-3 py-2 flex items-start justify-between gap-2 group">
+            <div className="min-w-0">
+              <p className="text-sm text-slate-800 whitespace-pre-wrap">{post.text}</p>
+              <span className="text-xs text-slate-400">
+                {new Date(post.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+              </span>
+            </div>
+            <button
+              onClick={() => handleDeletePost(post.id)}
+              className="text-xs text-red-400 opacity-0 group-hover:opacity-100 shrink-0 mt-1"
+            >
+              Delete
+            </button>
           </div>
-        )}
+        ))}
         {wallPosts.length > 2 && (
           <button
             onClick={() => setWallExpanded(!wallExpanded)}
-            className="text-sm text-indigo-600 font-medium"
+            className="text-xs text-indigo-600 font-medium"
           >
             {wallExpanded ? "Show less" : `View all ${wallPosts.length} posts`}
           </button>
         )}
-      </Section>
+      </div>
 
-      {/* --- Know Me --- */}
-      <Section title="Know Me">
-        <p className="text-sm text-slate-500">
-          Share things about yourself so your person understands you better.
-        </p>
+      {/* --- Know Me (compact) --- */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-slate-500 uppercase">Know Me</p>
 
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4">
           {Object.keys(CATEGORY_LABELS).map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`whitespace-nowrap text-sm px-3 py-1.5 rounded-full border transition-colors ${
+              className={`whitespace-nowrap text-xs px-2.5 py-1 rounded-full border transition-colors ${
                 activeCategory === cat
                   ? "bg-indigo-600 text-white border-indigo-600"
-                  : "bg-white text-slate-600 border-gray-200"
+                  : "bg-white text-slate-500 border-gray-200"
               }`}
             >
               {CATEGORY_LABELS[cat]}
@@ -394,121 +341,46 @@ export default function MePage() {
           ))}
         </div>
 
-        <div className="space-y-3">
-          {filteredEntries.length === 0 && !adding && (
-            <div className="text-center py-6 text-slate-400">
-              <p>Nothing here yet — tap a suggestion or add your own.</p>
-            </div>
-          )}
-
-          {filteredEntries.map((entry) => (
-            <KnowMeCard key={entry.id} entry={entry} onEdit={handleEditEntry} onDelete={handleDeleteEntry} />
-          ))}
-        </div>
-
-        {!adding && suggestedPrompts.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {suggestedPrompts.map((prompt) => (
-              <button
-                key={prompt}
-                onClick={() => { setNewPrompt(prompt); setAdding(true); }}
-                className="text-sm px-3 py-1.5 rounded-full border border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50 transition-colors"
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
+        {filteredEntries.length === 0 && !adding && (
+          <p className="text-xs text-slate-400 py-2">
+            {CATEGORY_EXAMPLES[activeCategory] || "Add something about yourself."}
+          </p>
         )}
 
-        {adding && (
-          <form onSubmit={handleAddEntry} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
+        {filteredEntries.map((entry) => (
+          <KnowMeCard key={entry.id} entry={entry} onEdit={handleEditEntry} onDelete={handleDeleteEntry} />
+        ))}
+
+        {adding ? (
+          <form onSubmit={handleAddEntry} className="bg-white rounded-lg border border-gray-100 p-3 space-y-2">
             <input
               value={newPrompt}
               onChange={(e) => setNewPrompt(e.target.value)}
-              placeholder="Question or heading…"
+              placeholder="Topic or question..."
               maxLength={200}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <textarea
               value={newAnswer}
               onChange={(e) => setNewAnswer(e.target.value)}
-              placeholder="Your answer…"
-              rows={3}
+              placeholder="Your answer..."
+              rows={2}
               maxLength={2000}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <div className="flex gap-2">
-              <button type="submit" disabled={!newAnswer.trim()} className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50">
-                Save
-              </button>
-              <button type="button" onClick={() => { setAdding(false); setNewPrompt(""); setNewAnswer(""); }} className="text-sm text-slate-500">
-                Cancel
-              </button>
+              <button type="submit" disabled={!newAnswer.trim()} className="bg-indigo-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50">Save</button>
+              <button type="button" onClick={() => { setAdding(false); setNewPrompt(""); setNewAnswer(""); }} className="text-xs text-slate-500">Cancel</button>
             </div>
           </form>
-        )}
-
-        {!adding && (
+        ) : (
           <button
             onClick={() => setAdding(true)}
-            className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 text-slate-500 text-sm font-medium hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+            className="w-full py-2 rounded-lg border border-dashed border-gray-200 text-slate-400 text-xs font-medium hover:border-indigo-300 hover:text-indigo-600 transition-colors"
           >
-            + Add your own
+            + Add entry
           </button>
         )}
-      </Section>
-
-      {/* --- Profile --- */}
-      {profile && (
-        <Section title="Profile">
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
-            <div>
-              <p className="text-xs text-slate-500">Display name</p>
-              {editingName ? (
-                <div className="flex gap-2 mt-1">
-                  <input
-                    value={nameInput}
-                    onChange={(e) => setNameInput(e.target.value)}
-                    maxLength={50}
-                    className="px-2 py-1 rounded-lg border border-gray-200 text-sm flex-1"
-                    autoFocus
-                  />
-                  <button onClick={handleSaveName} disabled={nameSaving} className="text-sm font-medium text-indigo-600 disabled:opacity-50">
-                    {nameSaving ? "Saving…" : "Save"}
-                  </button>
-                  <button onClick={() => { setEditingName(false); setNameInput(profile.displayName || ""); }} className="text-sm text-slate-400">
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <p className="text-sm font-medium text-slate-800">
-                  {profile.displayName || <span className="text-slate-400 italic">Not set</span>}
-                  <button onClick={() => setEditingName(true)} className="ml-2 text-xs text-indigo-600 underline">Edit</button>
-                </p>
-              )}
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Username</p>
-              <p className="text-sm font-medium text-slate-800">
-                {profile.username ? `@${profile.username}` : <span className="text-slate-400 italic">Not claimed</span>}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Email</p>
-              <p className="text-sm text-slate-600">{profile.email}</p>
-            </div>
-          </div>
-
-        </Section>
-      )}
-
-      <div className="pt-4 border-t border-gray-100">
-        <button
-          onClick={handleSignOut}
-          className="w-full py-3 text-sm font-medium text-red-600 hover:text-red-800 transition-colors"
-        >
-          Sign out
-        </button>
       </div>
     </div>
   );
@@ -518,36 +390,31 @@ function KnowMeCard({ entry, onEdit, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(entry.answer);
 
-  function save() {
-    onEdit(entry.id, value);
-    setEditing(false);
-  }
-
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-2">
-      <p className="text-sm font-medium text-slate-600">{entry.prompt}</p>
+    <div className="bg-white rounded-lg border border-gray-100 px-3 py-2 space-y-1">
+      <p className="text-xs font-medium text-slate-500">{entry.prompt}</p>
       {editing ? (
         <div className="space-y-2">
           <textarea
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            rows={3}
+            rows={2}
             maxLength={2000}
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <div className="flex gap-2">
-            <button onClick={save} className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-lg">Save</button>
-            <button onClick={() => setEditing(false)} className="text-sm text-slate-500">Cancel</button>
+            <button onClick={() => { onEdit(entry.id, value); setEditing(false); }} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded">Save</button>
+            <button onClick={() => setEditing(false)} className="text-xs text-slate-500">Cancel</button>
           </div>
         </div>
       ) : (
-        <>
-          <p className="text-slate-800 whitespace-pre-wrap">{entry.answer}</p>
-          <div className="flex gap-3 pt-1">
-            <button onClick={() => setEditing(true)} className="text-xs text-indigo-600 font-medium">Edit</button>
-            <button onClick={() => onDelete(entry.id)} className="text-xs text-red-500 font-medium">Remove</button>
+        <div className="flex justify-between items-start gap-2">
+          <p className="text-sm text-slate-800 whitespace-pre-wrap">{entry.answer}</p>
+          <div className="flex gap-2 shrink-0">
+            <button onClick={() => setEditing(true)} className="text-xs text-indigo-600">Edit</button>
+            <button onClick={() => onDelete(entry.id)} className="text-xs text-red-400">Del</button>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

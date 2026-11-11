@@ -264,7 +264,13 @@ If no boundaries are touched, respond: {"flagged": [], "clear": true}`;
         maxTokens: 256,
       });
 
-      const parsed = JSON.parse(result.text.replace(/```json\n?|```/g, "").trim());
+      let parsed;
+      try {
+        parsed = JSON.parse(result.text.replace(/```json\n?|```/g, "").trim());
+      } catch {
+        // AI returned non-JSON — treat as no boundary issues detected.
+        return { verdict: "clear", flaggedTopics: [], provider: provider.name };
+      }
       const flagged = Array.isArray(parsed.flagged) ? parsed.flagged : [];
 
       return {

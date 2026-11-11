@@ -86,8 +86,13 @@ export async function POST(request) {
       level: s.comfortLevel,
     }));
 
-  const aiTopicCheck = await analyzeTopics(contentRaw, nonGreenTopics);
+  // Run AI topic analysis and rephrasing in parallel to avoid double latency.
+  const [aiTopicCheck, aiResult] = await Promise.all([
+    analyzeTopics(contentRaw, nonGreenTopics).catch(() => ({ verdict: "skip", flaggedTopics: [] })),
+    rephraseMessage(contentRaw, { tonePreference: receiver?.tonePreference, yellowTopics }),
+  ]);
 
+  // AI caught a red topic that keywords missed — hold the message.
   if (aiTopicCheck.verdict === "blocked") {
     const aiRedTopics = aiTopicCheck.flaggedTopics
       .filter((f) => f.level === "red")
@@ -112,11 +117,6 @@ export async function POST(request) {
       draftId: held.id,
     });
   }
-
-  const aiResult = await rephraseMessage(contentRaw, {
-    tonePreference: receiver?.tonePreference,
-    yellowTopics,
-  });
 
   // Fail closed: no rephrasing means no delivery, only a retrievable draft.
   if (aiResult.error) {
