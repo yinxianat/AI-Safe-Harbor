@@ -6,7 +6,7 @@
   },
   "deploy": {
     "preDeployCommand": "npx prisma migrate deploy",
-    "startCommand": "npx prisma migrate deploy && npm run start",
+    "startCommand": "npm run start",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",

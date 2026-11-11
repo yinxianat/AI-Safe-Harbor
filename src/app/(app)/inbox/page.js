@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useReducer } from "react";
+import { useEffect, useState, useCallback, useReducer, useMemo } from "react";
 import MessageCard from "@/components/MessageCard";
 import { REACTIONS, getReaction } from "@/lib/reactions.js";
 
@@ -26,6 +26,208 @@ function ReactionBar({ message, onReact }) {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function TopicWarnings({ hints, text }) {
+  const detected = useMemo(() => {
+    if (!text.trim() || hints.length === 0) return [];
+    const lower = text.toLowerCase();
+    return hints.filter((h) => h.keywords.some((kw) => lower.includes(kw)));
+  }, [hints, text]);
+
+  if (detected.length === 0 && text.trim().length > 0 && hints.length > 0) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+        No boundary topics detected
+      </div>
+    );
+  }
+  if (detected.length === 0) return null;
+
+  const red = detected.filter((d) => d.level === "red");
+  const yellow = detected.filter((d) => d.level === "yellow");
+
+  return (
+    <div className="space-y-1.5">
+      {red.map((t) => (
+        <div key={t.topicName} className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+          <span className="w-2 h-2 rounded-full bg-red-500 mt-0.5 shrink-0" />
+          <span><strong>{t.label}</strong> — not ready. Will be held.</span>
+        </div>
+      ))}
+      {yellow.map((t) => (
+        <div key={t.topicName} className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+          <span className="w-2 h-2 rounded-full bg-amber-400 mt-0.5 shrink-0" />
+          <span><strong>{t.label}</strong> — gentle. AI will soften.</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function InlineReply({ connectionId, onSent, onCancel }) {
+  const [text, setText] = useState("");
+  const [tuning, setTuning] = useState(false);
+  const [result, setResult] = useState(null);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState(null);
+  const [hints, setHints] = useState([]);
+
+  useEffect(() => {
+    if (!connectionId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/compose/topic-hints?connectionId=${connectionId}`);
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setHints(data.hints || []);
+        }
+      } catch { /* optional */ }
+    })();
+    return () => { cancelled = true; };
+  }, [connectionId]);
+
+  async function handleTune() {
+    if (!text.trim()) return;
+    setTuning(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await fetch("/api/messages/compose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connectionId, contentRaw: text }),
+      });
+      if (!res.ok && res.status >= 500) {
+        setError("Server error. Try again.");
+        setTuning(false);
+        return;
+      }
+      const data = await res.json();
+      if (data.held) {
+        setResult({ type: "held", reason: data.heldReason, topics: data.topics });
+      } else {
+        setResult({
+          type: "ready",
+          messageId: data.messageId,
+          raw: text,
+          rephrased: data.rephrased,
+        });
+      }
+    } catch {
+      setError("Network error. Check your connection.");
+    }
+    setTuning(false);
+  }
+
+  async function handleSend() {
+    if (!result?.messageId) return;
+    setSending(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/messages/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId: result.messageId, versionSent: "rephrased" }),
+      });
+      if (res.ok) {
+        onSent();
+      } else {
+        setError("Could not send. Try again.");
+      }
+    } catch {
+      setError("Network error.");
+    }
+    setSending(false);
+  }
+
+  if (result?.type === "ready") {
+    return (
+      <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mt-2 space-y-3">
+        <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">Reply preview</p>
+        <div className="bg-white rounded-lg p-3 text-sm text-slate-600">
+          <p className="text-xs font-medium text-gray-400 uppercase mb-1">Your words</p>
+          <p>{result.raw}</p>
+        </div>
+        <div className="bg-indigo-100 rounded-lg p-3 text-sm text-indigo-900">
+          <p className="text-xs font-medium text-indigo-400 uppercase mb-1">Tuned version</p>
+          <p>{result.rephrased}</p>
+        </div>
+        {error && <p className="text-xs text-red-600">{error}</p>}
+        <div className="flex gap-2">
+          <button
+            onClick={handleSend}
+            disabled={sending}
+            className="flex-1 bg-indigo-600 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {sending ? "Sending…" : "Send Reply"}
+          </button>
+          <button
+            onClick={() => setResult(null)}
+            className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50"
+          >
+            Edit
+          </button>
+          <button onClick={onCancel} className="px-3 py-2.5 text-sm text-slate-400">
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (result?.type === "held") {
+    return (
+      <div className={`rounded-xl p-4 mt-2 border ${
+        result.reason === "red_topic"
+          ? "bg-red-50 border-red-200 text-red-700"
+          : "bg-amber-50 border-amber-200 text-amber-700"
+      }`}>
+        <p className="font-medium text-sm">
+          {result.reason === "red_topic" ? "Reply held" : "Saved as draft"}
+        </p>
+        <p className="text-xs mt-1">
+          {result.reason === "red_topic"
+            ? `Touches a topic they marked as sensitive${result.topics?.length ? ` (${result.topics.join(", ")})` : ""}.`
+            : "AI unavailable — saved as draft. Retry later from the Drafts tab."}
+        </p>
+        <div className="flex gap-2 mt-3">
+          <button onClick={() => { setResult(null); setText(""); }} className="text-xs font-medium underline">
+            Write something else
+          </button>
+          <button onClick={onCancel} className="text-xs text-slate-500">Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mt-2 space-y-2">
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Write your reply…"
+        rows={3}
+        maxLength={5000}
+        autoFocus
+        className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+      <TopicWarnings hints={hints} text={text} />
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          onClick={handleTune}
+          disabled={tuning || !text.trim()}
+          className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
+        >
+          {tuning ? "Tuning…" : "Tune Reply"}
+        </button>
+        <button onClick={onCancel} className="text-sm text-slate-400">Cancel</button>
+      </div>
     </div>
   );
 }
@@ -104,6 +306,7 @@ export default function InboxPage() {
   const [box, setBox] = useState("received");
   const [retryingId, setRetryingId] = useState(null);
   const [retryResult, setRetryResult] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null);
 
   const loadMessages = useCallback(async (which) => {
     try {
@@ -125,6 +328,7 @@ export default function InboxPage() {
     loadMessages(box).then((result) => {
       if (cancelled) return;
       setRetryResult(null);
+      setReplyingTo(null);
       if (result.error) {
         dispatch({ type: "error", error: result.error });
       } else {
@@ -199,6 +403,7 @@ export default function InboxPage() {
   function handleRefresh() {
     dispatch({ type: "start" });
     setRetryResult(null);
+    setReplyingTo(null);
     loadMessages(box).then((result) => {
       if (result.error) {
         dispatch({ type: "error", error: result.error });
@@ -206,6 +411,11 @@ export default function InboxPage() {
         dispatch({ type: "done", messages: result.messages });
       }
     });
+  }
+
+  function handleReplySent() {
+    setReplyingTo(null);
+    handleRefresh();
   }
 
   return (
@@ -345,15 +555,33 @@ export default function InboxPage() {
               content={msg.content}
               sentAt={msg.sentAt}
             />
-            {box === "received" ? (
-              <ReactionBar message={msg} onReact={handleReact} />
-            ) : (
-              msg.reaction && (
-                <p className="mt-2 text-sm text-slate-500">
-                  {getReaction(msg.reaction)?.emoji}{" "}
-                  {msg.partnerName} felt: {getReaction(msg.reaction)?.label}
-                </p>
-              )
+            {box === "received" && (
+              <>
+                <div className="flex items-center gap-3 mt-1">
+                  <ReactionBar message={msg} onReact={handleReact} />
+                  {replyingTo !== msg.id && (
+                    <button
+                      onClick={() => setReplyingTo(msg.id)}
+                      className="text-sm font-medium text-indigo-600 hover:text-indigo-800 shrink-0 ml-auto"
+                    >
+                      Reply
+                    </button>
+                  )}
+                </div>
+                {replyingTo === msg.id && (
+                  <InlineReply
+                    connectionId={msg.connectionId}
+                    onSent={handleReplySent}
+                    onCancel={() => setReplyingTo(null)}
+                  />
+                )}
+              </>
+            )}
+            {box === "sent" && msg.reaction && (
+              <p className="mt-2 text-sm text-slate-500">
+                {getReaction(msg.reaction)?.emoji}{" "}
+                {msg.partnerName} felt: {getReaction(msg.reaction)?.label}
+              </p>
             )}
           </div>
         ))}
