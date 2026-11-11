@@ -99,7 +99,8 @@ export default function MePage() {
         body: JSON.stringify({ text: newPost }),
       });
       if (res.ok) {
-        setWallPosts((prev) => [await res.json(), ...prev]);
+        const post = await res.json();
+        setWallPosts((prev) => [post, ...prev]);
         setNewPost("");
       }
     } catch { /* ignore */ }
