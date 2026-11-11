@@ -230,17 +230,20 @@ export default function InboxPage() {
       )}
 
       <div className="flex rounded-xl bg-slate-100 p-1">
-        {["received", "sent", "held"].map((b) => (
-          <button
-            key={b}
-            onClick={() => setBox(b)}
-            className={`flex-1 text-sm font-medium py-2 rounded-lg capitalize transition-colors ${
-              box === b ? "bg-white shadow text-slate-900" : "text-slate-500"
-            }`}
-          >
-            {b === "held" ? "Held" : b.charAt(0).toUpperCase() + b.slice(1)}
-          </button>
-        ))}
+        {["received", "sent", "held"].map((b) => {
+          const label = b === "held" ? "Drafts" : b.charAt(0).toUpperCase() + b.slice(1);
+          return (
+            <button
+              key={b}
+              onClick={() => setBox(b)}
+              className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors ${
+                box === b ? "bg-white shadow text-slate-900" : "text-slate-500"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {retryResult?.type === "ready" && (
@@ -295,11 +298,11 @@ export default function InboxPage() {
       {!loading && messages.length === 0 && (
         <div className="text-center py-12 text-gray-400">
           <p className="text-lg mb-1">
-            {box === "held" ? "Nothing held" : box === "sent" ? "Nothing sent yet" : "No messages yet"}
+            {box === "held" ? "Nothing here" : box === "sent" ? "Nothing sent yet" : "No messages yet"}
           </p>
           <p className="text-sm">
             {box === "held"
-              ? "Messages blocked by topic boundaries or failed AI will appear here"
+              ? "Unsent drafts and blocked messages will appear here"
               : box === "sent"
                 ? "Messages you send appear here, with your person's reaction"
                 : "Messages from your circle will appear here"}
@@ -307,15 +310,32 @@ export default function InboxPage() {
         </div>
       )}
 
-      {!loading && box === "held" &&
-        messages.map((msg) => (
-          <HeldCard
-            key={msg.id}
-            message={msg}
-            onRetry={handleRetry}
-            retrying={retryingId === msg.id}
-          />
-        ))}
+      {!loading && box === "held" && messages.length > 0 && (() => {
+        const blocked = messages.filter((m) => m.heldReason === "red_topic");
+        const drafts = messages.filter((m) => m.heldReason !== "red_topic");
+        return (
+          <div className="space-y-4">
+            {blocked.length > 0 && (
+              <div className="space-y-2">
+                <h2 className="text-sm font-semibold text-red-600">Blocked by boundaries</h2>
+                <p className="text-xs text-slate-500">Your person isn&apos;t ready for these topics right now.</p>
+                {blocked.map((msg) => (
+                  <HeldCard key={msg.id} message={msg} onRetry={handleRetry} retrying={retryingId === msg.id} />
+                ))}
+              </div>
+            )}
+            {drafts.length > 0 && (
+              <div className="space-y-2">
+                <h2 className="text-sm font-semibold text-amber-600">Unsent drafts</h2>
+                <p className="text-xs text-slate-500">These can be retried when AI is available again.</p>
+                {drafts.map((msg) => (
+                  <HeldCard key={msg.id} message={msg} onRetry={handleRetry} retrying={retryingId === msg.id} />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {!loading && box !== "held" &&
         messages.map((msg) => (

@@ -34,7 +34,7 @@ function ActionCard({ href, title, detail, tint, children, badge }) {
       href={href}
       className="relative flex items-center gap-4 bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow active:scale-[0.98]"
     >
-      <div className={`w-12 h-12 ${tint} rounded-xl flex items-center justify-center`}>{children}</div>
+      <div className={`w-12 h-12 ${tint} rounded-xl flex items-center justify-center shrink-0`}>{children}</div>
       <div className="min-w-0">
         <p className="font-semibold text-slate-800">{title}</p>
         <p className="text-sm text-slate-500">{detail}</p>
@@ -72,8 +72,8 @@ export default function Dashboard() {
   const [topicSummary, setTopicSummary] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-
   const [unread, setUnread] = useState(0);
+  const [explore, setExplore] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
@@ -132,7 +132,7 @@ export default function Dashboard() {
             setUnread(ud.unread || 0);
           }
         } catch {
-          // AI companion insight and unread are optional
+          // optional data
         }
       } catch {
         if (!cancelled) {
@@ -146,8 +146,10 @@ export default function Dashboard() {
 
   const connected = circle.members.length > 0;
   const partnerName = circle.members[0]?.displayName || (circle.members[0]?.username ? `@${circle.members[0].username}` : "your person");
+  const connectionId = circle.members[0]?.connectionId;
   const pendingCount = circle.incoming.length;
   const setupDone = Boolean(user?.username) && boundariesSet && connected && hasSent;
+  const hasBoundaryData = topicSummary && (topicSummary.yellow > 0 || topicSummary.red > 0);
 
   if (loading) {
     return (
@@ -167,10 +169,22 @@ export default function Dashboard() {
         </h1>
         <p className="text-slate-500 mt-1">
           {connected
-            ? `Connected with ${partnerName}. How would you like to connect today?`
+            ? `Connected with ${partnerName}.`
             : "Leeway tunes your words so they land the way you mean them."}
         </p>
       </div>
+
+      {!setupDone && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+            Get set up
+          </h2>
+          <Step done={Boolean(user?.username)} href="/circle" title="Claim your @username" detail="So your person can find you" />
+          <Step done={boundariesSet} href="/settings" title="Set your tone & boundaries" detail="How messages should arrive for you" />
+          <Step done={connected} href="/circle" title="Add your person to your Circle" detail="Search their @username and send a request" />
+          <Step done={hasSent} href="/compose" title="Send your first message" detail="Write it your way — Leeway tunes it" />
+        </div>
+      )}
 
       {insight && (
         <div className="bg-violet-50 border border-violet-100 rounded-xl p-4">
@@ -186,8 +200,11 @@ export default function Dashboard() {
         </div>
       )}
 
-      {connected && topicSummary && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      {connected && hasBoundaryData && (
+        <Link
+          href={connectionId ? `/partner?connectionId=${connectionId}` : "/settings"}
+          className="block bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow"
+        >
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
             {partnerName}&apos;s bandwidth
           </p>
@@ -205,23 +222,26 @@ export default function Dashboard() {
               {topicSummary.red} not ready
             </span>
           </div>
-        </div>
+          <p className="text-xs text-indigo-600 mt-2 font-medium">Tap to see details →</p>
+        </Link>
       )}
 
-      {!setupDone && (
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
-            Get set up
-          </h2>
-          <Step done={Boolean(user?.username)} href="/circle" title="Claim your @username" detail="So your person can find you" />
-          <Step done={boundariesSet} href="/settings" title="Set your tone & boundaries" detail="How messages should arrive for you — works before anyone connects" />
-          <Step done={connected} href="/circle" title="Add your person to your Circle" detail="Search their @username and send a request" />
-          <Step done={hasSent} href="/compose" title="Send your first message" detail="Write it your way — Leeway tunes it to their preferences" />
-        </div>
+      {pendingCount > 0 && (
+        <Link
+          href="/circle"
+          className="flex items-center gap-3 bg-pink-50 border border-pink-100 rounded-xl p-4"
+        >
+          <span className="bg-pink-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shrink-0">
+            {pendingCount}
+          </span>
+          <span className="text-sm text-pink-800 font-medium">
+            {pendingCount === 1 ? "Someone wants to connect" : `${pendingCount} people want to connect`}
+          </span>
+        </Link>
       )}
 
       <div className="grid gap-3">
-        <ActionCard href="/compose" title="Send a message" detail="Compose with AI-assisted tone tuning" tint="bg-indigo-100">
+        <ActionCard href="/compose" title="Send a message" detail="Write freely — AI tunes it to their style" tint="bg-indigo-100">
           <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
           </svg>
@@ -232,38 +252,34 @@ export default function Dashboard() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
           </svg>
         </ActionCard>
-
-        <ActionCard href="/knowme" title="Know Me" detail="Share things about yourself" tint="bg-violet-100">
-          <svg className="w-6 h-6 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-        </ActionCard>
-
-        <ActionCard href="/practice" title="Practice Pad" detail="Rehearse before you send for real" tint="bg-teal-100">
-          <svg className="w-6 h-6 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-          </svg>
-        </ActionCard>
-
-        <ActionCard
-          href="/circle"
-          title="Your Circle"
-          detail={pendingCount > 0 ? `${pendingCount} request${pendingCount > 1 ? "s" : ""} waiting` : connected ? "Manage who you share with" : "Find your person by @username"}
-          tint="bg-pink-100"
-          badge={pendingCount}
-        >
-          <svg className="w-6 h-6 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z" />
-          </svg>
-        </ActionCard>
-
-        <ActionCard href="/settings" title="Settings" detail="Your tone and topic boundaries" tint="bg-amber-100">
-          <svg className="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        </ActionCard>
       </div>
+
+      {setupDone && (
+        <div className="space-y-3">
+          <button
+            onClick={() => setExplore((v) => !v)}
+            className="flex items-center justify-between w-full text-sm font-semibold text-slate-700 uppercase tracking-wide"
+          >
+            <span>More ways to connect</span>
+            <span className="text-slate-400">{explore ? "−" : "+"}</span>
+          </button>
+          {explore && (
+            <div className="grid gap-3">
+              <ActionCard href="/knowme" title="Know Me" detail="Favorites, pet peeves, stories — help your person understand you" tint="bg-violet-100">
+                <svg className="w-6 h-6 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </ActionCard>
+
+              <ActionCard href="/practice" title="Practice Pad" detail="Rehearse a tough conversation with AI before sending for real" tint="bg-teal-100">
+                <svg className="w-6 h-6 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+              </ActionCard>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

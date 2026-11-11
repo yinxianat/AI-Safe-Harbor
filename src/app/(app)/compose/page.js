@@ -1,6 +1,47 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+
+function TopicWarnings({ hints, text }) {
+  const detected = useMemo(() => {
+    if (!text.trim() || hints.length === 0) return [];
+    const lower = text.toLowerCase();
+    return hints.filter((h) =>
+      h.keywords.some((kw) => lower.includes(kw))
+    );
+  }, [hints, text]);
+
+  if (detected.length === 0 && text.trim().length > 0 && hints.length > 0) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+        No boundary topics detected — looks good to send
+      </div>
+    );
+  }
+
+  if (detected.length === 0) return null;
+
+  const red = detected.filter((d) => d.level === "red");
+  const yellow = detected.filter((d) => d.level === "yellow");
+
+  return (
+    <div className="space-y-2">
+      {red.map((t) => (
+        <div key={t.topicName} className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+          <span className="w-2 h-2 rounded-full bg-red-500 mt-0.5 shrink-0" />
+          <span><strong>{t.label}</strong> — your person is not ready for this topic. This message will be held.</span>
+        </div>
+      ))}
+      {yellow.map((t) => (
+        <div key={t.topicName} className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+          <span className="w-2 h-2 rounded-full bg-amber-400 mt-0.5 shrink-0" />
+          <span><strong>{t.label}</strong> — marked gentle. AI will soften your tone on this topic.</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function ComposePage() {
   const [rawMessage, setRawMessage] = useState("");
@@ -12,6 +53,7 @@ export default function ComposePage() {
   const [connections, setConnections] = useState([]);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [error, setError] = useState(null);
+  const [topicHints, setTopicHints] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,6 +76,26 @@ export default function ComposePage() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (!selectedConnection) {
+      requestAnimationFrame(() => setTopicHints([]));
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/compose/topic-hints?connectionId=${selectedConnection}`);
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setTopicHints(data.hints || []);
+        }
+      } catch {
+        // hints are optional
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedConnection]);
 
   async function handleTune() {
     if (!rawMessage.trim() || !selectedConnection) return;
@@ -172,6 +234,8 @@ export default function ComposePage() {
         rows={5}
         className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-base resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
       />
+
+      <TopicWarnings hints={topicHints} text={rawMessage} />
 
       {!rephrased && !held && (
         <button

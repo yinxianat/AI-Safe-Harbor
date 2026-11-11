@@ -195,32 +195,8 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <div className="space-y-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            How you want messages to arrive for you.
-          </p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-          <label htmlFor="tone" className="block text-sm font-medium text-slate-800 mb-1">
-            Preferred tone
-          </label>
-          <p className="text-xs text-slate-500 mb-3">
-            Messages sent to you are tuned to this tone.
-          </p>
-          <select
-            id="tone"
-            value={tone}
-            onChange={(e) => handleToneChange(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm"
-          >
-            {validTones.map((t) => (
-              <option key={t} value={t}>{TONE_LABELS[t] || t}</option>
-            ))}
-          </select>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
       </div>
 
       {profile && (
@@ -228,7 +204,7 @@ export default function SettingsPage() {
           <h2 className="text-lg font-semibold text-slate-900">Profile</h2>
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="text-xs text-slate-500">Display name</p>
                 {editingName ? (
                   <div className="flex gap-2 mt-1">
@@ -274,6 +250,41 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      <a
+        href="/circle"
+        className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow"
+      >
+        <svg className="w-6 h-6 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6-4a3 3 0 11-3-3m-12 3a3 3 0 103-3" />
+        </svg>
+        <div>
+          <p className="text-sm font-semibold text-slate-800">Your Circle</p>
+          <p className="text-xs text-slate-500">Manage connections and find people</p>
+        </div>
+      </a>
+
+      <div className="space-y-3">
+        <h2 className="text-lg font-semibold text-slate-900">Tone</h2>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+          <label htmlFor="tone" className="block text-sm font-medium text-slate-800 mb-1">
+            Preferred tone
+          </label>
+          <p className="text-xs text-slate-500 mb-3">
+            Messages sent to you are tuned to this tone.
+          </p>
+          <select
+            id="tone"
+            value={tone}
+            onChange={(e) => handleToneChange(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm"
+          >
+            {validTones.map((t) => (
+              <option key={t} value={t}>{TONE_LABELS[t] || t}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       <div className="space-y-4">
         <div>
