@@ -66,6 +66,16 @@ export async function GET(request) {
     return Response.json({ error: "partner_not_found" }, { status: 404 });
   }
 
+  // Visibility filter: show only posts/entries where visibleTo is empty (all)
+  // or contains this specific connection.
+  const visibleWall = wallPosts.filter(
+    (p) => !p.visibleTo || p.visibleTo.length === 0 || p.visibleTo.includes(connectionId)
+  );
+
+  const visibleKnowMe = knowMeEntries.filter(
+    (e) => !e.visibleTo || e.visibleTo.length === 0 || e.visibleTo.includes(connectionId)
+  );
+
   const settingsByTopic = Object.fromEntries(
     partnerSettings.map((s) => [s.topicName, s])
   );
@@ -86,7 +96,7 @@ export async function GET(request) {
       isCustom: true,
     }));
 
-  const entries = knowMeEntries.map((e) => ({
+  const entries = visibleKnowMe.map((e) => ({
     id: e.id,
     category: e.category,
     prompt: e.prompt,
@@ -106,7 +116,7 @@ export async function GET(request) {
     },
     boundaries: [...boundaries, ...customBoundaries],
     knowMe: entries,
-    wall: wallPosts.map((p) => ({
+    wall: visibleWall.map((p) => ({
       id: p.id,
       text: p.text,
       mood: p.mood,

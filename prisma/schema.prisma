@@ -36,6 +36,7 @@ model User {
   knowMeEntries        KnowMeEntry[]
   practiceSessions     PracticeSession[]
   wallPosts            WallPost[]
+  connectionPrefs      ConnectionPreference[]
 }
 
 model MagicToken {
@@ -71,8 +72,22 @@ model Connection {
 
   messages      Message[]
   topicSettings TopicSetting[]
+  preferences   ConnectionPreference[]
 
   @@unique([userAId, userBId])
+}
+
+// Per-connection overrides for how a user wants messages from a specific
+// contact to be tuned. Falls back to User.tonePreference when absent.
+model ConnectionPreference {
+  id             String     @id @default(cuid())
+  connectionId   String
+  connection     Connection @relation(fields: [connectionId], references: [id])
+  userId         String
+  user           User       @relation(fields: [userId], references: [id])
+  tonePreference String     @default("warm_and_gentle")
+
+  @@unique([connectionId, userId])
 }
 
 model TopicSetting {
@@ -122,6 +137,8 @@ model KnowMeEntry {
   prompt    String   // the question or heading
   answer    String   // the user's answer
   isPublic  Boolean  @default(true) // visible to circle members
+  // Connection IDs that can see this entry; empty = visible to all contacts.
+  visibleTo String[]
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -195,6 +212,8 @@ model WallPost {
   user      User     @relation(fields: [userId], references: [id])
   text      String
   mood      String?
+  // Connection IDs that can see this post; empty = visible to all contacts.
+  visibleTo String[]
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
