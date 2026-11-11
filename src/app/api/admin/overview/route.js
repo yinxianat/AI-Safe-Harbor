@@ -48,11 +48,111 @@ async function getUserIssues() {
   };
 }
 
+async function getRecentAICalls() {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const messages = await prisma.message.findMany({
+    where: { createdAt: { gte: since } },
+    select: {
+      id: true,
+      aiProvider: true,
+      aiModel: true,
+      aiTokensUsed: true,
+      status: true,
+      heldReason: true,
+      createdAt: true,
+      sender: { select: { displayName: true, username: true, email: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+  return messages.map((m) => ({
+    id: m.id,
+    provider: m.aiProvider,
+    model: m.aiModel,
+    tokens: m.aiTokensUsed,
+    status: m.status,
+    heldReason: m.heldReason,
+    sender: m.sender.displayName || m.sender.username || m.sender.email,
+    createdAt: m.createdAt.toISOString(),
+  }));
+}
+
+async function getUserList() {
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      email: true,
+      displayName: true,
+      username: true,
+      statusText: true,
+      statusMood: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+  return users.map((u) => ({
+    id: u.id,
+    name: u.displayName || u.username || u.email,
+    email: u.email,
+    status: u.statusText,
+    mood: u.statusMood,
+    joined: u.createdAt.toISOString(),
+  }));
+}
+
+async function getConnectionList() {
+  const connections = await prisma.connection.findMany({
+    where: { status: "active" },
+    select: {
+      id: true,
+      createdAt: true,
+      userA: { select: { displayName: true, username: true, email: true } },
+      userB: { select: { displayName: true, username: true, email: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+  return connections.map((c) => ({
+    id: c.id,
+    personA: c.userA.displayName || c.userA.username || c.userA.email,
+    personB: c.userB.displayName || c.userB.username || c.userB.email,
+    since: c.createdAt.toISOString(),
+  }));
+}
+
+async function getRecentMessages(status, limit = 20) {
+  const messages = await prisma.message.findMany({
+    where: { status },
+    select: {
+      id: true,
+      contentRaw: true,
+      heldReason: true,
+      topicTags: true,
+      aiProvider: true,
+      status: true,
+      createdAt: true,
+      sender: { select: { displayName: true, username: true, email: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  return messages.map((m) => ({
+    id: m.id,
+    preview: m.contentRaw?.slice(0, 80) + (m.contentRaw?.length > 80 ? "..." : ""),
+    heldReason: m.heldReason,
+    topics: m.topicTags,
+    provider: m.aiProvider,
+    sender: m.sender.displayName || m.sender.username || m.sender.email,
+    createdAt: m.createdAt.toISOString(),
+  }));
+}
+
 export async function GET(request) {
   const auth = await requireAdmin(request);
   if (!auth.ok) return auth.response;
 
-  const [findings, metrics, logs, userIssues] = await Promise.all([
+  const [findings, metrics, logs, userIssues, aiCalls, users, connections, heldMessages, draftMessages] = await Promise.all([
     getFindings().catch((err) => {
       logError("api.admin.overview", "findings unavailable", err?.message);
       return null;
@@ -69,6 +169,11 @@ export async function GET(request) {
       logError("api.admin.overview", "user issues unavailable", err?.message);
       return null;
     }),
+    getRecentAICalls().catch(() => []),
+    getUserList().catch(() => []),
+    getConnectionList().catch(() => []),
+    getRecentMessages("held").catch(() => []),
+    getRecentMessages("draft").catch(() => []),
   ]);
 
   return Response.json({
@@ -79,5 +184,12 @@ export async function GET(request) {
     metrics,
     logs,
     userIssues,
+    details: {
+      aiCalls,
+      users,
+      connections,
+      heldMessages,
+      draftMessages,
+    },
   });
 }

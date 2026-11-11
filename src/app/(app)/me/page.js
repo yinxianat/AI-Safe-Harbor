@@ -128,7 +128,8 @@ export default function MePage() {
         body: JSON.stringify({ category: activeCategory, prompt: newPrompt, answer: newAnswer }),
       });
       if (res.ok) {
-        setKnowMeEntries((prev) => [...prev, (await res.json()).entry]);
+        const data = await res.json();
+        setKnowMeEntries((prev) => [...prev, data.entry]);
         setNewPrompt("");
         setNewAnswer("");
         setAdding(false);
