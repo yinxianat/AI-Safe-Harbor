@@ -340,6 +340,8 @@ export default function CirclePage() {
         </p>
       </div>
 
+      <UsernameCard me={me} onClaimed={(username) => setMe((m) => ({ ...m, username }))} />
+
       {/* Members as rich cards */}
       {circle.members.length > 0 && (
         <div className="space-y-4">
@@ -412,7 +414,6 @@ export default function CirclePage() {
       {/* Search / Invite */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Find someone</h2>
-        <UsernameCard me={me} onClaimed={(username) => setMe((m) => ({ ...m, username }))} />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}

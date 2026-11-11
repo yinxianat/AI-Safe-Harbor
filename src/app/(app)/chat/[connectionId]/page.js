@@ -353,12 +353,12 @@ function ComposeBar({ connectionId, onMessageSent }) {
 
   // Default: text input with Tune button.
   return (
-    <div className="border-t border-gray-200 bg-white px-4 py-3 space-y-2">
+    <div className="border-t border-gray-200 bg-white px-3 py-2 space-y-1.5">
       {hints.length > 0 && text.trim().length > 0 && (
         <TopicWarnings hints={hints} text={text} />
       )}
       {error && <p className="text-xs text-red-600 px-1">{error}</p>}
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-1.5">
         <textarea
           ref={textareaRef}
           value={text}
@@ -366,7 +366,7 @@ function ComposeBar({ connectionId, onMessageSent }) {
           placeholder="Write a message..."
           rows={1}
           maxLength={5000}
-          className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 bg-slate-50 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-h-[40px] max-h-[120px]"
+          className="flex-1 px-3 py-2 rounded-xl border border-gray-200 bg-slate-50 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-h-[40px] max-h-[120px]"
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey && text.trim()) {
               e.preventDefault();
@@ -377,7 +377,7 @@ function ComposeBar({ connectionId, onMessageSent }) {
         <button
           onClick={handleTune}
           disabled={tuning || !text.trim()}
-          className="bg-indigo-600 text-white text-sm font-medium px-4 py-3 rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors shrink-0 min-h-[44px]"
+          className="bg-indigo-600 text-white text-sm font-medium px-3 py-2.5 rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors shrink-0 min-h-[44px]"
         >
           {tuning ? (
             <span className="flex items-center gap-1.5">
@@ -515,25 +515,23 @@ export default function ChatThreadPage() {
   const dayGroups = groupByDay(messages);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)] -mx-4 -mt-4">
+    <div className="flex flex-col h-[calc(100vh-5rem)] -mx-4 -mt-4 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white shrink-0">
+      <div className="flex items-center gap-2 px-3 py-3 border-b border-gray-200 bg-white shrink-0">
         <button
-          onClick={() => router.push("/circle")}
-          className="text-indigo-600 hover:text-indigo-800 transition-colors shrink-0"
+          onClick={() => router.push("/chat")}
+          className="text-indigo-600 hover:text-indigo-800 transition-colors shrink-0 p-1"
           aria-label="Back"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0">
             {initials(partnerName)}
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900 truncate">{partnerName}</p>
-          </div>
+          <p className="text-sm font-semibold text-slate-900 truncate">{partnerName}</p>
         </div>
         <Link
           href={`/them?connectionId=${connectionId}`}

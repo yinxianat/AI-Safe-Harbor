@@ -1,17 +1,21 @@
 "use client";
 
-/**
- * Landing page for /chat. Redirects to the first active connection's
- * chat thread, or shows an empty state if the user has no connections.
- */
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+function initials(name) {
+  if (!name) return "?";
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() || "")
+    .join("");
+}
+
 export default function ChatIndexPage() {
   const router = useRouter();
-  const [noConnections, setNoConnections] = useState(false);
+  const [connections, setConnections] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -21,23 +25,26 @@ export default function ChatIndexPage() {
         if (cancelled) return;
         if (res.ok) {
           const data = await res.json();
-          const conns = data.connections || [];
-          if (conns.length > 0) {
-            router.replace(`/chat/${conns[0].id}`);
-          } else {
-            setNoConnections(true);
-          }
+          setConnections(data.connections || []);
         } else {
-          setNoConnections(true);
+          setConnections([]);
         }
       } catch {
-        if (!cancelled) setNoConnections(true);
+        if (!cancelled) setConnections([]);
       }
     })();
     return () => { cancelled = true; };
   }, [router]);
 
-  if (noConnections) {
+  if (connections === null) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (connections.length === 0) {
     return (
       <div className="space-y-6 pt-8">
         <div className="text-center space-y-3">
@@ -47,9 +54,7 @@ export default function ChatIndexPage() {
             </svg>
           </div>
           <h1 className="text-xl font-bold text-slate-900">No conversations yet</h1>
-          <p className="text-sm text-slate-500">
-            Add someone to your circle to start chatting.
-          </p>
+          <p className="text-sm text-slate-500">Add someone to your circle to start chatting.</p>
           <Link
             href="/circle"
             className="inline-block bg-indigo-600 text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors"
@@ -61,10 +66,31 @@ export default function ChatIndexPage() {
     );
   }
 
-  // While redirecting, show a spinner.
   return (
-    <div className="flex justify-center py-12">
-      <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+    <div className="space-y-2 pt-2">
+      <h1 className="text-lg font-bold text-slate-900 px-1">Conversations</h1>
+      <div className="space-y-1">
+        {connections.map((c) => (
+          <Link
+            key={c.id}
+            href={`/chat/${c.id}`}
+            className="flex items-center gap-3 px-3 py-3 rounded-xl bg-white border border-gray-100 hover:bg-indigo-50 hover:border-indigo-100 transition-colors"
+          >
+            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-sm font-bold text-indigo-700 shrink-0">
+              {initials(c.partnerName)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-900 truncate">{c.partnerName}</p>
+              <p className="text-xs text-slate-400 truncate">
+                {c.relationshipType === "spouse" ? "Partner" : c.relationshipType || "Connection"}
+              </p>
+            </div>
+            <svg className="w-4 h-4 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
