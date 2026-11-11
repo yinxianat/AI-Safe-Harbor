@@ -1,6 +1,6 @@
 import { ProviderError, INFRASTRUCTURE, REFUSAL, classifyHttp } from "../errors.js";
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-3.8-flash";
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 const geminiProvider = {
