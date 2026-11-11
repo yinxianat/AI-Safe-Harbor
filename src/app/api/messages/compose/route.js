@@ -3,7 +3,8 @@ import { parseJsonBody, badRequest, requireString } from "@/lib/http.js";
 import { findAccessibleConnection, getPartnerId } from "@/lib/connections.js";
 import prisma from "@/lib/db.js";
 import { checkTopicBoundaries } from "@/lib/topic-checker.js";
-import { rephraseMessage } from "@/lib/ai/index.js";
+import { rephraseMessage, analyzeTopics } from "@/lib/ai/index.js";
+import { getTopicLabel } from "@/lib/topics.js";
 import { logCritical } from "@/lib/logger.js";
 
 const MAX_MESSAGE_LENGTH = 5000;
@@ -75,6 +76,43 @@ export async function POST(request) {
 
   const yellowTopics = boundaryCheck.yellowTopics || [];
 
+  // AI contextual topic analysis — catches indirect references that keyword
+  // matching misses (e.g. "how much does it make" for money).
+  const nonGreenTopics = receiverSettings
+    .filter((s) => s.comfortLevel === "red" || s.comfortLevel === "yellow")
+    .map((s) => ({
+      key: s.topicName,
+      label: s.sanitizedLabel || getTopicLabel(s.topicName),
+      level: s.comfortLevel,
+    }));
+
+  const aiTopicCheck = await analyzeTopics(contentRaw, nonGreenTopics);
+
+  if (aiTopicCheck.verdict === "blocked") {
+    const aiRedTopics = aiTopicCheck.flaggedTopics
+      .filter((f) => f.level === "red")
+      .map((f) => f.topic);
+
+    const held = await prisma.message.create({
+      data: {
+        senderId: user.id,
+        connectionId,
+        contentRaw,
+        topicTags: aiRedTopics,
+        heldReason: "red_topic",
+        status: "held",
+      },
+    });
+
+    return Response.json({
+      held: true,
+      heldReason: "red_topic",
+      topics: aiRedTopics,
+      aiReasons: aiTopicCheck.flaggedTopics.map((f) => f.reason),
+      draftId: held.id,
+    });
+  }
+
   const aiResult = await rephraseMessage(contentRaw, {
     tonePreference: receiver?.tonePreference,
     yellowTopics,
@@ -115,6 +153,10 @@ export async function POST(request) {
     },
   });
 
+  const topicVerdict = aiTopicCheck.verdict === "caution"
+    ? { status: "caution", details: aiTopicCheck.flaggedTopics }
+    : { status: "clear" };
+
   return Response.json({
     held: false,
     messageId: message.id,
@@ -122,5 +164,6 @@ export async function POST(request) {
     rephrased: aiResult.rephrased,
     needsSoftening: boundaryCheck.needsSoftening,
     yellowTopics,
+    topicVerdict,
   });
 }

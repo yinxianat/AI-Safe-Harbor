@@ -223,4 +223,69 @@ export async function generateInsight(context) {
   return { insight: null, error: "ai_unavailable" };
 }
 
+/**
+ * AI-powered topic boundary analysis. Keyword matching catches literal
+ * references; this catches indirect ones like "how much does it make" for money
+ * or "are they still together" for family. Returns a structured verdict.
+ */
+export async function analyzeTopics(rawMessage, boundaryTopics) {
+  if (!rawMessage?.trim() || !boundaryTopics?.length) {
+    return { verdict: "clear", flaggedTopics: [] };
+  }
+
+  const chain = resolveChain();
+  if (chain.length === 0) {
+    return { verdict: "skip", flaggedTopics: [], error: "ai_unavailable" };
+  }
+
+  const topicList = boundaryTopics
+    .map((t) => `- ${t.label} [${t.level}]`)
+    .join("\n");
+
+  const system = `You are a topic boundary analyzer for a safe communication app. The receiver has set these topic boundaries:
+
+${topicList}
+
+Levels: "red" = forbidden, "yellow" = handle gently.
+
+Analyze the user's message and determine if it touches any of these topics — directly OR indirectly. Consider context, implications, and conversational intent, not just keywords.
+
+Respond in EXACTLY this JSON format, nothing else:
+{"flagged": [{"topic": "topic_label", "level": "red|yellow", "reason": "one short sentence"}], "clear": true|false}
+
+If no boundaries are touched, respond: {"flagged": [], "clear": true}`;
+
+  for (const provider of chain) {
+    try {
+      const result = await provider.complete({
+        system,
+        userMessage: rawMessage,
+        model: provider.defaultModel(),
+        maxTokens: 256,
+      });
+
+      const parsed = JSON.parse(result.text.replace(/```json\n?|```/g, "").trim());
+      const flagged = Array.isArray(parsed.flagged) ? parsed.flagged : [];
+
+      return {
+        verdict: flagged.some((f) => f.level === "red") ? "blocked" : flagged.length > 0 ? "caution" : "clear",
+        flaggedTopics: flagged,
+        provider: provider.name,
+      };
+    } catch (err) {
+      if (err?.kind === REFUSAL) {
+        return { verdict: "skip", flaggedTopics: [], error: "content_refused" };
+      }
+      logWarn(
+        `ai.provider.${provider.name}`,
+        "AI topic analysis unavailable, trying next in chain",
+        err?.cause?.message || err?.message
+      );
+    }
+  }
+
+  // AI unavailable — don't block the message, just skip AI analysis.
+  return { verdict: "skip", flaggedTopics: [], error: "ai_unavailable" };
+}
+
 export { buildSystemPrompt };

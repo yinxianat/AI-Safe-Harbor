@@ -109,13 +109,14 @@ function InlineReply({ connectionId, onSent, onCancel }) {
       }
       const data = await res.json();
       if (data.held) {
-        setResult({ type: "held", reason: data.heldReason, topics: data.topics });
+        setResult({ type: "held", reason: data.heldReason, topics: data.topics, aiReasons: data.aiReasons });
       } else {
         setResult({
           type: "ready",
           messageId: data.messageId,
           raw: text,
           rephrased: data.rephrased,
+          topicVerdict: data.topicVerdict,
         });
       }
     } catch {
@@ -149,6 +150,20 @@ function InlineReply({ connectionId, onSent, onCancel }) {
     return (
       <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mt-2 space-y-3">
         <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">Reply preview</p>
+        {result.topicVerdict?.status === "clear" && (
+          <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+            <span className="font-medium">AI Check Passed</span> — Good to send
+          </div>
+        )}
+        {result.topicVerdict?.status === "caution" && (
+          <div className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+              <span className="font-medium">Gentle topics noted</span> — AI softened the tone
+            </div>
+          </div>
+        )}
         <div className="bg-white rounded-lg p-3 text-sm text-slate-600">
           <p className="text-xs font-medium text-gray-400 uppercase mb-1">Your words</p>
           <p>{result.raw}</p>
@@ -195,6 +210,13 @@ function InlineReply({ connectionId, onSent, onCancel }) {
             ? `Touches a topic they marked as sensitive${result.topics?.length ? ` (${result.topics.join(", ")})` : ""}.`
             : "AI unavailable — saved as draft. Retry later from the Drafts tab."}
         </p>
+        {result.aiReasons?.length > 0 && (
+          <ul className="text-xs mt-2 space-y-1 opacity-80">
+            {result.aiReasons.map((r, i) => (
+              <li key={i}>• {r}</li>
+            ))}
+          </ul>
+        )}
         <div className="flex gap-2 mt-3">
           <button onClick={() => { setResult(null); setText(""); }} className="text-xs font-medium underline">
             Write something else

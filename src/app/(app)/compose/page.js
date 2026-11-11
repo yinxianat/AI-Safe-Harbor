@@ -54,6 +54,7 @@ export default function ComposePage() {
   const [selectedConnection, setSelectedConnection] = useState("");
   const [error, setError] = useState(null);
   const [topicHints, setTopicHints] = useState([]);
+  const [topicVerdict, setTopicVerdict] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,6 +105,7 @@ export default function ComposePage() {
     setRephrased(null);
     setSent(false);
     setError(null);
+    setTopicVerdict(null);
 
     try {
       const res = await fetch("/api/messages/compose", {
@@ -127,6 +129,7 @@ export default function ComposePage() {
       } else {
         setRephrased(data.rephrased);
         setMessageId(data.messageId);
+        setTopicVerdict(data.topicVerdict || null);
       }
     } catch {
       setError("Network error. Check your connection and try again.");
@@ -261,6 +264,16 @@ export default function ComposePage() {
                 {held.topics?.length > 0 && ` (${held.topics.join(", ")})`}.
                 They are not ready to discuss this right now.
               </p>
+              {held.aiReasons?.length > 0 && (
+                <ul className="text-xs mt-2 space-y-1">
+                  {held.aiReasons.map((r, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-400 mt-1 shrink-0" />
+                      {r}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </>
           )}
           {held.heldReason === "ai_failed" && (
@@ -269,19 +282,55 @@ export default function ComposePage() {
               <p className="text-sm mt-1">
                 AI rephrasing is temporarily unavailable. Your message has been saved — you can retry later.
               </p>
+            </>
+          )}
+          <div className="flex gap-3 mt-3">
+            <button
+              onClick={() => { handleReset(); setRawMessage(""); }}
+              className="text-sm font-medium underline"
+            >
+              Write new message
+            </button>
+            {held.heldReason === "ai_failed" && (
               <button
                 onClick={handleTune}
-                className="mt-3 text-sm font-medium underline"
+                className="text-sm font-medium underline"
               >
                 Retry
               </button>
-            </>
-          )}
+            )}
+          </div>
         </div>
       )}
 
       {rephrased && (
         <div className="space-y-4">
+          {topicVerdict?.status === "clear" && (
+            <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+              <svg className="w-5 h-5 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span className="font-medium">AI Check Passed</span>
+              <span className="text-emerald-600">— No boundary topics detected. Good to send.</span>
+            </div>
+          )}
+          {topicVerdict?.status === "caution" && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-2 text-sm text-amber-700">
+                <svg className="w-5 h-5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span className="font-medium">AI noticed some gentle topics</span>
+              </div>
+              <ul className="text-xs text-amber-600 mt-2 space-y-1 ml-7">
+                {topicVerdict.details?.map((d, i) => (
+                  <li key={i}>{d.topic}: {d.reason}</li>
+                ))}
+              </ul>
+              <p className="text-xs text-amber-600 mt-2 ml-7">The AI has softened the tone for these. You can still send.</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-3">
             <div className="bg-white rounded-xl border border-gray-200 p-4">
               <p className="text-xs font-medium text-gray-400 uppercase mb-2">Your words</p>
