@@ -114,4 +114,41 @@ describe("Topic Boundary Checker", () => {
     expect(result.allowed).toBe(false);
     expect(result.heldReason).toBe("red_topic");
   });
+
+  test("detects indirect money reference: how much does it make", () => {
+    const settings = [{ topicName: "money", comfortLevel: "red" }];
+    const result = checkTopicBoundaries("how much does it make", settings);
+    expect(result.allowed).toBe(false);
+  });
+
+  test("detects indirect money reference: how much is your house worth", () => {
+    const settings = [{ topicName: "money", comfortLevel: "red" }];
+    const result = checkTopicBoundaries(
+      "how much is your house worth",
+      settings
+    );
+    expect(result.allowed).toBe(false);
+  });
+
+  test("detects money topic from pay/earn/expensive", () => {
+    const settings = [{ topicName: "money", comfortLevel: "red" }];
+    expect(checkTopicBoundaries("how much do you earn", settings).allowed).toBe(false);
+    expect(checkTopicBoundaries("that's too expensive", settings).allowed).toBe(false);
+    expect(checkTopicBoundaries("did you pay for it", settings).allowed).toBe(false);
+  });
+
+  test("detects indirect family reference: your parents", () => {
+    const settings = [{ topicName: "family", comfortLevel: "red" }];
+    const result = checkTopicBoundaries(
+      "what do your parents think about it",
+      settings
+    );
+    expect(result.allowed).toBe(false);
+  });
+
+  test("detects indirect conflict reference: still upset", () => {
+    const settings = [{ topicName: "past_conflicts", comfortLevel: "red" }];
+    const result = checkTopicBoundaries("are you still upset about it", settings);
+    expect(result.allowed).toBe(false);
+  });
 });

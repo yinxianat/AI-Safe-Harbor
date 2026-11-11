@@ -13,9 +13,13 @@ export const TOPICS = [
     key: "health",
     label: "Health",
     keywords: [
-      "health", "doctor", "hospital", "sick", "illness", "medicine",
-      "therapy", "therapist", "mental health", "anxiety", "depression",
-      "diagnosis", "symptoms", "treatment", "medical",
+      "health", "healthy", "doctor", "hospital", "sick", "illness",
+      "medicine", "medication", "therapy", "therapist", "mental health",
+      "anxiety", "depression", "diagnosis", "symptoms", "treatment",
+      "medical", "clinic", "surgery", "pain", "hurting", "feeling down",
+      "stressed", "burnout", "exhausted", "insomnia", "sleep",
+      "panic attack", "counselor", "psychiatrist", "prescription",
+      "check-up", "test results", "condition", "chronic",
     ],
   },
   {
@@ -24,7 +28,10 @@ export const TOPICS = [
     keywords: [
       "work", "job", "boss", "office", "career", "colleague", "coworker",
       "meeting", "promotion", "fired", "quit", "salary", "workplace",
-      "manager", "project", "deadline",
+      "manager", "project", "deadline", "interview", "resume",
+      "layoff", "laid off", "overtime", "commute", "client",
+      "performance review", "coworkers", "hired", "hiring",
+      "remote work", "work from home", "shift", "business",
     ],
   },
   {
@@ -35,6 +42,14 @@ export const TOPICS = [
       "savings", "expenses", "bills", "financial", "rent", "salary",
       "bank", "invest", "spending", "afford", "cost", "price",
       "raise", "owe", "save more",
+      "how much", "worth", "pay", "paid", "paying", "payment",
+      "earn", "earning", "income", "expensive", "cheap",
+      "purchase", "bought", "buying", "fee", "fees",
+      "tax", "taxes", "profit", "revenue", "charge", "charged",
+      "overdraft", "broke", "bankruptcy", "insurance",
+      "subscription", "refund", "tip", "wage", "wages",
+      "tuition", "down payment", "interest rate", "balance",
+      "account", "transaction", "transfer",
     ],
   },
   {
@@ -45,6 +60,10 @@ export const TOPICS = [
       "brother", "sister", "in-law", "mother-in-law", "father-in-law",
       "grandparent", "aunt", "uncle", "cousin", "relative",
       "holidays", "thanksgiving", "christmas",
+      "grandma", "grandpa", "nephew", "niece", "stepmother",
+      "stepfather", "stepmom", "stepdad", "half-sister", "half-brother",
+      "family reunion", "inheritance", "my parents", "your parents",
+      "his family", "her family", "their family", "the family",
     ],
   },
   {
@@ -53,6 +72,9 @@ export const TOPICS = [
     keywords: [
       "intimacy", "intimate", "affection", "romance", "romantic",
       "physical", "desire", "attraction", "bedroom", "closeness",
+      "cuddle", "cuddling", "kiss", "kissing", "touch", "touching",
+      "passion", "chemistry", "love life", "turned on", "sexy",
+      "flirt", "flirting", "date night", "spark", "connection",
     ],
   },
   {
@@ -62,15 +84,24 @@ export const TOPICS = [
       "future", "plan", "plans", "moving", "relocate", "children",
       "kids", "baby", "marriage", "wedding", "retire", "retirement",
       "house", "apartment", "goal", "goals",
+      "next year", "five year", "long term", "settle down",
+      "engagement", "engaged", "proposal", "pregnant", "expecting",
+      "career change", "dream", "ambition", "someday", "eventually",
+      "start a family", "buy a house", "move to",
     ],
   },
   {
     key: "past_conflicts",
     label: "Past Conflicts",
     keywords: [
-      "fight", "argument", "argued", "fighting", "conflict", "disagreement",
-      "last time", "remember when", "you always", "you never",
-      "that time", "tense", "tension", "resentment",
+      "fight", "argument", "argued", "fighting", "conflict",
+      "disagreement", "last time", "remember when", "you always",
+      "you never", "that time", "tense", "tension", "resentment",
+      "apologize", "apology", "sorry about", "forgive", "blame",
+      "blamed", "yelled", "yelling", "screamed", "angry at you",
+      "angry at me", "what you said", "what i said", "that argument",
+      "still upset", "brought it up", "let it go", "get over it",
+      "we never resolved",
     ],
   },
   {
@@ -79,6 +110,10 @@ export const TOPICS = [
     keywords: [
       "friends", "social", "party", "going out", "hanging out",
       "weekend plans", "vacation", "trip", "travel",
+      "invited", "invitation", "gathering", "bar", "club",
+      "concert", "event", "festival", "get together", "night out",
+      "girls night", "guys night", "my friends", "your friends",
+      "plans tonight", "plans this weekend", "road trip", "fly out",
     ],
   },
   {
@@ -87,6 +122,11 @@ export const TOPICS = [
     keywords: [
       "parenting", "discipline", "school", "homework", "daycare",
       "babysitter", "bedtime", "screen time", "allowance",
+      "our kid", "our child", "the kids", "the children",
+      "teacher", "grades", "report card", "behavior",
+      "grounded", "punishment", "rules for", "chores",
+      "tantrum", "nanny", "pediatrician", "playground",
+      "soccer practice", "piano lesson", "pick up from school",
     ],
   },
   {
@@ -95,6 +135,10 @@ export const TOPICS = [
     keywords: [
       "self-improvement", "growth", "hobby", "hobbies", "exercise",
       "gym", "diet", "weight", "learning", "class", "course",
+      "meditation", "mindfulness", "journal", "journaling",
+      "self-care", "boundaries", "therapy", "coaching",
+      "new skill", "reading", "volunteer", "habit", "routine",
+      "working on myself", "trying to be better",
     ],
   },
 ];
