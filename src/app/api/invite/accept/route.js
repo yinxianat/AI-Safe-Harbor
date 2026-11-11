@@ -68,7 +68,7 @@ export async function GET(request) {
   }
 
   const sessionToken = await createSession(invitee.id);
-  const response = NextResponse.redirect(new URL("/dashboard", baseUrl));
+  const response = NextResponse.redirect(new URL("/them", baseUrl));
 
   response.cookies.set("session", sessionToken, {
     httpOnly: true,

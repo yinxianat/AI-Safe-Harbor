@@ -40,10 +40,13 @@ export async function GET(request) {
 
   const partnerId = connection.userAId === user.id ? connection.userBId : connection.userAId;
 
-  const [partner, partnerSettings, knowMeEntries] = await Promise.all([
+  const [partner, partnerSettings, knowMeEntries, wallPosts] = await Promise.all([
     prisma.user.findUnique({
       where: { id: partnerId },
-      select: { id: true, displayName: true, username: true, tonePreference: true },
+      select: {
+        id: true, displayName: true, username: true, tonePreference: true,
+        statusText: true, statusMood: true, statusUpdatedAt: true,
+      },
     }),
     prisma.topicSetting.findMany({
       where: { connectionId, userId: partnerId },
@@ -51,6 +54,11 @@ export async function GET(request) {
     prisma.knowMeEntry.findMany({
       where: { userId: partnerId, isPublic: true },
       orderBy: [{ category: "asc" }, { sortOrder: "asc" }],
+    }),
+    prisma.wallPost.findMany({
+      where: { userId: partnerId },
+      orderBy: { createdAt: "desc" },
+      take: 20,
     }),
   ]);
 
@@ -92,8 +100,17 @@ export async function GET(request) {
       username: partner.username,
       tonePreference: partner.tonePreference,
       toneLabel: VALID_TONES[partner.tonePreference] || partner.tonePreference,
+      statusText: partner.statusText,
+      statusMood: partner.statusMood,
+      statusUpdatedAt: partner.statusUpdatedAt,
     },
     boundaries: [...boundaries, ...customBoundaries],
     knowMe: entries,
+    wall: wallPosts.map((p) => ({
+      id: p.id,
+      text: p.text,
+      mood: p.mood,
+      createdAt: p.createdAt,
+    })),
   });
 }

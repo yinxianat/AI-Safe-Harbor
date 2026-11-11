@@ -78,8 +78,8 @@ export default function PartnerPage() {
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
           <p>{error || "Something went wrong."}</p>
         </div>
-        <Link href="/dashboard" className="text-sm text-indigo-600 font-medium">
-          ← Back to Dashboard
+        <Link href="/them" className="text-sm text-indigo-600 font-medium">
+          ← Back
         </Link>
       </div>
     );
@@ -101,8 +101,8 @@ export default function PartnerPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/dashboard" className="text-sm text-indigo-600 font-medium">
-          ← Dashboard
+        <Link href="/them" className="text-sm text-indigo-600 font-medium">
+          ← Back
         </Link>
         <h1 className="text-2xl font-bold text-slate-900 mt-2">{name}</h1>
         {partner.username && partner.displayName && (
