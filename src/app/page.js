@@ -295,13 +295,14 @@ export default function Home() {
           <div className="text-xs text-emerald-700 space-y-1.5">
             <p className="font-medium">iPhone (Safari):</p>
             <ol className="list-decimal list-inside space-y-0.5 pl-1 text-emerald-600">
-              <li>Tap the <span className="inline-flex items-center"><svg className="w-3.5 h-3.5 inline mx-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" /></svg></span> Share button at the bottom</li>
+              <li>Tap the <strong>☰</strong> menu button at the bottom left of Safari</li>
+              <li>Tap the <strong>Share</strong> button <span className="inline-flex items-center"><svg className="w-4 h-4 inline mx-0.5 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" /></svg></span> (square with arrow pointing up)</li>
               <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
-              <li>Tap <strong>Add</strong></li>
+              <li>Tap <strong>Add</strong> in the top right</li>
             </ol>
             <p className="font-medium pt-1">Android (Chrome):</p>
             <ol className="list-decimal list-inside space-y-0.5 pl-1 text-emerald-600">
-              <li>Tap the <strong>&#8942;</strong> menu at the top right</li>
+              <li>Tap the <strong>&#8942;</strong> menu (three dots) at the top right</li>
               <li>Tap <strong>Add to Home screen</strong></li>
               <li>Tap <strong>Add</strong></li>
             </ol>
