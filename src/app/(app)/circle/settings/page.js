@@ -161,9 +161,9 @@ export default function GuardianSettingsPage() {
     <div className="space-y-6">
       <div>
         <Link href="/circle" className="text-sm text-emerald-600 font-medium">← Back to Circle</Link>
-        <h1 className="text-2xl font-bold text-slate-900 mt-2">Guardian Settings</h1>
+        <h1 className="text-2xl font-bold text-slate-900 mt-2">AI Tuning</h1>
         <p className="text-sm text-slate-500 mt-1">
-          How your AI guardian handles messages from {partnerName}.
+          How your AI tunes messages from {partnerName}.
         </p>
       </div>
 

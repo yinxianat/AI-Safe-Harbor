@@ -18,6 +18,7 @@ model User {
   // How this person prefers to be spoken TO. Read by the compose route from
   // the receiver's record and passed to the AI layer.
   tonePreference String   @default("warm_and_gentle")
+  sessionDays    Int      @default(30)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

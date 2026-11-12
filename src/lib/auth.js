@@ -109,11 +109,11 @@ export async function consumeMagicToken(tokenId) {
   return claimed.count === 1;
 }
 
-export async function createSession(userId) {
+export async function createSession(userId, sessionDays = 30) {
   return new SignJWT({ userId })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("365d")
+    .setExpirationTime(`${sessionDays}d`)
     .sign(jwtKey());
 }
 

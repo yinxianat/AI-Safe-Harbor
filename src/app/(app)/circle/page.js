@@ -120,7 +120,7 @@ function PersonCard({ person }) {
           href={`/circle/settings?connectionId=${person.connectionId}`}
           className="flex-1 text-center text-sm font-medium text-slate-600 py-3 hover:bg-slate-50 transition-colors"
         >
-          Guardian
+          AI Tuning
         </Link>
       </div>
     </div>

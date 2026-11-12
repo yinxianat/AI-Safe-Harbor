@@ -509,6 +509,35 @@ export default function MePage() {
           </button>
         )}
       </div>
+
+      {/* --- Session Duration --- */}
+      <div className="bg-white rounded-lg border border-gray-100 p-3 space-y-2">
+        <p className="text-xs font-semibold text-slate-500 uppercase">Session Duration</p>
+        <p className="text-[10px] text-slate-400">How long before you need to sign in again.</p>
+        <div className="flex gap-1.5">
+          {[7, 14, 30, 90].map((d) => (
+            <button
+              key={d}
+              onClick={async () => {
+                await fetch("/api/auth/me", {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ sessionDays: d }),
+                });
+                setProfile((p) => ({ ...p, sessionDays: d }));
+              }}
+              className={`text-xs px-2.5 py-1.5 rounded-full border transition-colors ${
+                (profile?.sessionDays || 30) === d
+                  ? "bg-emerald-600 text-white border-emerald-600"
+                  : "bg-white text-slate-500 border-gray-200"
+              }`}
+            >
+              {d === 7 ? "1 week" : d === 14 ? "2 weeks" : d === 30 ? "1 month" : "3 months"}
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-slate-400">Takes effect on your next sign-in.</p>
+      </div>
     </div>
   );
 }

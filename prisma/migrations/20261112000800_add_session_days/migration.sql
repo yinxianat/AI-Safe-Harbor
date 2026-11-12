@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN     "sessionDays" INTEGER NOT NULL DEFAULT 30;

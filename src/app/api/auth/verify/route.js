@@ -18,15 +18,16 @@ async function establishSession(token, baseUrl) {
     create: { email: result.email },
   });
 
-  return { ok: true, user, session: await createSession(user.id) };
+  const days = user.sessionDays || 30;
+  return { ok: true, user, session: await createSession(user.id, days), sessionDays: days };
 }
 
-function withSessionCookie(response, sessionToken) {
+function withSessionCookie(response, sessionToken, sessionDays = 30) {
   response.cookies.set("session", sessionToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 365,
+    maxAge: 60 * 60 * 24 * sessionDays,
     path: "/",
   });
   return response;
@@ -48,6 +49,7 @@ export async function GET(request) {
 
   return withSessionCookie(
     NextResponse.redirect(new URL("/circle", baseUrl)),
-    result.session
+    result.session,
+    result.sessionDays
   );
 }

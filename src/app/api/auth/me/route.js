@@ -15,6 +15,7 @@ export async function GET(request) {
     username: user.username || null,
     displayName: user.displayName,
     timezone: user.timezone,
+    sessionDays: user.sessionDays || 30,
   });
 }
 
@@ -41,6 +42,11 @@ export async function PATCH(request) {
     if (tz) updates.timezone = tz;
   }
 
+  if (body.data.sessionDays !== undefined) {
+    const days = Number(body.data.sessionDays);
+    if ([7, 14, 30, 90].includes(days)) updates.sessionDays = days;
+  }
+
   if (Object.keys(updates).length === 0) {
     return badRequest("nothing_to_update");
   }
@@ -56,5 +62,6 @@ export async function PATCH(request) {
     username: updated.username || null,
     displayName: updated.displayName,
     timezone: updated.timezone,
+    sessionDays: updated.sessionDays || 30,
   });
 }

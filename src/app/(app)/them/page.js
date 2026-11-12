@@ -241,213 +241,189 @@ export default function ThemPage() {
   const myCustoms = myTopicSettings.filter((s) => s.isCustom);
   const myPresets = myTopicSettings.filter((s) => !s.isCustom);
 
+  const greenTopics = boundaries.filter((b) => b.comfortLevel === "green");
+  const redTopics = boundaries.filter((b) => b.comfortLevel === "red");
+  const yellowTopics = boundaries.filter((b) => b.comfortLevel === "yellow");
+
   return (
-    <div className="space-y-0">
-      <Link href="/circle" className="text-sm text-emerald-600 font-medium mb-2 inline-block">← Circle</Link>
+    <div className="space-y-4">
+      <Link href="/circle" className="text-sm text-emerald-600 font-medium">← Circle</Link>
 
-      {/* ═══════ ZONE 1: Their World (warm tones) ═══════ */}
-      <div className="bg-amber-50/40 rounded-2xl border border-amber-100 p-5 space-y-5 mt-2">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm font-semibold text-amber-700 uppercase tracking-wide">
-            {name}&apos;s Profile
-          </span>
-          <span className="text-xs text-amber-500 bg-amber-100 px-2 py-0.5 rounded-full">What they shared</span>
-        </div>
+      <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold">UserProfile &amp; Preferences</p>
 
-        {/* Name */}
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">{name}</h1>
-          {partner.username && partner.displayName && (
-            <p className="text-sm text-slate-500">@{partner.username}</p>
-          )}
-        </div>
-
-        {/* Status */}
-        {partner.statusText ? (
-          <div className="bg-white/70 rounded-xl border border-amber-100 p-4">
-            <div className="flex items-start gap-3">
-              <span className={`w-3 h-3 rounded-full ${(MOOD_STYLES[partner.statusMood] || MOOD_STYLES.neutral).dot} mt-1 shrink-0 ring-2 ring-white`} />
-              <div className="flex-1 min-w-0">
-                <p className="text-base text-slate-800">{partner.statusText}</p>
-                <p className="text-xs text-slate-400 mt-1">
-                  {(MOOD_STYLES[partner.statusMood] || MOOD_STYLES.neutral).label} · {timeAgo(partner.statusUpdatedAt)}
-                </p>
+      {/* ── Profile Card ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+            <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-slate-900 uppercase">{name}</h1>
+            {partner.username && partner.displayName && (
+              <p className="text-sm text-slate-500">@{partner.username}</p>
+            )}
+            {partner.statusText && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className={`w-2 h-2 rounded-full ${(MOOD_STYLES[partner.statusMood] || MOOD_STYLES.neutral).dot} shrink-0`} />
+                <p className="text-xs text-slate-500 truncate">{partner.statusText}</p>
               </div>
-            </div>
+            )}
           </div>
-        ) : (
-          <div className="bg-white/50 border border-amber-100 rounded-xl p-4 text-center">
-            <p className="text-sm text-slate-400 italic">No status right now</p>
-          </div>
-        )}
+        </div>
+      </div>
 
-        {/* Wall — "All About Me" posts, shown prominently above other profile data */}
-        {wall && wall.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-amber-700">{name}&apos;s Wall</h2>
-              <span className="text-xs text-amber-500 bg-amber-100 px-2 py-0.5 rounded-full">{wall.length} post{wall.length !== 1 ? "s" : ""}</span>
-            </div>
-            <div className="space-y-2 max-h-80 overflow-y-auto rounded-xl">
-              {wall.map((post) => (
-                <div key={post.id} className="bg-white/70 rounded-xl border border-amber-100 p-4">
-                  <p className="text-sm text-slate-800 whitespace-pre-wrap">{post.text}</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    {post.mood && (
-                      <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">{post.mood}</span>
-                    )}
-                    <span className="text-xs text-slate-400">
-                      {new Date(post.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                    </span>
-                  </div>
+      {/* ── Chat Context header ── */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+        <p className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Chat Context</p>
+      </div>
+
+      {/* ── Side-by-side Topic Cards ── */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Topics I Enjoy */}
+        <div className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-emerald-500 px-3 py-2 flex items-center justify-between">
+            <p className="text-xs font-bold text-white uppercase tracking-wide">Topics I Enjoy Talking About</p>
+            <span className="text-lg">👍</span>
+          </div>
+          <div className="bg-white p-3 space-y-1.5">
+            {greenTopics.length === 0 && yellowTopics.length === 0 && (
+              <p className="text-xs text-slate-400 italic">No topics set</p>
+            )}
+            {greenTopics.map((b) => (
+              <div key={b.topicName} className="bg-gray-50 rounded-lg px-2.5 py-1.5">
+                <span className="text-xs text-slate-700">{b.label}</span>
+              </div>
+            ))}
+            {yellowTopics.map((b) => (
+              <div key={b.topicName} className="bg-amber-50 rounded-lg px-2.5 py-1.5 border border-amber-100">
+                <span className="text-xs text-amber-700">{b.label}</span>
+                <span className="text-[10px] text-amber-500 ml-1">(gentle)</span>
+              </div>
+            ))}
+            <p className="text-[10px] text-slate-400 pt-1">Visible to my one-to-one chat partners.</p>
+          </div>
+        </div>
+
+        {/* Topics I Avoid */}
+        <div className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-red-500 px-3 py-2 flex items-center justify-between">
+            <p className="text-xs font-bold text-white uppercase tracking-wide">Topics I Avoid</p>
+            <span className="text-lg">🛡️</span>
+          </div>
+          <div className="bg-white p-3 space-y-1.5">
+            {redTopics.length === 0 ? (
+              <p className="text-xs text-slate-400 italic">No avoided topics</p>
+            ) : (
+              redTopics.map((b) => (
+                <div key={b.topicName} className="bg-gray-50 rounded-lg px-2.5 py-1.5">
+                  <span className="text-xs text-slate-700">{b.label}</span>
+                </div>
+              ))
+            )}
+            <p className="text-[10px] text-slate-400 pt-1">My AI assistant will warn my partners if they type topics that conflict with these preferences before they send the message.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Wall Posts ── */}
+      {wall && wall.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+          <p className="text-sm font-semibold text-slate-700">{name}&apos;s Wall</p>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {wall.map((post) => (
+              <div key={post.id} className="bg-gray-50 rounded-xl p-3">
+                <p className="text-sm text-slate-800 whitespace-pre-wrap">{post.text}</p>
+                <div className="flex items-center gap-2 mt-1.5">
+                  {post.mood && (
+                    <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">{post.mood}</span>
+                  )}
+                  <span className="text-[10px] text-slate-400">
+                    {new Date(post.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Know Me ── */}
+      {knowMe.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+          <p className="text-sm font-semibold text-slate-700">Know {name}</p>
+          {Object.entries(categorized).map(([cat, entries]) => (
+            <div key={cat} className="space-y-1.5">
+              <p className="text-xs font-semibold text-slate-500 uppercase">{CATEGORY_LABELS[cat] || cat}</p>
+              {entries.map((entry) => (
+                <div key={entry.id} className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs font-medium text-slate-500">{entry.prompt}</p>
+                  <p className="text-sm text-slate-800 mt-0.5">{entry.answer}</p>
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* Communication style */}
-        <div className="bg-white/70 rounded-xl border border-amber-100 p-4">
-          <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-2">
-            {name}&apos;s Preferred Tone
-          </p>
-          <p className="text-base font-medium text-slate-800">{partner.toneLabel}</p>
-          <p className="text-sm text-slate-500 mt-1">
-            Messages you send are tuned to this style before they reach {name}.
-          </p>
+          ))}
         </div>
+      )}
 
-        {/* Their boundaries */}
-        <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-amber-700">{name}&apos;s Boundaries</h2>
-          {nonGreen.length === 0 && (
-            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-sm text-emerald-700">
-              All topics are open — {name} is comfortable discussing anything right now.
-            </div>
-          )}
-          <div className="space-y-2">
-            {displayBoundaries.map((b) => (
-              <BoundaryPill key={b.topicName} topic={b} />
-            ))}
-          </div>
-          {!showAllBoundaries && boundaries.length > displayBoundaries.length && (
-            <button onClick={() => setShowAllBoundaries(true)} className="text-sm text-amber-700 font-medium">
-              Show all {boundaries.length} topics
-            </button>
-          )}
-          {showAllBoundaries && nonGreen.length > 0 && (
-            <button onClick={() => setShowAllBoundaries(false)} className="text-sm text-slate-500 font-medium">
-              Show only boundaries
-            </button>
-          )}
-        </div>
-
-        {/* Know Me */}
-        {knowMe.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-amber-700">Know {name}</h2>
-            {Object.entries(categorized).map(([cat, entries]) => (
-              <div key={cat} className="space-y-2">
-                <h3 className="text-sm font-semibold text-slate-600">
-                  {CATEGORY_LABELS[cat] || cat}
-                </h3>
-                {entries.map((entry) => (
-                  <div key={entry.id} className="bg-white/70 rounded-xl border border-amber-100 p-4">
-                    <p className="text-sm font-medium text-slate-600">{entry.prompt}</p>
-                    <p className="text-sm text-slate-800 mt-1 whitespace-pre-wrap">{entry.answer}</p>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {knowMe.length === 0 && (
-          <div className="bg-white/50 border border-amber-100 rounded-xl p-4 text-center">
-            <p className="text-sm text-slate-500">
-              {name} hasn&apos;t shared any Know Me entries yet.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* ═══════ DIVIDER ═══════ */}
-      <div className="flex items-center gap-3 py-6">
-        <div className="flex-1 h-px bg-emerald-200" />
+      {/* ── AI Tuning ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <button
           onClick={() => setShowGuardian(!showGuardian)}
-          className="flex items-center gap-2 text-sm font-semibold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-200 hover:bg-emerald-100 transition-colors"
+          className="w-full p-4 flex items-center justify-between"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-          </svg>
-          {showGuardian ? "Hide" : "Show"} Your Guardian Settings
-          <svg className={`w-4 h-4 transition-transform ${showGuardian ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+              </svg>
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-slate-700">AI Tuning</p>
+              <p className="text-[10px] text-slate-400">Tone: {TONE_LABELS[myTone] || myTone}</p>
+            </div>
+          </div>
+          <svg className={`w-5 h-5 text-slate-400 transition-transform ${showGuardian ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
-        <div className="flex-1 h-px bg-emerald-200" />
-      </div>
 
-      {/* ═══════ ZONE 2: Your Guardian (cool emerald tones) ═══════ */}
-      {showGuardian && (
-        <div className="bg-emerald-50/40 rounded-2xl border border-emerald-100 p-5 space-y-5">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-semibold text-emerald-700 uppercase tracking-wide">
-              Your Guardian Settings
-            </span>
-            <span className="text-xs text-emerald-500 bg-emerald-100 px-2 py-0.5 rounded-full">For messages from {name}</span>
-          </div>
-
-          <p className="text-sm text-emerald-600">
-            Your AI guardian checks every message from {name} against these settings before it reaches you.
-          </p>
-
-          {/* Your tone preference */}
-          <div className="bg-white/70 rounded-xl border border-emerald-100 p-4">
-            <label htmlFor="myTone" className="block text-sm font-medium text-slate-800 mb-1">
-              Your preferred tone
-            </label>
-            <p className="text-xs text-emerald-500 mb-3">
-              Messages from {name} are tuned to this tone before they reach you.
-            </p>
-            <select
-              id="myTone"
-              value={myTone}
-              onChange={(e) => handleMyToneChange(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-emerald-200 bg-white text-sm"
-            >
-              {validTones.map((t) => (
-                <option key={t} value={t}>{TONE_LABELS[t] || t}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Your topic boundaries */}
-          <div className="space-y-3">
+        {showGuardian && (
+          <div className="px-4 pb-4 space-y-4 border-t border-gray-100 pt-3">
+            {/* Tone preference */}
             <div>
-              <h3 className="text-sm font-semibold text-emerald-700">Your topic boundaries</h3>
-              <p className="text-xs text-emerald-500 mt-1">
-                Red = your guardian holds the message. Yellow = softened. Green = passes through.
-              </p>
+              <p className="text-xs font-semibold text-slate-500 uppercase mb-2">AI Response Tone</p>
+              <select
+                value={myTone}
+                onChange={(e) => handleMyToneChange(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm"
+              >
+                {validTones.map((t) => (
+                  <option key={t} value={t}>{TONE_LABELS[t] || t}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-slate-400 mt-1">Messages from {name} are tuned to this tone before they reach you.</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {myPresets.map((setting) => (
-                <TrafficLight
-                  key={setting.topicName}
-                  topicName={setting.topicName}
-                  label={setting.label}
-                  comfortLevel={setting.comfortLevel}
-                  onToggle={handleMyToggle}
-                />
-              ))}
-            </div>
+            {/* Topic boundaries */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-slate-500 uppercase">Your Topic Boundaries</p>
+              <p className="text-[10px] text-slate-400">Red = held. Yellow = softened. Green = passes through.</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {myPresets.map((setting) => (
+                  <TrafficLight
+                    key={setting.topicName}
+                    topicName={setting.topicName}
+                    label={setting.label}
+                    comfortLevel={setting.comfortLevel}
+                    onToggle={handleMyToggle}
+                  />
+                ))}
+              </div>
 
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-emerald-700">Your own topics</h3>
               {myCustoms.length > 0 && (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {myCustoms.map((setting) => (
                     <div key={setting.topicName} className="relative">
                       <TrafficLight
@@ -459,7 +435,7 @@ export default function ThemPage() {
                       <button
                         onClick={() => handleRemoveCustom(setting.topicName)}
                         aria-label={`Remove ${setting.label}`}
-                        className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-200 text-slate-600 text-xs leading-6 text-center shadow"
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-200 text-slate-600 text-[10px] leading-5 text-center shadow"
                       >
                         ✕
                       </button>
@@ -471,33 +447,38 @@ export default function ThemPage() {
                 <input
                   value={customLabel}
                   onChange={(e) => setCustomLabel(e.target.value)}
-                  placeholder="Add a topic, e.g. wedding planning"
+                  placeholder="Add a topic..."
                   maxLength={30}
-                  className="flex-1 px-3 py-2 rounded-lg border border-emerald-200 bg-white text-sm"
+                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm"
                 />
                 <button
                   type="submit"
                   disabled={!customLabel.trim()}
-                  className="bg-emerald-600 text-white text-sm font-medium px-4 rounded-lg disabled:opacity-50"
+                  className="bg-emerald-600 text-white text-sm font-medium px-4 rounded-xl disabled:opacity-50"
                 >
                   Add
                 </button>
               </form>
-              {customError && <p className="text-sm text-red-600">{customError}</p>}
+              {customError && <p className="text-xs text-red-600">{customError}</p>}
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Send message CTA */}
-      <div className="pt-4">
-        <Link
-          href={`/chat/${connectionId}`}
-          className="block bg-emerald-600 text-white text-center font-medium py-3 rounded-xl hover:bg-emerald-700 transition-colors"
-        >
-          Message {name}
-        </Link>
+            <Link
+              href={`/circle/settings?connectionId=${connectionId}`}
+              className="block text-center text-xs text-emerald-600 font-medium py-2 bg-emerald-50 rounded-xl"
+            >
+              Open full AI Tuning settings →
+            </Link>
+          </div>
+        )}
       </div>
+
+      {/* Message CTA */}
+      <Link
+        href={`/chat/${connectionId}`}
+        className="block bg-emerald-600 text-white text-center font-medium py-3 rounded-xl hover:bg-emerald-700 transition-colors"
+      >
+        Message {name}
+      </Link>
     </div>
   );
 }
