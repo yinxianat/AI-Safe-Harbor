@@ -39,7 +39,7 @@ export default function ChatIndexPage() {
   if (connections === null) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
       </div>
     );
   }
@@ -48,8 +48,8 @@ export default function ChatIndexPage() {
     return (
       <div className="space-y-6 pt-8">
         <div className="text-center space-y-3">
-          <div className="w-14 h-14 rounded-full bg-indigo-100 flex items-center justify-center mx-auto">
-            <svg className="w-7 h-7 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
+            <svg className="w-7 h-7 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
           </div>
@@ -57,7 +57,7 @@ export default function ChatIndexPage() {
           <p className="text-sm text-slate-500">Add someone to your circle to start chatting.</p>
           <Link
             href="/circle"
-            className="inline-block bg-indigo-600 text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors"
+            className="inline-block bg-emerald-600 text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-emerald-700 transition-colors"
           >
             Go to Circle
           </Link>
@@ -74,9 +74,9 @@ export default function ChatIndexPage() {
           <Link
             key={c.id}
             href={`/chat/${c.id}`}
-            className="flex items-center gap-3 px-3 py-3 rounded-xl bg-white border border-gray-100 hover:bg-indigo-50 hover:border-indigo-100 transition-colors"
+            className="flex items-center gap-3 px-3 py-3 rounded-xl bg-white border border-gray-100 hover:bg-emerald-50 hover:border-emerald-100 transition-colors"
           >
-            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-sm font-bold text-indigo-700 shrink-0">
+            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-bold text-emerald-700 shrink-0">
               {initials(c.partnerName)}
             </div>
             <div className="min-w-0 flex-1">

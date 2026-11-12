@@ -174,7 +174,7 @@ function SignInForm() {
               <button
                 onClick={() => send(sentTo)}
                 disabled={loading}
-                className="font-medium text-indigo-600 underline hover:text-indigo-800 disabled:opacity-50"
+                className="font-medium text-emerald-600 underline hover:text-emerald-800 disabled:opacity-50"
               >
                 {loading ? "sending…" : undeliverable ? "try again" : "send it again"}
               </button>
@@ -223,7 +223,7 @@ function SignInForm() {
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck="false"
-          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
 
         {suggestion && (
@@ -255,7 +255,7 @@ function SignInForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-xl bg-indigo-600 py-3 font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-xl bg-emerald-600 py-3 font-medium text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? "Sending…" : "Email me a sign-in link"}
       </button>

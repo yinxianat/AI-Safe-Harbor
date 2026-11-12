@@ -183,7 +183,7 @@ export default function ComposePage() {
         </div>
         <button
           onClick={handleReset}
-          className="w-full bg-indigo-600 text-white font-medium py-3 rounded-xl hover:bg-indigo-700 transition-colors"
+          className="w-full bg-emerald-600 text-white font-medium py-3 rounded-xl hover:bg-emerald-700 transition-colors"
         >
           Send another message
         </button>
@@ -235,7 +235,7 @@ export default function ComposePage() {
         onChange={(e) => setRawMessage(e.target.value)}
         placeholder="Write what you want to say..."
         rows={5}
-        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-base resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-base resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
       />
 
       <TopicWarnings hints={topicHints} text={rawMessage} />
@@ -244,7 +244,7 @@ export default function ComposePage() {
         <button
           onClick={handleTune}
           disabled={loading || !rawMessage.trim() || !selectedConnection}
-          className="w-full bg-indigo-600 text-white font-medium py-3 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-emerald-600 text-white font-medium py-3 rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? "Tuning..." : "Tune Message"}
         </button>
@@ -336,9 +336,9 @@ export default function ComposePage() {
               <p className="text-xs font-medium text-gray-400 uppercase mb-2">Your words</p>
               <p className="text-gray-700">{rawMessage}</p>
             </div>
-            <div className="bg-indigo-50 rounded-xl border border-indigo-200 p-4">
-              <p className="text-xs font-medium text-indigo-400 uppercase mb-2">Tuned version</p>
-              <p className="text-indigo-900">{rephrased}</p>
+            <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-4">
+              <p className="text-xs font-medium text-emerald-400 uppercase mb-2">Tuned version</p>
+              <p className="text-emerald-900">{rephrased}</p>
             </div>
           </div>
 
@@ -346,7 +346,7 @@ export default function ComposePage() {
             <button
               onClick={() => handleSend("rephrased")}
               disabled={loading}
-              className="flex-1 bg-indigo-600 text-white font-medium py-3 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              className="flex-1 bg-emerald-600 text-white font-medium py-3 rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50"
             >
               {loading ? "Sending..." : "Send Tuned"}
             </button>

@@ -27,7 +27,7 @@ function Light({ color, title, children }) {
 function Step({ n, title, children }) {
   return (
     <div className="relative pl-12">
-      <div className="absolute left-0 top-0 flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white">
+      <div className="absolute left-0 top-0 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white">
         {n}
       </div>
       <p className="font-semibold text-slate-800">{title}</p>
@@ -201,16 +201,16 @@ export default function AboutPage() {
         </p>
       </section>
 
-      <div className="mt-14 rounded-2xl bg-indigo-600 px-6 py-8 text-center">
+      <div className="mt-14 rounded-2xl bg-emerald-600 px-6 py-8 text-center">
         <p className="text-lg font-semibold text-white">
           Say the hard thing. Carefully.
         </p>
-        <p className="mt-1 text-sm text-indigo-100">
+        <p className="mt-1 text-sm text-emerald-100">
           Takes a minute to set up. No password required.
         </p>
         <Link
           href="/"
-          className="mt-5 inline-block rounded-xl bg-white px-6 py-3 font-medium text-indigo-700 transition-colors hover:bg-indigo-50"
+          className="mt-5 inline-block rounded-xl bg-white px-6 py-3 font-medium text-emerald-700 transition-colors hover:bg-emerald-50"
         >
           Get started
         </Link>

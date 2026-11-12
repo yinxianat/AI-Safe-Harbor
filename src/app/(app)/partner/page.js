@@ -67,7 +67,7 @@ export default function PartnerPage() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
       </div>
     );
   }
@@ -78,7 +78,7 @@ export default function PartnerPage() {
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
           <p>{error || "Something went wrong."}</p>
         </div>
-        <Link href="/them" className="text-sm text-indigo-600 font-medium">
+        <Link href="/them" className="text-sm text-emerald-600 font-medium">
           ← Back
         </Link>
       </div>
@@ -101,7 +101,7 @@ export default function PartnerPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/them" className="text-sm text-indigo-600 font-medium">
+        <Link href="/them" className="text-sm text-emerald-600 font-medium">
           ← Back
         </Link>
         <h1 className="text-2xl font-bold text-slate-900 mt-2">{name}</h1>
@@ -143,7 +143,7 @@ export default function PartnerPage() {
         {!showAll && boundaries.length > displayBoundaries.length && (
           <button
             onClick={() => setShowAll(true)}
-            className="text-sm text-indigo-600 font-medium"
+            className="text-sm text-emerald-600 font-medium"
           >
             Show all {boundaries.length} topics
           </button>

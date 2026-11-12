@@ -66,7 +66,7 @@ function PersonCard({ person }) {
         {/* Tone preference */}
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-500">Prefers:</span>
-          <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+          <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
             {TONE_LABELS[person.tonePreference] || "Warm & gentle"}
           </span>
         </div>
@@ -104,7 +104,7 @@ function PersonCard({ person }) {
       <div className="flex border-t border-gray-100">
         <Link
           href={`/chat/${person.connectionId}`}
-          className="flex-1 text-center text-sm font-medium text-indigo-600 py-3 hover:bg-indigo-50 transition-colors"
+          className="flex-1 text-center text-sm font-medium text-emerald-600 py-3 hover:bg-emerald-50 transition-colors"
         >
           Message
         </Link>
@@ -177,14 +177,14 @@ function UsernameCard({ me, onClaimed }) {
 
   if (me?.username && !editing) {
     return (
-      <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-center justify-between">
+      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-center justify-between">
         <div>
-          <p className="text-sm text-indigo-700">
+          <p className="text-sm text-emerald-700">
             Your handle: <span className="font-semibold">@{me.username}</span>
           </p>
-          <p className="text-xs text-indigo-500 mt-0.5">Share it so people can find you.</p>
+          <p className="text-xs text-emerald-500 mt-0.5">Share it so people can find you.</p>
         </div>
-        <button onClick={() => { setValue(me.username); setEditing(true); }} className="text-sm text-indigo-600 underline">
+        <button onClick={() => { setValue(me.username); setEditing(true); }} className="text-sm text-emerald-600 underline">
           Change
         </button>
       </div>
@@ -214,7 +214,7 @@ function UsernameCard({ me, onClaimed }) {
         <button
           type="submit"
           disabled={saving}
-          className="bg-indigo-600 text-white text-sm font-medium px-4 rounded-lg disabled:opacity-50"
+          className="bg-emerald-600 text-white text-sm font-medium px-4 rounded-lg disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save"}
         </button>
@@ -352,9 +352,9 @@ export default function CirclePage() {
       )}
 
       {circle.members.length === 0 && circle.incoming.length === 0 && circle.outgoing.length === 0 && (
-        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-6 text-center space-y-3">
-          <p className="text-base text-indigo-800 font-medium">No one in your circle yet</p>
-          <p className="text-sm text-indigo-600">
+        <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-6 text-center space-y-3">
+          <p className="text-base text-emerald-800 font-medium">No one in your circle yet</p>
+          <p className="text-sm text-emerald-600">
             Search below or invite someone to get started.
           </p>
         </div>
@@ -418,7 +418,7 @@ export default function CirclePage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by @username or name…"
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
         {searching && <p className="text-sm text-slate-400">Searching…</p>}
         {results && results.length === 0 && !searching && (
@@ -448,7 +448,7 @@ export default function CirclePage() {
                 <button
                   onClick={() => sendRequest(r.id)}
                   disabled={busy !== null}
-                  className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
+                  className="text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
                 >
                   Request
                 </button>

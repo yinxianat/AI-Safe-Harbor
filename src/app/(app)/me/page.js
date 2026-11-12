@@ -43,7 +43,7 @@ function VisibilityPicker({ connections, selected, onChange }) {
           onClick={() => onChange([])}
           className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
             isEveryone
-              ? "bg-indigo-600 text-white border-indigo-600"
+              ? "bg-emerald-600 text-white border-emerald-600"
               : "bg-white text-slate-500 border-gray-200"
           }`}
         >
@@ -56,7 +56,7 @@ function VisibilityPicker({ connections, selected, onChange }) {
             onClick={() => toggle(c.id)}
             className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
               selected.includes(c.id)
-                ? "bg-indigo-600 text-white border-indigo-600"
+                ? "bg-emerald-600 text-white border-emerald-600"
                 : "bg-white text-slate-500 border-gray-200"
             }`}
           >
@@ -71,7 +71,7 @@ function VisibilityPicker({ connections, selected, onChange }) {
 function VisibilityLabel({ connections, visibleTo, onEdit }) {
   if (!visibleTo || visibleTo.length === 0) {
     return (
-      <button onClick={onEdit} className="text-xs text-slate-400 hover:text-indigo-600 transition-colors">
+      <button onClick={onEdit} className="text-xs text-slate-400 hover:text-emerald-600 transition-colors">
         Everyone
       </button>
     );
@@ -82,7 +82,7 @@ function VisibilityLabel({ connections, visibleTo, onEdit }) {
     .filter(Boolean);
 
   return (
-    <button onClick={onEdit} className="text-xs text-slate-400 hover:text-indigo-600 transition-colors">
+    <button onClick={onEdit} className="text-xs text-slate-400 hover:text-emerald-600 transition-colors">
       {names.length > 0 ? names.join(", ") : "Limited"}
     </button>
   );
@@ -289,7 +289,7 @@ export default function MePage() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
       </div>
     );
   }
@@ -318,7 +318,7 @@ export default function MePage() {
                 className="px-2 py-1 rounded-lg border border-gray-200 text-lg font-bold w-40"
                 autoFocus
               />
-              <button onClick={handleSaveName} disabled={nameSaving} className="text-sm font-medium text-indigo-600">
+              <button onClick={handleSaveName} disabled={nameSaving} className="text-sm font-medium text-emerald-600">
                 {nameSaving ? "..." : "Save"}
               </button>
               <button onClick={() => { setEditingName(false); setNameInput(profile?.displayName || ""); }} className="text-sm text-slate-400">
@@ -330,7 +330,7 @@ export default function MePage() {
               <h1 className="text-xl font-bold text-slate-900">
                 {profile?.displayName || "Me"}
               </h1>
-              <button onClick={() => setEditingName(true)} className="text-xs text-indigo-600">Edit</button>
+              <button onClick={() => setEditingName(true)} className="text-xs text-emerald-600">Edit</button>
             </div>
           )}
           {profile?.username && (
@@ -356,7 +356,7 @@ export default function MePage() {
           onChange={(e) => { setStatusText(e.target.value); setStatusDirty(true); }}
           placeholder="How are you feeling? Calm, happy, energetic, low, neutral..."
           maxLength={200}
-          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
         <div className="flex items-center justify-between">
           <div className="flex gap-1">
@@ -366,7 +366,7 @@ export default function MePage() {
                 onClick={() => { setStatusMood(m); setStatusDirty(true); }}
                 className={`text-xs px-2 py-1 rounded-full transition-colors ${
                   statusMood === m
-                    ? "bg-indigo-600 text-white"
+                    ? "bg-emerald-600 text-white"
                     : "bg-gray-100 text-slate-500"
                 }`}
               >
@@ -378,7 +378,7 @@ export default function MePage() {
             <button
               onClick={handleSaveStatus}
               disabled={statusSaving}
-              className="bg-indigo-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
+              className="bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
             >
               {statusSaving ? "..." : "Save"}
             </button>
@@ -396,12 +396,12 @@ export default function MePage() {
               onChange={(e) => setNewPost(e.target.value)}
               placeholder="Share something with your person..."
               maxLength={280}
-              className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
             <button
               type="submit"
               disabled={!newPost.trim() || postSaving}
-              className="bg-indigo-600 text-white text-xs font-medium px-3 rounded-lg disabled:opacity-50"
+              className="bg-emerald-600 text-white text-xs font-medium px-3 rounded-lg disabled:opacity-50"
             >
               {postSaving ? "..." : "Post"}
             </button>
@@ -427,7 +427,7 @@ export default function MePage() {
         {wallPosts.length > 2 && (
           <button
             onClick={() => setWallExpanded(!wallExpanded)}
-            className="text-xs text-indigo-600 font-medium"
+            className="text-xs text-emerald-600 font-medium"
           >
             {wallExpanded ? "Show less" : `View all ${wallPosts.length} posts`}
           </button>
@@ -445,7 +445,7 @@ export default function MePage() {
               onClick={() => setActiveCategory(cat)}
               className={`whitespace-nowrap text-xs px-2.5 py-1 rounded-full border transition-colors ${
                 activeCategory === cat
-                  ? "bg-indigo-600 text-white border-indigo-600"
+                  ? "bg-emerald-600 text-white border-emerald-600"
                   : "bg-white text-slate-500 border-gray-200"
               }`}
             >
@@ -478,7 +478,7 @@ export default function MePage() {
               onChange={(e) => setNewPrompt(e.target.value)}
               placeholder="Topic or question..."
               maxLength={200}
-              className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
             <textarea
               value={newAnswer}
@@ -486,7 +486,7 @@ export default function MePage() {
               placeholder="Your answer..."
               rows={2}
               maxLength={2000}
-              className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
             {connections.length > 1 && (
               <VisibilityPicker
@@ -496,14 +496,14 @@ export default function MePage() {
               />
             )}
             <div className="flex gap-2">
-              <button type="submit" disabled={!newAnswer.trim()} className="bg-indigo-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50">Save</button>
+              <button type="submit" disabled={!newAnswer.trim()} className="bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50">Save</button>
               <button type="button" onClick={() => { setAdding(false); setNewPrompt(""); setNewAnswer(""); setNewEntryVisibility([]); }} className="text-xs text-slate-500">Cancel</button>
             </div>
           </form>
         ) : (
           <button
             onClick={() => setAdding(true)}
-            className="w-full py-2 rounded-lg border border-dashed border-gray-200 text-slate-400 text-xs font-medium hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+            className="w-full py-2 rounded-lg border border-dashed border-gray-200 text-slate-400 text-xs font-medium hover:border-emerald-300 hover:text-emerald-600 transition-colors"
           >
             + Add entry
           </button>
@@ -558,7 +558,7 @@ function WallPostCard({ post, connections, onDelete, onUpdateVisibility }) {
             onChange={setLocalVis}
           />
           <div className="flex gap-2">
-            <button onClick={handleSaveVis} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded">Save</button>
+            <button onClick={handleSaveVis} className="text-xs bg-emerald-600 text-white px-2 py-1 rounded">Save</button>
             <button onClick={() => setEditingVis(false)} className="text-xs text-slate-500">Cancel</button>
           </div>
         </div>
@@ -588,10 +588,10 @@ function KnowMeCard({ entry, connections, onEdit, onDelete, onUpdateVisibility }
             onChange={(e) => setValue(e.target.value)}
             rows={2}
             maxLength={2000}
-            className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
           <div className="flex gap-2">
-            <button onClick={() => { onEdit(entry.id, value); setEditing(false); }} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded">Save</button>
+            <button onClick={() => { onEdit(entry.id, value); setEditing(false); }} className="text-xs bg-emerald-600 text-white px-2 py-1 rounded">Save</button>
             <button onClick={() => setEditing(false)} className="text-xs text-slate-500">Cancel</button>
           </div>
         </div>
@@ -610,7 +610,7 @@ function KnowMeCard({ entry, connections, onEdit, onDelete, onUpdateVisibility }
             )}
           </div>
           <div className="flex gap-2 shrink-0">
-            <button onClick={() => setEditing(true)} className="text-xs text-indigo-600">Edit</button>
+            <button onClick={() => setEditing(true)} className="text-xs text-emerald-600">Edit</button>
             <button onClick={() => onDelete(entry.id)} className="text-xs text-red-400">Del</button>
           </div>
         </div>
@@ -623,7 +623,7 @@ function KnowMeCard({ entry, connections, onEdit, onDelete, onUpdateVisibility }
             onChange={setLocalVis}
           />
           <div className="flex gap-2">
-            <button onClick={handleSaveVis} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded">Save</button>
+            <button onClick={handleSaveVis} className="text-xs bg-emerald-600 text-white px-2 py-1 rounded">Save</button>
             <button onClick={() => setEditingVis(false)} className="text-xs text-slate-500">Cancel</button>
           </div>
         </div>

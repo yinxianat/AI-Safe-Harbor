@@ -14,7 +14,7 @@ export const metadata = {
     icon: "/icon.svg",
     apple: "/icon.svg",
   },
-  themeColor: "#4f46e5",
+  themeColor: "#059669",
   appleWebApp: {
     capable: true,
     title: "Leeway",

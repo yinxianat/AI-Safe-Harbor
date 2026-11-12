@@ -79,7 +79,7 @@ export default function AdminPinPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="rounded-lg border border-slate-200 px-3 py-2 focus:border-indigo-400 focus:outline-none"
+            className="rounded-lg border border-slate-200 px-3 py-2 focus:border-emerald-400 focus:outline-none"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
@@ -91,7 +91,7 @@ export default function AdminPinPage() {
             minLength={6}
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            className="rounded-lg border border-slate-200 px-3 py-2 font-mono focus:border-indigo-400 focus:outline-none"
+            className="rounded-lg border border-slate-200 px-3 py-2 font-mono focus:border-emerald-400 focus:outline-none"
           />
         </label>
 
@@ -104,13 +104,13 @@ export default function AdminPinPage() {
         <button
           type="submit"
           disabled={state.kind === "working"}
-          className="mt-2 rounded-xl bg-indigo-600 px-4 py-2.5 font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="mt-2 rounded-xl bg-emerald-600 px-4 py-2.5 font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           {state.kind === "working" ? "Signing in…" : "Sign in"}
         </button>
       </form>
 
-      <Link href="/" className="mt-6 text-center text-sm text-indigo-600 hover:underline">
+      <Link href="/" className="mt-6 text-center text-sm text-emerald-600 hover:underline">
         Back to the normal sign-in
       </Link>
     </div>

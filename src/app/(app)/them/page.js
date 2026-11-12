@@ -186,7 +186,7 @@ export default function ThemPage() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
       </div>
     );
   }
@@ -195,14 +195,14 @@ export default function ThemPage() {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-slate-900">Your Person</h1>
-        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-6 text-center space-y-3">
-          <p className="text-base text-indigo-800 font-medium">No one in your circle yet</p>
-          <p className="text-sm text-indigo-600">
+        <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-6 text-center space-y-3">
+          <p className="text-base text-emerald-800 font-medium">No one in your circle yet</p>
+          <p className="text-sm text-emerald-600">
             Add your person so you can see their profile and set up your guardian.
           </p>
           <Link
             href="/circle"
-            className="inline-block bg-indigo-600 text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors"
+            className="inline-block bg-emerald-600 text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-emerald-700 transition-colors"
           >
             Find your person
           </Link>
@@ -214,7 +214,7 @@ export default function ThemPage() {
   if (error || !data) {
     return (
       <div className="space-y-4">
-        <Link href="/circle" className="text-sm text-indigo-600 font-medium">← Back to Circle</Link>
+        <Link href="/circle" className="text-sm text-emerald-600 font-medium">← Back to Circle</Link>
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
           <p>{error === "network" ? "Network error. Check your connection." : "Could not load details."}</p>
         </div>
@@ -243,7 +243,7 @@ export default function ThemPage() {
 
   return (
     <div className="space-y-0">
-      <Link href="/circle" className="text-sm text-indigo-600 font-medium mb-2 inline-block">← Circle</Link>
+      <Link href="/circle" className="text-sm text-emerald-600 font-medium mb-2 inline-block">← Circle</Link>
 
       {/* ═══════ ZONE 1: Their World (warm tones) ═══════ */}
       <div className="bg-amber-50/40 rounded-2xl border border-amber-100 p-5 space-y-5 mt-2">
@@ -373,10 +373,10 @@ export default function ThemPage() {
 
       {/* ═══════ DIVIDER ═══════ */}
       <div className="flex items-center gap-3 py-6">
-        <div className="flex-1 h-px bg-indigo-200" />
+        <div className="flex-1 h-px bg-emerald-200" />
         <button
           onClick={() => setShowGuardian(!showGuardian)}
-          className="flex items-center gap-2 text-sm font-semibold text-indigo-600 bg-indigo-50 px-4 py-2 rounded-full border border-indigo-200 hover:bg-indigo-100 transition-colors"
+          className="flex items-center gap-2 text-sm font-semibold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-200 hover:bg-emerald-100 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -386,36 +386,36 @@ export default function ThemPage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
-        <div className="flex-1 h-px bg-indigo-200" />
+        <div className="flex-1 h-px bg-emerald-200" />
       </div>
 
-      {/* ═══════ ZONE 2: Your Guardian (cool indigo tones) ═══════ */}
+      {/* ═══════ ZONE 2: Your Guardian (cool emerald tones) ═══════ */}
       {showGuardian && (
-        <div className="bg-indigo-50/40 rounded-2xl border border-indigo-100 p-5 space-y-5">
+        <div className="bg-emerald-50/40 rounded-2xl border border-emerald-100 p-5 space-y-5">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-semibold text-indigo-700 uppercase tracking-wide">
+            <span className="text-sm font-semibold text-emerald-700 uppercase tracking-wide">
               Your Guardian Settings
             </span>
-            <span className="text-xs text-indigo-500 bg-indigo-100 px-2 py-0.5 rounded-full">For messages from {name}</span>
+            <span className="text-xs text-emerald-500 bg-emerald-100 px-2 py-0.5 rounded-full">For messages from {name}</span>
           </div>
 
-          <p className="text-sm text-indigo-600">
+          <p className="text-sm text-emerald-600">
             Your AI guardian checks every message from {name} against these settings before it reaches you.
           </p>
 
           {/* Your tone preference */}
-          <div className="bg-white/70 rounded-xl border border-indigo-100 p-4">
+          <div className="bg-white/70 rounded-xl border border-emerald-100 p-4">
             <label htmlFor="myTone" className="block text-sm font-medium text-slate-800 mb-1">
               Your preferred tone
             </label>
-            <p className="text-xs text-indigo-500 mb-3">
+            <p className="text-xs text-emerald-500 mb-3">
               Messages from {name} are tuned to this tone before they reach you.
             </p>
             <select
               id="myTone"
               value={myTone}
               onChange={(e) => handleMyToneChange(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-indigo-200 bg-white text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-emerald-200 bg-white text-sm"
             >
               {validTones.map((t) => (
                 <option key={t} value={t}>{TONE_LABELS[t] || t}</option>
@@ -426,8 +426,8 @@ export default function ThemPage() {
           {/* Your topic boundaries */}
           <div className="space-y-3">
             <div>
-              <h3 className="text-sm font-semibold text-indigo-700">Your topic boundaries</h3>
-              <p className="text-xs text-indigo-500 mt-1">
+              <h3 className="text-sm font-semibold text-emerald-700">Your topic boundaries</h3>
+              <p className="text-xs text-emerald-500 mt-1">
                 Red = your guardian holds the message. Yellow = softened. Green = passes through.
               </p>
             </div>
@@ -445,7 +445,7 @@ export default function ThemPage() {
             </div>
 
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-indigo-700">Your own topics</h3>
+              <h3 className="text-sm font-semibold text-emerald-700">Your own topics</h3>
               {myCustoms.length > 0 && (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {myCustoms.map((setting) => (
@@ -473,12 +473,12 @@ export default function ThemPage() {
                   onChange={(e) => setCustomLabel(e.target.value)}
                   placeholder="Add a topic, e.g. wedding planning"
                   maxLength={30}
-                  className="flex-1 px-3 py-2 rounded-lg border border-indigo-200 bg-white text-sm"
+                  className="flex-1 px-3 py-2 rounded-lg border border-emerald-200 bg-white text-sm"
                 />
                 <button
                   type="submit"
                   disabled={!customLabel.trim()}
-                  className="bg-indigo-600 text-white text-sm font-medium px-4 rounded-lg disabled:opacity-50"
+                  className="bg-emerald-600 text-white text-sm font-medium px-4 rounded-lg disabled:opacity-50"
                 >
                   Add
                 </button>
@@ -493,7 +493,7 @@ export default function ThemPage() {
       <div className="pt-4">
         <Link
           href={`/chat/${connectionId}`}
-          className="block bg-indigo-600 text-white text-center font-medium py-3 rounded-xl hover:bg-indigo-700 transition-colors"
+          className="block bg-emerald-600 text-white text-center font-medium py-3 rounded-xl hover:bg-emerald-700 transition-colors"
         >
           Message {name}
         </Link>

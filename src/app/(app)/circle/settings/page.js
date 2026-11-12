@@ -129,7 +129,7 @@ export default function GuardianSettingsPage() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
       </div>
     );
   }
@@ -137,7 +137,7 @@ export default function GuardianSettingsPage() {
   if (error === "no_connection") {
     return (
       <div className="space-y-4">
-        <Link href="/circle" className="text-sm text-indigo-600 font-medium">← Back to Circle</Link>
+        <Link href="/circle" className="text-sm text-emerald-600 font-medium">← Back to Circle</Link>
         <p className="text-slate-600">No connection specified.</p>
       </div>
     );
@@ -146,7 +146,7 @@ export default function GuardianSettingsPage() {
   if (error) {
     return (
       <div className="space-y-4">
-        <Link href="/circle" className="text-sm text-indigo-600 font-medium">← Back to Circle</Link>
+        <Link href="/circle" className="text-sm text-emerald-600 font-medium">← Back to Circle</Link>
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
           Could not load settings.
         </div>
@@ -160,7 +160,7 @@ export default function GuardianSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/circle" className="text-sm text-indigo-600 font-medium">← Back to Circle</Link>
+        <Link href="/circle" className="text-sm text-emerald-600 font-medium">← Back to Circle</Link>
         <h1 className="text-2xl font-bold text-slate-900 mt-2">Guardian Settings</h1>
         <p className="text-sm text-slate-500 mt-1">
           How your AI guardian handles messages from {partnerName}.
@@ -240,7 +240,7 @@ export default function GuardianSettingsPage() {
             <button
               type="submit"
               disabled={!customLabel.trim()}
-              className="bg-indigo-600 text-white text-sm font-medium px-4 rounded-lg disabled:opacity-50"
+              className="bg-emerald-600 text-white text-sm font-medium px-4 rounded-lg disabled:opacity-50"
             >
               Add
             </button>

@@ -17,12 +17,12 @@ function ReactionBar({ message, onReact }) {
             aria-pressed={active}
             className={`text-sm px-2.5 py-1.5 rounded-full border transition-colors ${
               active
-                ? "bg-indigo-100 border-indigo-300"
+                ? "bg-emerald-100 border-emerald-300"
                 : "bg-white border-gray-200 hover:border-gray-300"
             }`}
           >
             {r.emoji}
-            {active && <span className="ml-1 text-xs text-indigo-700">{r.label}</span>}
+            {active && <span className="ml-1 text-xs text-emerald-700">{r.label}</span>}
           </button>
         );
       })}
@@ -148,8 +148,8 @@ function InlineReply({ connectionId, onSent, onCancel }) {
 
   if (result?.type === "ready") {
     return (
-      <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mt-2 space-y-3">
-        <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">Reply preview</p>
+      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mt-2 space-y-3">
+        <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Reply preview</p>
         {result.topicVerdict?.status === "clear" && (
           <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
@@ -168,8 +168,8 @@ function InlineReply({ connectionId, onSent, onCancel }) {
           <p className="text-xs font-medium text-gray-400 uppercase mb-1">Your words</p>
           <p>{result.raw}</p>
         </div>
-        <div className="bg-indigo-100 rounded-lg p-3 text-sm text-indigo-900">
-          <p className="text-xs font-medium text-indigo-400 uppercase mb-1">Tuned version</p>
+        <div className="bg-emerald-100 rounded-lg p-3 text-sm text-emerald-900">
+          <p className="text-xs font-medium text-emerald-400 uppercase mb-1">Tuned version</p>
           <p>{result.rephrased}</p>
         </div>
         {error && <p className="text-xs text-red-600">{error}</p>}
@@ -177,7 +177,7 @@ function InlineReply({ connectionId, onSent, onCancel }) {
           <button
             onClick={handleSend}
             disabled={sending}
-            className="flex-1 bg-indigo-600 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-indigo-700 disabled:opacity-50"
+            className="flex-1 bg-emerald-600 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-emerald-700 disabled:opacity-50"
           >
             {sending ? "Sending…" : "Send Reply"}
           </button>
@@ -236,7 +236,7 @@ function InlineReply({ connectionId, onSent, onCancel }) {
         rows={3}
         maxLength={5000}
         autoFocus
-        className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
       />
       <TopicWarnings hints={hints} text={text} />
       {error && <p className="text-xs text-red-600">{error}</p>}
@@ -244,7 +244,7 @@ function InlineReply({ connectionId, onSent, onCancel }) {
         <button
           onClick={handleTune}
           disabled={tuning || !text.trim()}
-          className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
+          className="bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
         >
           {tuning ? "Tuning…" : "Tune Reply"}
         </button>
@@ -287,7 +287,7 @@ function HeldCard({ message, onRetry, retrying }) {
           <button
             onClick={() => onRetry(message.id)}
             disabled={retrying}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50 shrink-0"
+            className="text-sm font-medium text-emerald-600 hover:text-emerald-800 disabled:opacity-50 shrink-0"
           >
             {retrying ? "Retrying…" : "Retry"}
           </button>
@@ -446,7 +446,7 @@ export default function InboxPage() {
         <h1 className="text-2xl font-bold text-slate-900">Messages</h1>
         <button
           onClick={handleRefresh}
-          className="text-sm text-indigo-600 font-medium hover:text-indigo-800"
+          className="text-sm text-emerald-600 font-medium hover:text-emerald-800"
         >
           Refresh
         </button>
@@ -479,20 +479,20 @@ export default function InboxPage() {
       </div>
 
       {retryResult?.type === "ready" && (
-        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 space-y-3">
-          <p className="text-sm font-medium text-indigo-800">Message ready to send</p>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-medium text-emerald-800">Message ready to send</p>
           <div className="bg-white rounded-lg p-3 text-sm text-slate-600">
             <p className="text-xs font-medium text-gray-400 uppercase mb-1">Your words</p>
             <p>{retryResult.raw}</p>
           </div>
-          <div className="bg-indigo-100 rounded-lg p-3 text-sm text-indigo-900">
-            <p className="text-xs font-medium text-indigo-400 uppercase mb-1">Tuned version</p>
+          <div className="bg-emerald-100 rounded-lg p-3 text-sm text-emerald-900">
+            <p className="text-xs font-medium text-emerald-400 uppercase mb-1">Tuned version</p>
             <p>{retryResult.rephrased}</p>
           </div>
           <div className="flex gap-3">
             <button
               onClick={handleSendRetried}
-              className="flex-1 bg-indigo-600 text-white font-medium py-2.5 rounded-xl hover:bg-indigo-700 transition-colors"
+              className="flex-1 bg-emerald-600 text-white font-medium py-2.5 rounded-xl hover:bg-emerald-700 transition-colors"
             >
               Send Tuned
             </button>
@@ -523,7 +523,7 @@ export default function InboxPage() {
 
       {loading && (
         <div className="flex justify-center py-12">
-          <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
         </div>
       )}
 
@@ -584,7 +584,7 @@ export default function InboxPage() {
                   {replyingTo !== msg.id && (
                     <button
                       onClick={() => setReplyingTo(msg.id)}
-                      className="text-sm font-medium text-indigo-600 hover:text-indigo-800 shrink-0 ml-auto"
+                      className="text-sm font-medium text-emerald-600 hover:text-emerald-800 shrink-0 ml-auto"
                     >
                       Reply
                     </button>

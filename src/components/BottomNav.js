@@ -11,7 +11,7 @@ const NAV_ITEMS = [
 ];
 
 function NavIcon({ icon, active }) {
-  const color = active ? "text-indigo-600" : "text-gray-400";
+  const color = active ? "text-emerald-600" : "text-gray-400";
 
   if (icon === "circle") {
     return (
@@ -70,7 +70,7 @@ export default function BottomNav() {
               key={item.href}
               href={item.href}
               className={`flex flex-col items-center justify-center min-w-0 min-h-[44px] px-2 sm:px-3 py-1 rounded-lg transition-colors relative ${
-                active ? "text-indigo-600" : "text-gray-400 hover:text-gray-600"
+                active ? "text-emerald-600" : "text-gray-400 hover:text-gray-600"
               }`}
             >
               <div className="relative">

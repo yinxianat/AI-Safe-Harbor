@@ -153,7 +153,7 @@ export default function AdminPage() {
   if (state.status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
       </div>
     );
   }
@@ -174,7 +174,7 @@ export default function AdminPage() {
     return (
       <Gate title="Sign in required">
         <p>Administrators are recognised by the address on their account.</p>
-        <Link href="/" className="mt-4 inline-block rounded-xl bg-indigo-600 px-5 py-2.5 font-medium text-white hover:bg-indigo-700">
+        <Link href="/" className="mt-4 inline-block rounded-xl bg-emerald-600 px-5 py-2.5 font-medium text-white hover:bg-emerald-700">
           Go to sign in
         </Link>
         <Link href="/admin/pin" className="mt-3 inline-block text-sm text-slate-500 hover:text-slate-700 hover:underline">
@@ -188,7 +188,7 @@ export default function AdminPage() {
     return (
       <Gate title="Not available">
         <p>This account does not have administrator access.</p>
-        <Link href="/dashboard" className="mt-4 inline-block text-indigo-600 underline">Back to Leeway</Link>
+        <Link href="/dashboard" className="mt-4 inline-block text-emerald-600 underline">Back to Leeway</Link>
       </Gate>
     );
   }
@@ -265,7 +265,7 @@ export default function AdminPage() {
             onClick={() => setActiveTab(tab.key)}
             className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors rounded-t-lg ${
               activeTab === tab.key
-                ? "bg-white border border-slate-200 border-b-white text-indigo-700 -mb-px"
+                ? "bg-white border border-slate-200 border-b-white text-emerald-700 -mb-px"
                 : "text-slate-500 hover:text-slate-700"
             }`}
           >
@@ -300,7 +300,7 @@ function OverviewTab({ metrics, userIssues, details, highFindings, medFindings, 
 
   const userDetail = details?.users?.map((u) => ({
     primary: u.name, secondary: new Date(u.joined).toLocaleDateString(),
-    badge: u.mood, badgeStyle: "bg-indigo-50 text-indigo-600",
+    badge: u.mood, badgeStyle: "bg-emerald-50 text-emerald-600",
   })) || [];
 
   const connDetail = details?.connections?.map((c) => ({
@@ -329,7 +329,7 @@ function OverviewTab({ metrics, userIssues, details, highFindings, medFindings, 
         <StatCard label="AI Tokens" value={metrics.aiTokensTotal?.toLocaleString()} hint="all time" />
         <StatCard label="Providers" value={metrics.aiProviders.length}
           hint={metrics.aiProviders.map((p) => p.name).join(" → ") || "none"}
-          detail={metrics.aiProviders.map((p) => ({ primary: p.name, badge: p.model, badgeStyle: "bg-indigo-50 text-indigo-600" }))}
+          detail={metrics.aiProviders.map((p) => ({ primary: p.name, badge: p.model, badgeStyle: "bg-emerald-50 text-emerald-600" }))}
         />
       </div>
 
@@ -441,7 +441,7 @@ function AICallsTab({ details, metrics }) {
       {metrics?.aiPipeline?.byProvider?.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4">
           {metrics.aiPipeline.byProvider.map((p) => (
-            <span key={p.provider} className="rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-xs font-medium text-indigo-700">
+            <span key={p.provider} className="rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-medium text-emerald-700">
               {p.provider}: {p.count} calls
             </span>
           ))}
@@ -486,7 +486,7 @@ function AICallsTab({ details, metrics }) {
                   <td className="px-4 py-2.5 text-slate-700 truncate max-w-[120px]">{call.sender}</td>
                   <td className="px-4 py-2.5">
                     {call.provider
-                      ? <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">{call.provider}</span>
+                      ? <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">{call.provider}</span>
                       : <span className="text-xs text-slate-400">—</span>}
                   </td>
                   <td className="px-4 py-2.5 font-mono text-xs text-slate-500">{call.model || "—"}</td>
@@ -521,7 +521,7 @@ function LogsTab({ logs, unresolvedCount, resolvedCount, showResolved, setShowRe
         </div>
         {resolvedCount > 0 && (
           <button onClick={() => setShowResolved(!showResolved)}
-            className="text-xs font-medium text-indigo-600 hover:text-indigo-800">
+            className="text-xs font-medium text-emerald-600 hover:text-emerald-800">
             {showResolved ? "Hide resolved" : `Show resolved (${resolvedCount})`}
           </button>
         )}
@@ -552,7 +552,7 @@ function LogsTab({ logs, unresolvedCount, resolvedCount, showResolved, setShowRe
             {l.resolved ? (
               <p className="mt-2 text-xs text-emerald-600 font-medium">Resolved</p>
             ) : (
-              <button onClick={() => resolveLog(l.id)} className="mt-2 text-xs font-medium text-indigo-600 hover:text-indigo-800">
+              <button onClick={() => resolveLog(l.id)} className="mt-2 text-xs font-medium text-emerald-600 hover:text-emerald-800">
                 Mark resolved
               </button>
             )}
@@ -624,7 +624,7 @@ function DataLensTab() {
               disabled={loading}
               className={`w-full text-left rounded-lg border px-3 py-2.5 transition-colors ${
                 result?.query === q.key
-                  ? "border-indigo-300 bg-indigo-50"
+                  ? "border-emerald-300 bg-emerald-50"
                   : "border-slate-100 bg-white hover:bg-slate-50"
               } disabled:opacity-50`}
             >
@@ -638,7 +638,7 @@ function DataLensTab() {
         <div>
           {loading && (
             <div className="flex justify-center py-12">
-              <div className="h-6 w-6 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+              <div className="h-6 w-6 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
             </div>
           )}
           {result?.error && (
@@ -784,17 +784,17 @@ function RootCauseTab() {
           placeholder="Why is there no AI article in this environment at all?"
           rows={3}
           maxLength={1000}
-          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
         <div className="mt-3 flex items-center gap-3">
           <button
             onClick={() => ask()}
             disabled={loading || !question.trim()}
-            className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50 hover:bg-indigo-700"
+            className="bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50 hover:bg-emerald-700"
           >
             {loading ? "Analyzing..." : "Ask"}
           </button>
-          {loading && <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />}
+          {loading && <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600" />}
         </div>
       </div>
 
@@ -807,7 +807,7 @@ function RootCauseTab() {
               <button
                 key={ex}
                 onClick={() => ask(ex)}
-                className="block w-full text-left text-sm text-indigo-600 hover:text-indigo-800 py-1"
+                className="block w-full text-left text-sm text-emerald-600 hover:text-emerald-800 py-1"
               >
                 {ex}
               </button>
@@ -851,7 +851,7 @@ function RootCauseTab() {
                 <ol className="space-y-1.5">
                   {result.fix.map((f, i) => (
                     <li key={i} className="flex gap-3 text-sm">
-                      <span className="shrink-0 w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center">
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center justify-center">
                         {i + 1}
                       </span>
                       <div>

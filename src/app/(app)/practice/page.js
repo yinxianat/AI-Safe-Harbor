@@ -9,7 +9,7 @@ function ChatBubble({ role, content }) {
       <div
         className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
           isUser
-            ? "bg-indigo-600 text-white rounded-br-md"
+            ? "bg-emerald-600 text-white rounded-br-md"
             : "bg-slate-100 text-slate-800 rounded-bl-md"
         }`}
       >
@@ -141,7 +141,7 @@ export default function PracticePadPage() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
       </div>
     );
   }
@@ -153,7 +153,7 @@ export default function PracticePadPage() {
           <div>
             <button
               onClick={() => { setActiveSession(null); setTurns([]); setError(null); }}
-              className="text-sm text-indigo-600 font-medium"
+              className="text-sm text-emerald-600 font-medium"
             >
               ← Back
             </button>
@@ -193,12 +193,12 @@ export default function PracticePadPage() {
             placeholder="Type your practice message…"
             maxLength={2000}
             disabled={sending}
-            className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+            className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={sending || !input.trim()}
-            className="bg-indigo-600 text-white px-4 rounded-xl text-sm font-medium disabled:opacity-50"
+            className="bg-emerald-600 text-white px-4 rounded-xl text-sm font-medium disabled:opacity-50"
           >
             Send
           </button>
@@ -236,12 +236,12 @@ export default function PracticePadPage() {
           onChange={(e) => setTopic(e.target.value)}
           placeholder='e.g. "Bringing up how I feel about the holiday plans"'
           maxLength={200}
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
         <button
           type="submit"
           disabled={starting || !topic.trim()}
-          className="w-full bg-indigo-600 text-white font-medium py-3 rounded-xl disabled:opacity-50"
+          className="w-full bg-emerald-600 text-white font-medium py-3 rounded-xl disabled:opacity-50"
         >
           {starting ? "Starting…" : "Start Practicing"}
         </button>
@@ -267,9 +267,9 @@ export default function PracticePadPage() {
         </div>
       )}
 
-      <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
-        <p className="text-sm text-indigo-700 font-medium">How it works</p>
-        <ul className="text-sm text-indigo-600 mt-2 space-y-1 list-disc list-inside">
+      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+        <p className="text-sm text-emerald-700 font-medium">How it works</p>
+        <ul className="text-sm text-emerald-600 mt-2 space-y-1 list-disc list-inside">
           <li>The AI plays your partner, responding naturally</li>
           <li>If you say something that might hurt, it gently points it out</li>
           <li>Practice as many times as you need — it is private</li>

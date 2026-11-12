@@ -107,47 +107,46 @@ function ChatBubble({ message, partnerName, myInitials }) {
 
   return (
     <div className={`flex gap-2 ${isSent ? "flex-row-reverse" : "flex-row"} items-end`}>
-      {/* Avatar */}
       <div
         className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
           isSent
-            ? "bg-indigo-100 text-indigo-700"
+            ? "bg-emerald-100 text-emerald-700"
             : "bg-slate-100 text-slate-600"
         }`}
       >
         {isSent ? myInitials : initials(partnerName)}
       </div>
 
-      {/* Bubble */}
-      <div className={`max-w-[75%] min-w-[60px]`}>
+      <div className="max-w-[75%] min-w-[60px]">
+        {!isSent && (
+          <p className="text-[11px] text-slate-400 mb-0.5 ml-1">{partnerName}</p>
+        )}
         <div
           className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed break-words ${
             isSent
-              ? "bg-indigo-600 text-white rounded-br-md"
+              ? "bg-emerald-500 text-white rounded-br-md"
               : "bg-white border border-gray-200 text-slate-800 rounded-bl-md"
           }`}
         >
           {message.content}
         </div>
 
-        {/* "Show original" for sent messages */}
         {isSent && message.contentRaw && message.contentRaw !== message.content && (
           <div className="mt-1 text-right">
             <button
               onClick={() => setShowOriginal((v) => !v)}
-              className="text-[11px] text-indigo-300 hover:text-indigo-500 transition-colors"
+              className="text-[11px] text-emerald-400 hover:text-emerald-600 transition-colors"
             >
               {showOriginal ? "Hide original" : "Show original"}
             </button>
             {showOriginal && (
-              <div className="mt-1 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2 text-xs text-indigo-700 text-left">
+              <div className="mt-1 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 text-xs text-emerald-800 text-left">
                 {message.contentRaw}
               </div>
             )}
           </div>
         )}
 
-        {/* Reaction badge for received messages */}
         {!isSent && reactionData && (
           <div className="mt-1">
             <span className="inline-flex items-center gap-1 text-xs bg-slate-50 border border-slate-200 rounded-full px-2 py-0.5">
@@ -156,16 +155,14 @@ function ChatBubble({ message, partnerName, myInitials }) {
           </div>
         )}
 
-        {/* Reaction badge for sent messages */}
         {isSent && reactionData && (
           <div className="mt-1 text-right">
-            <span className="inline-flex items-center gap-1 text-xs bg-indigo-50 border border-indigo-100 rounded-full px-2 py-0.5">
-              {reactionData.emoji} <span className="text-indigo-500">{reactionData.label}</span>
+            <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
+              {reactionData.emoji} <span className="text-emerald-600">{reactionData.label}</span>
             </span>
           </div>
         )}
 
-        {/* Timestamp */}
         <p className={`text-[11px] mt-0.5 ${isSent ? "text-right text-slate-400" : "text-slate-400"}`}>
           {formatTime(message.sentAt)}
         </p>
@@ -300,7 +297,7 @@ function ComposeBar({ connectionId, onMessageSent }) {
           )}
         </div>
         <div className="flex gap-2">
-          <button onClick={() => { handleDismissResult(); setText(""); }} className="text-xs font-medium text-indigo-600">
+          <button onClick={() => { handleDismissResult(); setText(""); }} className="text-xs font-medium text-emerald-600">
             Write something else
           </button>
           <button onClick={handleDismissResult} className="text-xs text-slate-400">
@@ -327,16 +324,16 @@ function ComposeBar({ connectionId, onMessageSent }) {
             <span className="font-medium">Gentle topics noted</span> — AI softened the tone
           </div>
         )}
-        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3">
-          <p className="text-xs font-medium text-indigo-400 uppercase mb-1">Tuned version</p>
-          <p className="text-sm text-indigo-900">{tuneResult.rephrased}</p>
+        <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
+          <p className="text-xs font-medium text-emerald-400 uppercase mb-1">Tuned version</p>
+          <p className="text-sm text-emerald-900">{tuneResult.rephrased}</p>
         </div>
         {error && <p className="text-xs text-red-600">{error}</p>}
         <div className="flex gap-2">
           <button
             onClick={handleSend}
             disabled={sending}
-            className="flex-1 bg-indigo-600 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            className="flex-1 bg-emerald-600 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-emerald-700 disabled:opacity-50 transition-colors"
           >
             {sending ? "Sending..." : "Send"}
           </button>
@@ -366,7 +363,7 @@ function ComposeBar({ connectionId, onMessageSent }) {
           placeholder="Write a message..."
           rows={1}
           maxLength={5000}
-          className="flex-1 px-3 py-2 rounded-xl border border-gray-200 bg-slate-50 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-h-[40px] max-h-[120px]"
+          className="flex-1 px-3 py-2 rounded-xl border border-gray-200 bg-slate-50 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[40px] max-h-[120px]"
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey && text.trim()) {
               e.preventDefault();
@@ -377,7 +374,7 @@ function ComposeBar({ connectionId, onMessageSent }) {
         <button
           onClick={handleTune}
           disabled={tuning || !text.trim()}
-          className="bg-indigo-600 text-white text-sm font-medium px-3 py-2.5 rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors shrink-0 min-h-[44px]"
+          className="bg-emerald-600 text-white text-sm font-medium px-3 py-2.5 rounded-xl hover:bg-emerald-700 disabled:opacity-50 transition-colors shrink-0 min-h-[44px]"
         >
           {tuning ? (
             <span className="flex items-center gap-1.5">
@@ -481,7 +478,7 @@ export default function ChatThreadPage() {
     return (
       <div className="flex flex-col h-[calc(100vh-5rem)]">
         <div className="flex justify-center items-center flex-1">
-          <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
         </div>
       </div>
     );
@@ -490,7 +487,7 @@ export default function ChatThreadPage() {
   if (error === "forbidden") {
     return (
       <div className="space-y-4 pt-4">
-        <Link href="/circle" className="text-sm text-indigo-600 font-medium">← Back to Circle</Link>
+        <Link href="/circle" className="text-sm text-emerald-600 font-medium">← Back to Circle</Link>
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
           <p>You do not have access to this conversation.</p>
         </div>
@@ -501,7 +498,7 @@ export default function ChatThreadPage() {
   if (error) {
     return (
       <div className="space-y-4 pt-4">
-        <Link href="/circle" className="text-sm text-indigo-600 font-medium">← Back to Circle</Link>
+        <Link href="/circle" className="text-sm text-emerald-600 font-medium">← Back to Circle</Link>
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
           <p>{error === "network" ? "Network error. Check your connection." : "Could not load conversation."}</p>
           <button onClick={() => { setError(null); setLoading(true); fetchThread().then(() => setLoading(false)); }} className="text-xs font-medium underline mt-1">
@@ -520,7 +517,7 @@ export default function ChatThreadPage() {
       <div className="flex items-center gap-2 px-3 py-3 border-b border-gray-200 bg-white shrink-0">
         <button
           onClick={() => router.push("/chat")}
-          className="text-indigo-600 hover:text-indigo-800 transition-colors shrink-0 p-1"
+          className="text-emerald-600 hover:text-emerald-800 transition-colors shrink-0 p-1"
           aria-label="Back"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -535,7 +532,7 @@ export default function ChatThreadPage() {
         </div>
         <Link
           href={`/them?connectionId=${connectionId}`}
-          className="text-xs text-indigo-600 font-medium hover:text-indigo-800 shrink-0"
+          className="text-xs text-emerald-600 font-medium hover:text-emerald-800 shrink-0"
         >
           Profile
         </Link>
@@ -545,8 +542,8 @@ export default function ChatThreadPage() {
       <div ref={containerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-slate-50">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center mb-3">
-              <svg className="w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
+              <svg className="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
