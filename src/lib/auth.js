@@ -113,7 +113,7 @@ export async function createSession(userId) {
   return new SignJWT({ userId })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime("365d")
     .sign(jwtKey());
 }
 

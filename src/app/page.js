@@ -286,6 +286,27 @@ export default function Home() {
             What is Leeway?
           </Link>
         </p>
+
+        {/* Add to Home Screen */}
+        <div className="mt-6 rounded-xl border border-emerald-100 bg-emerald-50 p-4 space-y-2">
+          <p className="text-sm font-semibold text-emerald-800 text-center">
+            Install Leeway on your phone
+          </p>
+          <div className="text-xs text-emerald-700 space-y-1.5">
+            <p className="font-medium">iPhone (Safari):</p>
+            <ol className="list-decimal list-inside space-y-0.5 pl-1 text-emerald-600">
+              <li>Tap the <span className="inline-flex items-center"><svg className="w-3.5 h-3.5 inline mx-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" /></svg></span> Share button at the bottom</li>
+              <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
+              <li>Tap <strong>Add</strong></li>
+            </ol>
+            <p className="font-medium pt-1">Android (Chrome):</p>
+            <ol className="list-decimal list-inside space-y-0.5 pl-1 text-emerald-600">
+              <li>Tap the <strong>&#8942;</strong> menu at the top right</li>
+              <li>Tap <strong>Add to Home screen</strong></li>
+              <li>Tap <strong>Add</strong></li>
+            </ol>
+          </div>
+        </div>
       </div>
     </div>
   );
