@@ -136,6 +136,8 @@ export default function MePage() {
           setNameInput(me.displayName || "");
           setStatusText(me.statusText || "");
           setStatusMood(me.statusMood || "neutral");
+        } else {
+          setError("Could not load your profile. Please try again.");
         }
         if (knowMeRes.ok) setKnowMeEntries((await knowMeRes.json()).entries || []);
         if (wallRes.ok) setWallPosts((await wallRes.json()).posts || []);

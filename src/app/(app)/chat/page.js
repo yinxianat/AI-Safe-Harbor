@@ -67,25 +67,27 @@ export default function ChatIndexPage() {
   }
 
   return (
-    <div className="space-y-2 pt-2">
-      <h1 className="text-lg font-bold text-slate-900 px-1">Conversations</h1>
-      <div className="space-y-1">
+    <div className="-mx-4 -mt-4 min-h-[calc(100vh-5rem)]" style={{ backgroundColor: "#e8e8ed" }}>
+      <div className="px-4 pt-4 pb-2">
+        <h1 className="text-lg font-bold text-slate-900">Conversations</h1>
+      </div>
+      <div className="px-3 space-y-2 pb-4">
         {connections.map((c) => (
           <Link
             key={c.id}
             href={`/chat/${c.id}`}
-            className="flex items-center gap-3 px-3 py-3 rounded-xl bg-white border border-gray-100 hover:bg-emerald-50 hover:border-emerald-100 transition-colors"
+            className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-white shadow-sm active:bg-emerald-50 transition-colors"
           >
-            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-bold text-emerald-700 shrink-0">
+            <div className="w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center text-sm font-bold text-white shrink-0">
               {initials(c.partnerName)}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-slate-900 truncate">{c.partnerName}</p>
-              <p className="text-xs text-slate-400 truncate">
+              <p className="text-xs text-slate-500 truncate">
                 {c.relationshipType === "spouse" ? "Partner" : c.relationshipType || "Connection"}
               </p>
             </div>
-            <svg className="w-4 h-4 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-5 h-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </Link>

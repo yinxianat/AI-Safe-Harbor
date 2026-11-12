@@ -34,96 +34,169 @@ function timeAgo(dateStr) {
 }
 
 function PersonCard({ person }) {
+  const [showBoundaries, setShowBoundaries] = useState(false);
   const name = person.displayName || (person.username ? `@${person.username}` : "Your person");
   const moodStyle = MOOD_STYLES[person.statusMood] || MOOD_STYLES.neutral;
   const bs = person.boundarySummary || { red: 0, yellow: 0, green: 0 };
+  const boundaries = person.boundaries || [];
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="p-5 space-y-4">
-        {/* Name and status */}
-        <div>
-          <h2 className="text-lg font-bold text-slate-900">{name}</h2>
-          {person.username && person.displayName && (
-            <p className="text-sm text-slate-500">@{person.username}</p>
-          )}
-        </div>
-
-        {person.statusText ? (
-          <div className="flex items-start gap-2.5">
-            <span className={`w-2.5 h-2.5 rounded-full ${moodStyle.dot} mt-1.5 shrink-0`} />
+    <>
+      <div
+        onClick={() => setShowBoundaries(true)}
+        className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden cursor-pointer active:bg-slate-50 transition-colors"
+      >
+        <div className="p-5 space-y-4">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-700">{person.statusText}</p>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {moodStyle.label} · {timeAgo(person.statusUpdatedAt)}
-              </p>
+              <h2 className="text-lg font-bold text-slate-900">{name}</h2>
+              {person.username && person.displayName && (
+                <p className="text-sm text-slate-500">@{person.username}</p>
+              )}
+            </div>
+            <svg className="w-5 h-5 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+
+          {person.statusText ? (
+            <div className="flex items-start gap-2.5">
+              <span className={`w-2.5 h-2.5 rounded-full ${moodStyle.dot} mt-1.5 shrink-0`} />
+              <div>
+                <p className="text-sm text-slate-700">{person.statusText}</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {moodStyle.label} · {timeAgo(person.statusUpdatedAt)}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400 italic">No status right now</p>
+          )}
+
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">Prefers:</span>
+              <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                {TONE_LABELS[person.tonePreference] || "Warm & gentle"}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {bs.red > 0 && (
+                <span className="flex items-center gap-0.5 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-red-500" />
+                  <span className="text-red-700 font-medium">{bs.red}</span>
+                </span>
+              )}
+              {bs.yellow > 0 && (
+                <span className="flex items-center gap-0.5 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span className="text-amber-700 font-medium">{bs.yellow}</span>
+                </span>
+              )}
+              {bs.green > 0 && (
+                <span className="flex items-center gap-0.5 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="text-emerald-700 font-medium">{bs.green}</span>
+                </span>
+              )}
             </div>
           </div>
-        ) : (
-          <p className="text-sm text-slate-400 italic">No status right now</p>
-        )}
-
-        {/* Tone preference */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">Prefers:</span>
-          <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-            {TONE_LABELS[person.tonePreference] || "Warm & gentle"}
-          </span>
+          <p className="text-[10px] text-slate-400">Tap to see {name}&apos;s boundaries</p>
         </div>
 
-        {/* Boundary summary */}
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-500">Boundaries:</span>
-          <div className="flex items-center gap-2">
-            {bs.red > 0 && (
-              <span className="flex items-center gap-1 text-xs">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                <span className="text-red-700 font-medium">{bs.red}</span>
-              </span>
+        <div className="flex border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
+          <Link
+            href={`/chat/${person.connectionId}`}
+            className="flex-1 text-center text-sm font-medium text-emerald-600 py-3 hover:bg-emerald-50 transition-colors"
+          >
+            Message
+          </Link>
+          <div className="w-px bg-gray-100" />
+          <Link
+            href={`/them?connectionId=${person.connectionId}`}
+            className="flex-1 text-center text-sm font-medium text-slate-600 py-3 hover:bg-slate-50 transition-colors"
+          >
+            Profile
+          </Link>
+          <div className="w-px bg-gray-100" />
+          <Link
+            href={`/circle/settings?connectionId=${person.connectionId}`}
+            className="flex-1 text-center text-slate-600 py-2.5 hover:bg-slate-50 transition-colors"
+          >
+            <span className="text-xs font-medium block">AI Tuning</span>
+            <span className="text-[9px] text-slate-400">Adjust tone &amp; topics</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Boundary popup */}
+      {showBoundaries && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setShowBoundaries(false)}>
+          <div
+            className="w-full max-w-lg bg-white rounded-t-2xl p-5 pb-8 space-y-4 animate-[slideUp_0.2s_ease-out]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900">{name}&apos;s Boundaries</h3>
+              <button onClick={() => setShowBoundaries(false)} className="text-slate-400 text-lg p-1">✕</button>
+            </div>
+            <p className="text-xs text-slate-500">These are the topics {name} has set preferences for. The AI will warn you if your message touches a sensitive topic.</p>
+
+            {boundaries.length === 0 ? (
+              <p className="text-sm text-slate-400 italic py-4 text-center">No boundaries set yet</p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {boundaries.filter((b) => b.comfortLevel === "red").length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-red-600 uppercase mb-1">Avoids</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {boundaries.filter((b) => b.comfortLevel === "red").map((b) => (
+                        <span key={b.topicName} className="text-xs bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded-full">{b.label}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {boundaries.filter((b) => b.comfortLevel === "yellow").length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-amber-600 uppercase mb-1">Gentle topics</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {boundaries.filter((b) => b.comfortLevel === "yellow").map((b) => (
+                        <span key={b.topicName} className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full">{b.label}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {boundaries.filter((b) => b.comfortLevel === "green").length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-emerald-600 uppercase mb-1">Open to</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {boundaries.filter((b) => b.comfortLevel === "green").map((b) => (
+                        <span key={b.topicName} className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full">{b.label}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
-            {bs.yellow > 0 && (
-              <span className="flex items-center gap-1 text-xs">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                <span className="text-amber-700 font-medium">{bs.yellow}</span>
-              </span>
-            )}
-            {bs.green > 0 && (
-              <span className="flex items-center gap-1 text-xs">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <span className="text-emerald-700 font-medium">{bs.green}</span>
-              </span>
-            )}
-            {bs.red === 0 && bs.yellow === 0 && bs.green === 0 && (
-              <span className="text-xs text-slate-400">No boundaries set</span>
-            )}
+
+            <div className="flex gap-2 pt-2">
+              <Link
+                href={`/them?connectionId=${person.connectionId}`}
+                className="flex-1 text-center text-sm font-medium bg-emerald-600 text-white py-2.5 rounded-xl"
+              >
+                View full profile
+              </Link>
+              <Link
+                href={`/chat/${person.connectionId}`}
+                className="flex-1 text-center text-sm font-medium border border-gray-200 text-slate-700 py-2.5 rounded-xl"
+              >
+                Message
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* Actions */}
-      <div className="flex border-t border-gray-100">
-        <Link
-          href={`/chat/${person.connectionId}`}
-          className="flex-1 text-center text-sm font-medium text-emerald-600 py-3 hover:bg-emerald-50 transition-colors"
-        >
-          Message
-        </Link>
-        <div className="w-px bg-gray-100" />
-        <Link
-          href={`/them?connectionId=${person.connectionId}`}
-          className="flex-1 text-center text-sm font-medium text-slate-600 py-3 hover:bg-slate-50 transition-colors"
-        >
-          Profile
-        </Link>
-        <div className="w-px bg-gray-100" />
-        <Link
-          href={`/circle/settings?connectionId=${person.connectionId}`}
-          className="flex-1 text-center text-sm font-medium text-slate-600 py-3 hover:bg-slate-50 transition-colors"
-        >
-          AI Tuning
-        </Link>
-      </div>
-    </div>
+      )}
+    </>
   );
 }
 

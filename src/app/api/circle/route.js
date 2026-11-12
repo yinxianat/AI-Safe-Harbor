@@ -52,25 +52,32 @@ export async function GET(request) {
     }
   }
 
-  // Fetch boundary summary for each active connection (the partner's settings).
   if (activeConnectionIds.length > 0) {
     const allSettings = await prisma.topicSetting.findMany({
       where: {
         connectionId: { in: activeConnectionIds },
         userId: { not: user.id },
       },
-      select: { connectionId: true, comfortLevel: true },
+      select: { connectionId: true, topicName: true, comfortLevel: true, sanitizedLabel: true, isCustom: true },
     });
 
     const summaryByConn = {};
+    const boundariesByConn = {};
     for (const s of allSettings) {
       if (!summaryByConn[s.connectionId]) summaryByConn[s.connectionId] = { red: 0, yellow: 0, green: 0 };
+      if (!boundariesByConn[s.connectionId]) boundariesByConn[s.connectionId] = [];
       const level = s.comfortLevel || "green";
       if (summaryByConn[s.connectionId][level] !== undefined) summaryByConn[s.connectionId][level]++;
+      boundariesByConn[s.connectionId].push({
+        topicName: s.topicName,
+        label: s.sanitizedLabel || s.topicName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        comfortLevel: level,
+      });
     }
 
     for (const m of members) {
       m.boundarySummary = summaryByConn[m.connectionId] || { red: 0, yellow: 0, green: 0 };
+      m.boundaries = boundariesByConn[m.connectionId] || [];
     }
   }
 

@@ -163,16 +163,16 @@ export default function GuardianSettingsPage() {
         <Link href="/circle" className="text-sm text-emerald-600 font-medium">← Back to Circle</Link>
         <h1 className="text-2xl font-bold text-slate-900 mt-2">AI Tuning</h1>
         <p className="text-sm text-slate-500 mt-1">
-          How your AI tunes messages from {partnerName}.
+          Control how you receive messages from {partnerName}. The AI adjusts their messages before they reach you.
         </p>
       </div>
 
       {/* Tone */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Preferred tone</h2>
+        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Rephrase their messages as</h2>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-xs text-slate-500 mb-3">
-            Messages from {partnerName} are tuned to this tone before they reach you.
+            {partnerName}&apos;s messages will be rephrased in this tone before you see them.
           </p>
           <select
             value={tone}
@@ -188,10 +188,10 @@ export default function GuardianSettingsPage() {
 
       {/* Topic boundaries */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Topic boundaries</h2>
+        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Topics you&apos;re comfortable receiving</h2>
         <p className="text-xs text-slate-500">
-          Your guardian checks every message from {partnerName} against these.
-          Red topics are held, yellow ones are softened, green ones pass through.
+          When {partnerName} sends a message about one of these topics:
+          Red = held for your review. Yellow = softened before delivery. Green = comes through normally.
         </p>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

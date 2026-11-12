@@ -249,7 +249,7 @@ export default function ThemPage() {
     <div className="space-y-4">
       <Link href="/circle" className="text-sm text-emerald-600 font-medium">← Circle</Link>
 
-      <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold">UserProfile &amp; Preferences</p>
+      <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold">{name}&apos;s Profile</p>
 
       {/* ── Profile Card ── */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -274,17 +274,18 @@ export default function ThemPage() {
         </div>
       </div>
 
-      {/* ── Chat Context header ── */}
+      {/* ── What they're comfortable with ── */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
-        <p className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Chat Context</p>
+        <p className="text-sm font-semibold text-slate-700 uppercase tracking-wide">What {name} is comfortable with</p>
+        <p className="text-[10px] text-slate-400 mt-0.5">These are {name}&apos;s preferences — the AI will warn you if your message touches a sensitive topic.</p>
       </div>
 
       {/* ── Side-by-side Topic Cards ── */}
       <div className="grid grid-cols-2 gap-3">
-        {/* Topics I Enjoy */}
+        {/* Topics they enjoy */}
         <div className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="bg-emerald-500 px-3 py-2 flex items-center justify-between">
-            <p className="text-xs font-bold text-white uppercase tracking-wide">Topics I Enjoy Talking About</p>
+            <p className="text-xs font-bold text-white uppercase tracking-wide">{name} enjoys</p>
             <span className="text-lg">👍</span>
           </div>
           <div className="bg-white p-3 space-y-1.5">
@@ -302,14 +303,13 @@ export default function ThemPage() {
                 <span className="text-[10px] text-amber-500 ml-1">(gentle)</span>
               </div>
             ))}
-            <p className="text-[10px] text-slate-400 pt-1">Visible to my one-to-one chat partners.</p>
           </div>
         </div>
 
-        {/* Topics I Avoid */}
+        {/* Topics they avoid */}
         <div className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="bg-red-500 px-3 py-2 flex items-center justify-between">
-            <p className="text-xs font-bold text-white uppercase tracking-wide">Topics I Avoid</p>
+            <p className="text-xs font-bold text-white uppercase tracking-wide">{name} avoids</p>
             <span className="text-lg">🛡️</span>
           </div>
           <div className="bg-white p-3 space-y-1.5">
@@ -322,7 +322,7 @@ export default function ThemPage() {
                 </div>
               ))
             )}
-            <p className="text-[10px] text-slate-400 pt-1">My AI assistant will warn my partners if they type topics that conflict with these preferences before they send the message.</p>
+            <p className="text-[10px] text-slate-400 pt-1">The AI will warn you before sending a message about these topics.</p>
           </div>
         </div>
       </div>
@@ -381,7 +381,7 @@ export default function ThemPage() {
             </div>
             <div className="text-left">
               <p className="text-sm font-semibold text-slate-700">AI Tuning</p>
-              <p className="text-[10px] text-slate-400">Tone: {TONE_LABELS[myTone] || myTone}</p>
+              <p className="text-[10px] text-slate-400">How you receive messages from {name}</p>
             </div>
           </div>
           <svg className={`w-5 h-5 text-slate-400 transition-transform ${showGuardian ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -391,9 +391,11 @@ export default function ThemPage() {
 
         {showGuardian && (
           <div className="px-4 pb-4 space-y-4 border-t border-gray-100 pt-3">
+            <p className="text-xs text-slate-500">The AI adjusts {name}&apos;s messages before they reach you. Choose the tone and set which topics you&apos;re comfortable receiving.</p>
+
             {/* Tone preference */}
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase mb-2">AI Response Tone</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Rephrase their messages as</p>
               <select
                 value={myTone}
                 onChange={(e) => handleMyToneChange(e.target.value)}
@@ -403,13 +405,13 @@ export default function ThemPage() {
                   <option key={t} value={t}>{TONE_LABELS[t] || t}</option>
                 ))}
               </select>
-              <p className="text-[10px] text-slate-400 mt-1">Messages from {name} are tuned to this tone before they reach you.</p>
+              <p className="text-[10px] text-slate-400 mt-1">{name}&apos;s messages will be rephrased in this tone before you see them.</p>
             </div>
 
             {/* Topic boundaries */}
             <div className="space-y-3">
-              <p className="text-xs font-semibold text-slate-500 uppercase">Your Topic Boundaries</p>
-              <p className="text-[10px] text-slate-400">Red = held. Yellow = softened. Green = passes through.</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase">Topics you&apos;re comfortable receiving</p>
+              <p className="text-[10px] text-slate-400">Red = message held for review. Yellow = softened. Green = comes through normally.</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {myPresets.map((setting) => (
                   <TrafficLight
