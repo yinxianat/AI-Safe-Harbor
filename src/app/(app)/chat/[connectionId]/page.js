@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getReaction } from "@/lib/reactions.js";
 import { useT } from "@/lib/i18n/context.js";
+import Avatar from "@/components/Avatar.js";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -51,15 +52,6 @@ function groupByDay(messages, formatDate) {
   return groups;
 }
 
-function initials(name) {
-  if (!name) return "?";
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() || "")
-    .join("");
-}
-
 // ─── Topic warnings (reused from compose/inbox patterns) ────────────
 
 function TopicWarnings({ hints, text }) {
@@ -104,7 +96,7 @@ function TopicWarnings({ hints, text }) {
 
 // ─── Chat Bubble ────────────────────────────────────────────────────
 
-function ChatBubble({ message, partnerName, myInitials }) {
+function ChatBubble({ message, partnerName, partnerAvatar, myName, myAvatar }) {
   const { t } = useT();
   const [showOriginal, setShowOriginal] = useState(false);
   const isSent = message.direction === "sent";
@@ -112,17 +104,14 @@ function ChatBubble({ message, partnerName, myInitials }) {
 
   return (
     <div className={`flex gap-2 ${isSent ? "flex-row-reverse" : "flex-row"} items-end`}>
-      <div
-        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-          isSent
-            ? "bg-emerald-100 text-emerald-700"
-            : "bg-slate-100 text-slate-600"
-        }`}
-      >
-        {isSent ? myInitials : initials(partnerName)}
-      </div>
+      <Avatar
+        src={isSent ? myAvatar : partnerAvatar}
+        name={isSent ? myName : partnerName}
+        size="xs"
+        tone={isSent ? "emerald" : "slate"}
+      />
 
-      <div className="max-w-[75%] min-w-[60px]">
+      <div className="max-w-[78%] sm:max-w-[75%] min-w-[60px]">
         {!isSent && (
           <p className="text-[11px] text-slate-400 mb-0.5 ml-1">{partnerName}</p>
         )}
@@ -506,7 +495,6 @@ export default function ChatThreadPage() {
   }
 
   const myName = me?.displayName || (me?.username ? `@${me.username}` : t("me_fallback_name"));
-  const myInit = initials(myName);
   const partnerName = partner?.name || t("chat_them_fallback");
   const formatDate = makeFormatDate(t);
 
@@ -548,7 +536,7 @@ export default function ChatThreadPage() {
   const dayGroups = groupByDay(messages, formatDate);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)] -mx-4 -mt-4 overflow-hidden">
+    <div className="flex flex-col h-[calc(100dvh-5rem)] full-bleed -mt-3 sm:-mt-5 overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-3 border-b border-gray-200 bg-white shrink-0">
         <button
@@ -561,9 +549,7 @@ export default function ChatThreadPage() {
           </svg>
         </button>
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0">
-            {initials(partnerName)}
-          </div>
+          <Avatar src={partner?.avatarUrl} name={partnerName} size="sm" />
           <p className="text-sm font-semibold text-slate-900 truncate">{partnerName}</p>
         </div>
         <Link
@@ -613,7 +599,9 @@ export default function ChatThreadPage() {
                 key={msg.id}
                 message={msg}
                 partnerName={partnerName}
-                myInitials={myInit}
+                partnerAvatar={partner?.avatarUrl}
+                myName={myName}
+                myAvatar={me?.avatarUrl}
               />
             ))}
           </div>

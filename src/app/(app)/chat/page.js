@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context.js";
+import Avatar from "@/components/Avatar.js";
 
 const REL_KEY = {
   spouse: "rel_partner",
@@ -16,15 +17,6 @@ const REL_KEY = {
   roommate: "rel_roommate",
   other: "rel_other",
 };
-
-function initials(name) {
-  if (!name) return "?";
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() || "")
-    .join("");
-}
 
 export default function ChatIndexPage() {
   const router = useRouter();
@@ -81,20 +73,21 @@ export default function ChatIndexPage() {
   }
 
   return (
-    <div className="-mx-4 -mt-4 min-h-[calc(100vh-5rem)]" style={{ backgroundColor: "#e8e8ed" }}>
-      <div className="px-4 pt-4 pb-2">
+    <div
+      className="full-bleed -mt-3 sm:-mt-5 min-h-[calc(100dvh-5rem)]"
+      style={{ backgroundColor: "var(--surface-sunken)" }}
+    >
+      <div className="px-4 sm:px-5 pt-4 pb-2">
         <h1 className="text-lg font-bold text-slate-900">{t("conversations")}</h1>
       </div>
-      <div className="px-3 space-y-2 pb-4">
+      <div className="px-3 sm:px-4 space-y-2 pb-4">
         {connections.map((c) => (
           <Link
             key={c.id}
             href={`/chat/${c.id}`}
-            className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-white shadow-sm active:bg-emerald-50 transition-colors"
+            className="flex items-center gap-3 px-3 sm:px-4 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl bg-white shadow-sm active:bg-emerald-50 transition-colors"
           >
-            <div className="w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center text-sm font-bold text-white shrink-0">
-              {initials(c.partnerName)}
-            </div>
+            <Avatar src={c.partnerAvatarUrl} name={c.partnerName} size="md" tone="solid" />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-slate-900 truncate">{c.partnerName}</p>
               <p className="text-xs text-slate-500 truncate">

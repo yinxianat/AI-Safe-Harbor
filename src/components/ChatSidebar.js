@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useT } from "@/lib/i18n/context.js";
+import Avatar from "@/components/Avatar.js";
 
 const REL_KEY = {
   spouse: "rel_partner",
@@ -16,15 +17,6 @@ const REL_KEY = {
   roommate: "rel_roommate",
   other: "rel_other",
 };
-
-function initials(name) {
-  if (!name) return "?";
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() || "")
-    .join("");
-}
 
 /**
  * Desktop-only sidebar listing all connections. Appears alongside the
@@ -69,11 +61,12 @@ export default function ChatSidebar({ activeConnectionId }) {
                   : "hover:bg-slate-50 border-l-2 border-transparent"
               }`}
             >
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
-              }`}>
-                {initials(c.partnerName)}
-              </div>
+              <Avatar
+                src={c.partnerAvatarUrl}
+                name={c.partnerName}
+                size="sm"
+                tone={active ? "emerald" : "slate"}
+              />
               <div className="min-w-0 flex-1">
                 <p className={`text-sm font-medium truncate ${active ? "text-emerald-900" : "text-slate-800"}`}>
                   {c.partnerName}

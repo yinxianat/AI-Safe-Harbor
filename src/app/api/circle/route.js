@@ -4,10 +4,21 @@ import prisma from "@/lib/db.js";
 const PERSON = {
   select: {
     id: true, username: true, displayName: true,
-    tonePreference: true,
+    tonePreference: true, avatarUrl: true,
     statusText: true, statusMood: true, statusUpdatedAt: true,
+    statusVisibleTo: true,
   },
 };
+
+/**
+ * A status is visible when its owner either left the audience open (empty
+ * list) or named this specific connection. Same rule as wall posts and
+ * Know Me entries — per-connection isolation, not a global broadcast.
+ */
+function statusVisibleOn(partner, connectionId) {
+  const list = partner.statusVisibleTo;
+  return !list || list.length === 0 || list.includes(connectionId);
+}
 
 /**
  * One call for the whole Circle page: active members, requests waiting on
@@ -32,16 +43,18 @@ export async function GET(request) {
 
   for (const c of connections) {
     const partner = c.userAId === user.id ? c.userB : c.userA;
+    const showStatus = statusVisibleOn(partner, c.id);
     const entry = {
       connectionId: c.id,
       userId: partner.id,
       username: partner.username,
       displayName: partner.displayName || null,
+      avatarUrl: partner.avatarUrl || null,
       relationshipType: c.relationshipType || "spouse",
       tonePreference: partner.tonePreference || "warm_and_gentle",
-      statusText: partner.statusText || null,
-      statusMood: partner.statusMood || null,
-      statusUpdatedAt: partner.statusUpdatedAt?.toISOString() || null,
+      statusText: showStatus ? partner.statusText || null : null,
+      statusMood: showStatus ? partner.statusMood || null : null,
+      statusUpdatedAt: showStatus ? partner.statusUpdatedAt?.toISOString() || null : null,
       since: c.createdAt.toISOString(),
     };
     if (c.status === "active") {

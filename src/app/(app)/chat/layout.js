@@ -14,9 +14,9 @@ export default function ChatLayout({ children }) {
   const connectionId = params?.connectionId;
 
   return (
-    <div className="lg:-mx-4 lg:-mt-4 lg:flex lg:h-[calc(100vh-5rem)] overflow-hidden">
+    <div className="lg:full-bleed lg:-mt-5 lg:flex lg:h-[calc(100dvh-5rem)] overflow-hidden">
       <ChatSidebar activeConnectionId={connectionId} />
-      <div className="flex-1 min-w-0 lg:px-4 lg:pt-4 lg:max-w-lg lg:mx-auto lg:w-full overflow-hidden">
+      <div className="flex-1 min-w-0 lg:px-6 lg:pt-5 lg:max-w-2xl lg:mx-auto lg:w-full overflow-hidden">
         {children}
       </div>
     </div>

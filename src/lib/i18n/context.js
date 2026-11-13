@@ -6,7 +6,7 @@ import { translate, LANGUAGES } from "./translations.js";
 const I18nContext = createContext({
   locale: "en",
   setLocale: () => {},
-  t: (key) => key,
+  t: (key, vars) => translate("en", key, vars),
   languages: LANGUAGES,
 });
 
@@ -65,7 +65,7 @@ export function I18nProvider({ children, initial }) {
     } catch { /* fine; preference stays local */ }
   }, []);
 
-  const t = useCallback((key) => translate(locale, key), [locale]);
+  const t = useCallback((key, vars) => translate(locale, key, vars), [locale]);
 
   return (
     <I18nContext.Provider value={{ locale, setLocale, t, languages: LANGUAGES }}>

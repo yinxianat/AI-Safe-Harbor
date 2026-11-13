@@ -2,7 +2,9 @@ import { getSessionUser } from "@/lib/auth.js";
 import { parseJsonBody, badRequest } from "@/lib/http.js";
 import prisma from "@/lib/db.js";
 
-const MAX_POST_LENGTH = 280;
+// Raised from a tweet-sized 280: these entries are self-description that
+// people read on a dedicated page, not a status line squeezed into a card.
+const MAX_POST_LENGTH = 1000;
 const PAGE_SIZE = 20;
 
 function formatPost(p, isOwner = true) {
@@ -125,6 +127,13 @@ export async function PUT(request) {
   if (body.data.visibleTo !== undefined) {
     const validIds = await getUserConnectionIds(user.id);
     data.visibleTo = sanitizeVisibleTo(body.data.visibleTo, validIds);
+  }
+  if (body.data.text !== undefined) {
+    const text = typeof body.data.text === "string"
+      ? body.data.text.trim().slice(0, MAX_POST_LENGTH)
+      : "";
+    if (!text) return badRequest("text_required");
+    data.text = text;
   }
 
   if (Object.keys(data).length === 0) return badRequest("nothing_to_update");

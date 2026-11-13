@@ -45,7 +45,9 @@ export async function GET(request) {
       where: { id: partnerId },
       select: {
         id: true, displayName: true, username: true, tonePreference: true,
+        avatarUrl: true,
         statusText: true, statusMood: true, statusUpdatedAt: true,
+        statusVisibleTo: true,
       },
     }),
     prisma.topicSetting.findMany({
@@ -75,6 +77,12 @@ export async function GET(request) {
   const visibleKnowMe = knowMeEntries.filter(
     (e) => !e.visibleTo || e.visibleTo.length === 0 || e.visibleTo.includes(connectionId)
   );
+
+  // The status follows the same per-connection rule as posts and entries.
+  const statusVisible =
+    !partner.statusVisibleTo ||
+    partner.statusVisibleTo.length === 0 ||
+    partner.statusVisibleTo.includes(connectionId);
 
   const settingsByTopic = Object.fromEntries(
     partnerSettings.map((s) => [s.topicName, s])
@@ -110,9 +118,10 @@ export async function GET(request) {
       username: partner.username,
       tonePreference: partner.tonePreference,
       toneLabel: VALID_TONES[partner.tonePreference] || partner.tonePreference,
-      statusText: partner.statusText,
-      statusMood: partner.statusMood,
-      statusUpdatedAt: partner.statusUpdatedAt,
+      avatarUrl: partner.avatarUrl || null,
+      statusText: statusVisible ? partner.statusText : null,
+      statusMood: statusVisible ? partner.statusMood : null,
+      statusUpdatedAt: statusVisible ? partner.statusUpdatedAt : null,
     },
     boundaries: [...boundaries, ...customBoundaries],
     knowMe: entries,

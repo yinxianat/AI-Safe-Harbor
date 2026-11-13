@@ -79,7 +79,9 @@ export async function POST(request) {
 
   const { category, prompt, answer, isPublic = true, visibleTo } = body.data;
 
-  if (!CATEGORIES.includes(category)) return badRequest("invalid_category");
+  // Category is no longer asked for in the UI; accept a known one if the
+  // caller sends it and otherwise fall back to the default bucket.
+  const resolvedCategory = CATEGORIES.includes(category) ? category : "about_me";
   if (!prompt || typeof prompt !== "string" || prompt.length > 200) return badRequest("invalid_prompt");
   if (!answer || typeof answer !== "string" || answer.length > 2000) return badRequest("invalid_answer");
 
@@ -94,7 +96,7 @@ export async function POST(request) {
   const entry = await prisma.knowMeEntry.create({
     data: {
       userId: user.id,
-      category,
+      category: resolvedCategory,
       prompt,
       answer,
       isPublic: Boolean(isPublic),
@@ -115,7 +117,7 @@ export async function PUT(request) {
   const body = await parseJsonBody(request);
   if (!body.ok) return badRequest("invalid_json");
 
-  const { id, answer, isPublic, visibleTo } = body.data;
+  const { id, prompt, answer, isPublic, visibleTo } = body.data;
   if (!id) return badRequest("missing_id");
 
   const entry = await prisma.knowMeEntry.findUnique({ where: { id } });
@@ -124,6 +126,12 @@ export async function PUT(request) {
   }
 
   const data = {};
+  if (prompt !== undefined) {
+    if (typeof prompt !== "string" || !prompt.trim() || prompt.length > 200) {
+      return badRequest("invalid_prompt");
+    }
+    data.prompt = prompt.trim();
+  }
   if (answer !== undefined) {
     if (typeof answer !== "string" || answer.length > 2000) return badRequest("invalid_answer");
     data.answer = answer;

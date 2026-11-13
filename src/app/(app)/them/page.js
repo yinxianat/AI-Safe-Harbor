@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context.js";
+import Avatar from "@/components/Avatar.js";
 
 const MOOD_DOTS = {
   calm: "bg-blue-400",
@@ -12,8 +13,6 @@ const MOOD_DOTS = {
   low: "bg-slate-400",
   neutral: "bg-violet-400",
 };
-
-const CATEGORY_KEYS = ["about_me", "favorites", "love_languages", "pet_peeves", "stories"];
 
 export default function ThemPage() {
   const { t } = useT();
@@ -103,12 +102,6 @@ export default function ThemPage() {
   const { partner, boundaries, knowMe, wall } = data;
   const name = partner.displayName || (partner.username ? `@${partner.username}` : t("circle_fallback_name"));
 
-  const categorized = {};
-  for (const entry of knowMe) {
-    if (!categorized[entry.category]) categorized[entry.category] = [];
-    categorized[entry.category].push(entry);
-  }
-
   const greenTopics = boundaries.filter((b) => b.comfortLevel === "green");
   const redTopics = boundaries.filter((b) => b.comfortLevel === "red");
   const yellowTopics = boundaries.filter((b) => b.comfortLevel === "yellow");
@@ -120,17 +113,13 @@ export default function ThemPage() {
       <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold">{t("them_profile_header", { name })}</p>
 
       {/* Profile Card */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-            <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-          </div>
+      <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-5">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <Avatar src={partner.avatarUrl} name={name} size="lg" />
           <div className="min-w-0">
-            <h1 className="text-xl font-bold text-slate-900 uppercase">{name}</h1>
+            <h1 className="text-lg sm:text-xl font-bold text-slate-900 truncate">{name}</h1>
             {partner.username && partner.displayName && (
-              <p className="text-sm text-slate-500">@{partner.username}</p>
+              <p className="text-sm text-slate-500 truncate">@{partner.username}</p>
             )}
             {partner.statusText && (
               <div className="flex items-center gap-1.5 mt-1">
@@ -192,15 +181,15 @@ export default function ThemPage() {
       </div>
 
       {wall && wall.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
-          <p className="text-sm font-semibold text-slate-700">{t("them_wall", { name })}</p>
-          <div className="space-y-2 max-h-60 overflow-y-auto">
+        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-4 space-y-3">
+          <p className="text-sm font-semibold text-slate-700">{t("them_about", { name })}</p>
+          <div className="space-y-2">
             {wall.map((post) => (
               <div key={post.id} className="bg-gray-50 rounded-xl p-3">
-                <p className="text-sm text-slate-800 whitespace-pre-wrap">{post.text}</p>
+                <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{post.text}</p>
                 <div className="flex items-center gap-2 mt-1.5">
                   {post.mood && (
-                    <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">{t(`mood_${post.mood}`) || post.mood}</span>
+                    <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">{t(`mood_${post.mood}`)}</span>
                   )}
                   <span className="text-[10px] text-slate-400">
                     {new Date(post.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
@@ -213,17 +202,12 @@ export default function ThemPage() {
       )}
 
       {knowMe.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-4 space-y-2">
           <p className="text-sm font-semibold text-slate-700">{t("them_know", { name })}</p>
-          {Object.entries(categorized).map(([cat, entries]) => (
-            <div key={cat} className="space-y-1.5">
-              <p className="text-xs font-semibold text-slate-500 uppercase">{CATEGORY_KEYS.includes(cat) ? t(`category_${cat}`) : cat}</p>
-              {entries.map((entry) => (
-                <div key={entry.id} className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs font-medium text-slate-500">{entry.prompt}</p>
-                  <p className="text-sm text-slate-800 mt-0.5">{entry.answer}</p>
-                </div>
-              ))}
+          {knowMe.map((entry) => (
+            <div key={entry.id} className="bg-gray-50 rounded-xl p-3">
+              <p className="text-xs font-medium text-slate-500">{entry.prompt}</p>
+              <p className="text-sm text-slate-800 mt-0.5 whitespace-pre-wrap leading-relaxed">{entry.answer}</p>
             </div>
           ))}
         </div>

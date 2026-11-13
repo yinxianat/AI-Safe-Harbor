@@ -1,81 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useT } from "@/lib/i18n/context.js";
+import { useTheme } from "@/lib/theme/context.js";
+import Avatar, { fileToAvatarDataUrl } from "@/components/Avatar.js";
+import { VisibilityPicker } from "@/components/VisibilityPicker.js";
 
 const MOOD_OPTIONS = ["calm", "happy", "energetic", "low", "neutral"];
-
-const CATEGORY_KEYS = ["about_me", "favorites", "love_languages", "pet_peeves", "stories"];
-
-function VisibilityPicker({ connections, selected, onChange }) {
-  const { t } = useT();
-  if (connections.length === 0) return null;
-
-  const isEveryone = selected.length === 0;
-
-  function toggle(connId) {
-    if (selected.includes(connId)) {
-      onChange(selected.filter((id) => id !== connId));
-    } else {
-      onChange([...selected, connId]);
-    }
-  }
-
-  return (
-    <div className="space-y-1.5">
-      <p className="text-xs text-slate-500">{t("me_visible_to")}</p>
-      <div className="flex flex-wrap gap-1.5">
-        <button
-          type="button"
-          onClick={() => onChange([])}
-          className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-            isEveryone
-              ? "bg-emerald-600 text-white border-emerald-600"
-              : "bg-white text-slate-500 border-gray-200"
-          }`}
-        >
-          {t("me_visible_everyone")}
-        </button>
-        {connections.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => toggle(c.id)}
-            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-              selected.includes(c.id)
-                ? "bg-emerald-600 text-white border-emerald-600"
-                : "bg-white text-slate-500 border-gray-200"
-            }`}
-          >
-            {c.partnerName}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function VisibilityLabel({ connections, visibleTo, onEdit }) {
-  const { t } = useT();
-  if (!visibleTo || visibleTo.length === 0) {
-    return (
-      <button onClick={onEdit} className="text-xs text-slate-400 hover:text-emerald-600 transition-colors">
-        {t("me_visible_everyone")}
-      </button>
-    );
-  }
-
-  const names = visibleTo
-    .map((id) => connections.find((c) => c.id === id)?.partnerName)
-    .filter(Boolean);
-
-  return (
-    <button onClick={onEdit} className="text-xs text-slate-400 hover:text-emerald-600 transition-colors">
-      {names.length > 0 ? names.join(", ") : t("me_visible_limited")}
-    </button>
-  );
-}
 
 export default function MePage() {
   const router = useRouter();
@@ -87,21 +20,12 @@ export default function MePage() {
 
   const [statusText, setStatusText] = useState("");
   const [statusMood, setStatusMood] = useState("neutral");
+  const [statusVisibility, setStatusVisibility] = useState([]);
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusDirty, setStatusDirty] = useState(false);
 
-  const [wallPosts, setWallPosts] = useState([]);
-  const [newPost, setNewPost] = useState("");
-  const [newPostVisibility, setNewPostVisibility] = useState([]);
-  const [postSaving, setPostSaving] = useState(false);
-  const [wallExpanded, setWallExpanded] = useState(false);
-
-  const [knowMeEntries, setKnowMeEntries] = useState([]);
-  const [activeCategory, setActiveCategory] = useState("about_me");
-  const [adding, setAdding] = useState(false);
-  const [newPrompt, setNewPrompt] = useState("");
-  const [newAnswer, setNewAnswer] = useState("");
-  const [newEntryVisibility, setNewEntryVisibility] = useState([]);
+  const [storyCount, setStoryCount] = useState(0);
+  const [knowMeCount, setKnowMeCount] = useState(0);
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
@@ -113,8 +37,9 @@ export default function MePage() {
     let cancelled = false;
     (async () => {
       try {
-        const [meRes, knowMeRes, wallRes, connRes] = await Promise.all([
+        const [meRes, statusRes, knowMeRes, wallRes, connRes] = await Promise.all([
           fetch("/api/auth/me"),
+          fetch("/api/status"),
           fetch("/api/knowme"),
           fetch("/api/wall"),
           fetch("/api/connections"),
@@ -124,13 +49,17 @@ export default function MePage() {
           const me = await meRes.json();
           setProfile(me);
           setNameInput(me.displayName || "");
-          setStatusText(me.statusText || "");
-          setStatusMood(me.statusMood || "neutral");
         } else {
           setError(t("me_profile_load_failed"));
         }
-        if (knowMeRes.ok) setKnowMeEntries((await knowMeRes.json()).entries || []);
-        if (wallRes.ok) setWallPosts((await wallRes.json()).posts || []);
+        if (statusRes.ok) {
+          const s = await statusRes.json();
+          setStatusText(s.statusText || "");
+          setStatusMood(s.statusMood || "neutral");
+          setStatusVisibility(s.statusVisibleTo || []);
+        }
+        if (knowMeRes.ok) setKnowMeCount(((await knowMeRes.json()).entries || []).length);
+        if (wallRes.ok) setStoryCount(((await wallRes.json()).posts || []).length);
         if (connRes.ok) setConnections((await connRes.json()).connections || []);
       } catch {
         if (!cancelled) setError(t("me_profile_load_failed_short"));
@@ -140,151 +69,37 @@ export default function MePage() {
     return () => { cancelled = true; };
   }, [t]);
 
-  async function runAction(actionLabel, fn) {
-    try {
-      const res = await fn();
-      if (res && res.ok === false) {
-        const body = await res.json().catch(() => ({}));
-        setError(body.detail || body.error || t("me_action_fail", { action: actionLabel }));
-        return null;
-      }
-      return res;
-    } catch {
-      setError(t("me_action_network_fail", { action: actionLabel }));
-      return null;
-    }
-  }
-
   async function handleSaveStatus() {
     setStatusSaving(true);
-    const res = await runAction(t("me_action_save_status"), () =>
-      fetch("/api/status", {
+    setError(null);
+    try {
+      const res = await fetch("/api/status", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ statusText, statusMood }),
-      })
-    );
-    if (res) setStatusDirty(false);
+        body: JSON.stringify({ statusText, statusMood, statusVisibleTo: statusVisibility }),
+      });
+      if (res.ok) setStatusDirty(false);
+      else setError(t("me_action_fail", { action: t("me_action_save_status") }));
+    } catch {
+      setError(t("me_action_network_fail", { action: t("me_action_save_status") }));
+    }
     setStatusSaving(false);
-  }
-
-  async function handleNewPost(e) {
-    e.preventDefault();
-    if (!newPost.trim()) return;
-    setPostSaving(true);
-    const res = await runAction(t("me_action_post"), () =>
-      fetch("/api/wall", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: newPost, visibleTo: newPostVisibility }),
-      })
-    );
-    if (res && res.ok) {
-      const post = await res.json();
-      setWallPosts((prev) => [post, ...prev]);
-      setNewPost("");
-      setNewPostVisibility([]);
-    }
-    setPostSaving(false);
-  }
-
-  async function handleUpdatePostVisibility(postId, visibleTo) {
-    const res = await runAction(t("me_action_update_vis"), () =>
-      fetch("/api/wall", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId, visibleTo }),
-      })
-    );
-    if (res && res.ok) {
-      const updated = await res.json();
-      setWallPosts((prev) => prev.map((p) => (p.id === postId ? updated : p)));
-    }
-  }
-
-  async function handleDeletePost(postId) {
-    const res = await runAction(t("me_action_delete_post"), () =>
-      fetch("/api/wall", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId }),
-      })
-    );
-    if (res && res.ok) setWallPosts((prev) => prev.filter((p) => p.id !== postId));
-  }
-
-  async function handleAddEntry(e) {
-    e.preventDefault();
-    if (!newPrompt.trim() || !newAnswer.trim()) return;
-    const res = await runAction(t("me_action_add_entry"), () =>
-      fetch("/api/knowme", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          category: activeCategory,
-          prompt: newPrompt,
-          answer: newAnswer,
-          visibleTo: newEntryVisibility,
-        }),
-      })
-    );
-    if (res && res.ok) {
-      const data = await res.json();
-      setKnowMeEntries((prev) => [...prev, data.entry]);
-      setNewPrompt("");
-      setNewAnswer("");
-      setNewEntryVisibility([]);
-      setAdding(false);
-    }
-  }
-
-  async function handleEditEntry(id, answer) {
-    const res = await runAction(t("me_action_save_edit"), () =>
-      fetch("/api/knowme", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, answer }),
-      })
-    );
-    if (res && res.ok) setKnowMeEntries((prev) => prev.map((e) => (e.id === id ? { ...e, answer } : e)));
-  }
-
-  async function handleUpdateEntryVisibility(id, visibleTo) {
-    const res = await runAction(t("me_action_update_vis"), () =>
-      fetch("/api/knowme", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, visibleTo }),
-      })
-    );
-    if (res && res.ok) {
-      setKnowMeEntries((prev) =>
-        prev.map((e) => (e.id === id ? { ...e, visibleTo } : e))
-      );
-    }
-  }
-
-  async function handleDeleteEntry(id) {
-    const res = await runAction(t("me_action_delete_entry"), () =>
-      fetch("/api/knowme", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      })
-    );
-    if (res && res.ok) setKnowMeEntries((prev) => prev.filter((e) => e.id !== id));
   }
 
   async function handleSaveName() {
     setNameSaving(true);
-    const res = await runAction(t("me_action_save_name"), () =>
-      fetch("/api/auth/me", {
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ displayName: nameInput.trim() }),
-      })
-    );
-    if (res && res.ok) { setProfile(await res.json()); setEditingName(false); }
+      });
+      if (res.ok) { setProfile(await res.json()); setEditingName(false); }
+      else setError(t("me_action_fail", { action: t("me_action_save_name") }));
+    } catch {
+      setError(t("me_action_network_fail", { action: t("me_action_save_name") }));
+    }
     setNameSaving(false);
   }
 
@@ -303,11 +118,8 @@ export default function MePage() {
     );
   }
 
-  const filteredEntries = knowMeEntries.filter((e) => e.category === activeCategory);
-  const visiblePosts = wallExpanded ? wallPosts : wallPosts.slice(0, 2);
-
   return (
-    <div className="space-y-5">
+    <div className="space-y-3 sm:space-y-5">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
           <p>{error}</p>
@@ -315,16 +127,21 @@ export default function MePage() {
         </div>
       )}
 
-      {/* --- Header: Name + Username --- */}
-      <div className="flex items-center justify-between">
-        <div>
+      {/* --- Header: Avatar + Name + Username --- */}
+      <div className="flex items-start gap-3 sm:gap-4">
+        <AvatarUploader
+          profile={profile}
+          onChange={(avatarUrl) => setProfile((p) => ({ ...p, avatarUrl }))}
+        />
+        <div className="min-w-0 flex-1">
           {editingName ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <input
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
                 maxLength={50}
-                className="px-2 py-1 rounded-lg border border-gray-200 text-lg font-bold w-40"
+                spellCheck
+                className="px-2 py-1 rounded-lg border border-gray-200 text-base sm:text-lg font-bold w-36 sm:w-40"
                 autoFocus
               />
               <button onClick={handleSaveName} disabled={nameSaving} className="text-sm font-medium text-emerald-600">
@@ -336,28 +153,28 @@ export default function MePage() {
             </div>
           ) : (
             <div className="flex items-baseline gap-2">
-              <h1 className="text-xl font-bold text-slate-900">
+              <h1 className="text-lg sm:text-xl font-bold text-slate-900 truncate">
                 {profile?.displayName || t("me_fallback_name")}
               </h1>
-              <button onClick={() => setEditingName(true)} className="text-xs text-emerald-600">{t("edit")}</button>
+              <button onClick={() => setEditingName(true)} className="text-xs text-emerald-600 shrink-0">{t("edit")}</button>
             </div>
           )}
           {profile?.username && (
-            <p className="text-sm text-slate-500">@{profile.username}</p>
+            <p className="text-sm text-slate-500 truncate">@{profile.username}</p>
           )}
           {profile?.email && (
-            <p className="text-xs text-slate-400">{profile.email}</p>
+            <p className="text-xs text-slate-400 truncate">{profile.email}</p>
           )}
         </div>
         <button
           onClick={handleSignOut}
-          className="text-xs text-red-500 font-medium"
+          className="text-xs text-red-500 font-medium shrink-0"
         >
           {t("sign_out")}
         </button>
       </div>
 
-      {/* --- Status (compact) --- */}
+      {/* --- Status --- */}
       <div className="bg-white rounded-lg border border-gray-100 p-3 space-y-2">
         <p className="text-xs font-semibold text-slate-500 uppercase">{t("me_status_section")}</p>
         <input
@@ -365,174 +182,69 @@ export default function MePage() {
           onChange={(e) => { setStatusText(e.target.value); setStatusDirty(true); }}
           placeholder={t("me_status_placeholder")}
           maxLength={200}
+          spellCheck
           className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        <div className="flex items-center justify-between">
-          <div className="flex gap-1">
-            {MOOD_OPTIONS.map((m) => (
-              <button
-                key={m}
-                onClick={() => { setStatusMood(m); setStatusDirty(true); }}
-                className={`text-xs px-2 py-1 rounded-full transition-colors ${
-                  statusMood === m
-                    ? "bg-emerald-600 text-white"
-                    : "bg-gray-100 text-slate-500"
-                }`}
-              >
-                {t(`mood_${m}`)}
-              </button>
-            ))}
-          </div>
-          {statusDirty && (
+        <div className="flex gap-1 flex-wrap">
+          {MOOD_OPTIONS.map((m) => (
             <button
-              onClick={handleSaveStatus}
-              disabled={statusSaving}
-              className="bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
-            >
-              {statusSaving ? "…" : t("save")}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* --- Wall (compact) --- */}
-      <div className="space-y-2">
-        <p className="text-xs font-semibold text-slate-500 uppercase">{t("me_wall_section")}</p>
-        <form onSubmit={handleNewPost} className="space-y-2">
-          <div className="flex gap-2">
-            <input
-              value={newPost}
-              onChange={(e) => setNewPost(e.target.value)}
-              placeholder={t("me_post_placeholder")}
-              maxLength={280}
-              className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            <button
-              type="submit"
-              disabled={!newPost.trim() || postSaving}
-              className="bg-emerald-600 text-white text-xs font-medium px-3 rounded-lg disabled:opacity-50"
-            >
-              {postSaving ? "…" : t("me_post_button")}
-            </button>
-          </div>
-          {connections.length > 1 && (
-            <VisibilityPicker
-              connections={connections}
-              selected={newPostVisibility}
-              onChange={setNewPostVisibility}
-            />
-          )}
-        </form>
-
-        {visiblePosts.map((post) => (
-          <WallPostCard
-            key={post.id}
-            post={post}
-            connections={connections}
-            onDelete={handleDeletePost}
-            onUpdateVisibility={handleUpdatePostVisibility}
-          />
-        ))}
-        {wallPosts.length > 2 && (
-          <button
-            onClick={() => setWallExpanded(!wallExpanded)}
-            className="text-xs text-emerald-600 font-medium"
-          >
-            {wallExpanded ? t("me_show_less") : t("me_view_all_posts", { count: wallPosts.length })}
-          </button>
-        )}
-      </div>
-
-      {/* --- Know Me (compact) --- */}
-      <div className="space-y-2">
-        <p className="text-xs font-semibold text-slate-500 uppercase">{t("me_knowme_section")}</p>
-
-        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4">
-          {CATEGORY_KEYS.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`whitespace-nowrap text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                activeCategory === cat
-                  ? "bg-emerald-600 text-white border-emerald-600"
-                  : "bg-white text-slate-500 border-gray-200"
+              key={m}
+              onClick={() => { setStatusMood(m); setStatusDirty(true); }}
+              className={`text-xs px-2.5 py-1.5 rounded-full transition-colors min-h-[32px] ${
+                statusMood === m
+                  ? "bg-emerald-600 text-white"
+                  : "bg-gray-100 text-slate-500"
               }`}
             >
-              {t(`category_${cat}`)}
+              {t(`mood_${m}`)}
             </button>
           ))}
         </div>
-
-        {filteredEntries.length === 0 && !adding && (
-          <p className="text-xs text-slate-400 py-2">
-            {t(`category_example_${activeCategory}`) || t("me_knowme_empty_hint")}
-          </p>
+        {connections.length > 0 && (
+          <div className="pt-1 border-t border-gray-100">
+            <VisibilityPicker
+              connections={connections}
+              selected={statusVisibility}
+              onChange={(v) => { setStatusVisibility(v); setStatusDirty(true); }}
+              hint={t("me_status_visibility_hint")}
+            />
+          </div>
         )}
-
-        {filteredEntries.map((entry) => (
-          <KnowMeCard
-            key={entry.id}
-            entry={entry}
-            connections={connections}
-            onEdit={handleEditEntry}
-            onDelete={handleDeleteEntry}
-            onUpdateVisibility={handleUpdateEntryVisibility}
-          />
-        ))}
-
-        {adding ? (
-          <form onSubmit={handleAddEntry} className="bg-white rounded-lg border border-gray-100 p-3 space-y-2">
-            <input
-              value={newPrompt}
-              onChange={(e) => setNewPrompt(e.target.value)}
-              placeholder={t("me_knowme_prompt_placeholder")}
-              maxLength={200}
-              className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            <textarea
-              value={newAnswer}
-              onChange={(e) => setNewAnswer(e.target.value)}
-              placeholder={t("me_knowme_answer_placeholder")}
-              rows={2}
-              maxLength={2000}
-              className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            {connections.length > 1 && (
-              <VisibilityPicker
-                connections={connections}
-                selected={newEntryVisibility}
-                onChange={setNewEntryVisibility}
-              />
-            )}
-            <div className="flex gap-2">
-              <button type="submit" disabled={!newAnswer.trim()} className="bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50">{t("save")}</button>
-              <button type="button" onClick={() => { setAdding(false); setNewPrompt(""); setNewAnswer(""); setNewEntryVisibility([]); }} className="text-xs text-slate-500">{t("cancel")}</button>
-            </div>
-          </form>
-        ) : (
+        {statusDirty && (
           <button
-            onClick={() => setAdding(true)}
-            className="w-full py-2 rounded-lg border border-dashed border-gray-200 text-slate-400 text-xs font-medium hover:border-emerald-300 hover:text-emerald-600 transition-colors"
+            onClick={handleSaveStatus}
+            disabled={statusSaving}
+            className="w-full bg-emerald-600 text-white text-xs font-medium py-2 rounded-lg disabled:opacity-50"
           >
-            {t("me_knowme_add_entry")}
+            {statusSaving ? "…" : t("save")}
           </button>
         )}
       </div>
 
-      {/* --- Language --- */}
+      {/* --- Links out to the self-description pages --- */}
+      <div className="space-y-2">
+        <SectionLink
+          href="/story"
+          title={t("me_open_story")}
+          hint={t("me_open_story_hint", { count: storyCount })}
+        />
+        <SectionLink
+          href="/knowme"
+          title={t("me_open_knowme")}
+          hint={t("me_open_knowme_hint", { count: knowMeCount })}
+        />
+      </div>
+
+      <ThemeCard />
       <LanguageCard />
-
-      {/* --- Password --- */}
       <PasswordCard />
-
-      {/* --- Delete Account --- */}
       <DeleteAccountCard />
 
       {/* --- Session Duration --- */}
       <div className="bg-white rounded-lg border border-gray-100 p-3 space-y-2">
         <p className="text-xs font-semibold text-slate-500 uppercase">{t("me_session_duration")}</p>
         <p className="text-[10px] text-slate-400">{t("me_session_duration_hint")}</p>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 flex-wrap">
           {[7, 14, 30, 90].map((d) => (
             <button
               key={d}
@@ -544,7 +256,7 @@ export default function MePage() {
                 });
                 setProfile((p) => ({ ...p, sessionDays: d }));
               }}
-              className={`text-xs px-2.5 py-1.5 rounded-full border transition-colors ${
+              className={`text-xs px-2.5 py-1.5 rounded-full border transition-colors min-h-[32px] ${
                 (profile?.sessionDays || 30) === d
                   ? "bg-emerald-600 text-white border-emerald-600"
                   : "bg-white text-slate-500 border-gray-200"
@@ -560,123 +272,142 @@ export default function MePage() {
   );
 }
 
-function WallPostCard({ post, connections, onDelete, onUpdateVisibility }) {
+function SectionLink({ href, title, hint }) {
   const { t } = useT();
-  const [editingVis, setEditingVis] = useState(false);
-  const [localVis, setLocalVis] = useState(post.visibleTo || []);
+  return (
+    <Link
+      href={href}
+      className="flex items-center justify-between gap-3 bg-white rounded-lg border border-gray-100 p-3 active:bg-slate-50 transition-colors"
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-slate-800">{title}</p>
+        <p className="text-[11px] text-slate-400 truncate">{hint}</p>
+      </div>
+      <svg className="w-5 h-5 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-label={t("me_open_arrow")}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+      </svg>
+    </Link>
+  );
+}
 
-  function handleSaveVis() {
-    onUpdateVisibility(post.id, localVis);
-    setEditingVis(false);
+function AvatarUploader({ profile, onChange }) {
+  const { t } = useT();
+  const inputRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function handlePick(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    if (!/^image\/(png|jpe?g|webp)$/.test(file.type)) {
+      setError(t("avatar_invalid"));
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      // Resize client-side; the server rejects anything over ~300 KB so an
+      // original phone photo would otherwise always fail.
+      const dataUrl = await fileToAvatarDataUrl(file);
+      const res = await fetch("/api/auth/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarUrl: dataUrl }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        onChange(updated.avatarUrl);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setError(body.error === "avatar_too_large" ? t("avatar_too_large") : t("avatar_failed"));
+      }
+    } catch {
+      setError(t("avatar_failed"));
+    }
+    setBusy(false);
+  }
+
+  async function handleRemove() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarUrl: null }),
+      });
+      if (res.ok) onChange(null);
+      else setError(t("avatar_failed"));
+    } catch {
+      setError(t("avatar_failed"));
+    }
+    setBusy(false);
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-100 px-3 py-2 space-y-1 group">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-sm text-slate-800 whitespace-pre-wrap">{post.text}</p>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xs text-slate-400">
-              {new Date(post.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-            </span>
-            {connections.length > 1 && (
-              <>
-                <span className="text-xs text-slate-300">·</span>
-                <VisibilityLabel
-                  connections={connections}
-                  visibleTo={post.visibleTo}
-                  onEdit={() => { setLocalVis(post.visibleTo || []); setEditingVis(!editingVis); }}
-                />
-              </>
-            )}
-          </div>
-        </div>
-        <button
-          onClick={() => onDelete(post.id)}
-          className="text-xs text-red-400 opacity-0 group-hover:opacity-100 shrink-0 mt-1"
-        >
-          {t("delete")}
+    <div className="shrink-0 space-y-1">
+      <button
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+        className="block relative rounded-full disabled:opacity-50"
+        aria-label={profile?.avatarUrl ? t("avatar_change") : t("avatar_add")}
+      >
+        <Avatar src={profile?.avatarUrl} name={profile?.displayName || profile?.username} size="lg" />
+        <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-emerald-600 text-white text-[11px] leading-5 text-center border-2 border-white">
+          +
+        </span>
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        onChange={handlePick}
+        className="hidden"
+      />
+      {busy && <p className="text-[10px] text-slate-400">{t("avatar_uploading")}</p>}
+      {profile?.avatarUrl && !busy && (
+        <button onClick={handleRemove} className="text-[10px] text-slate-400 underline">
+          {t("avatar_remove")}
         </button>
-      </div>
-      {editingVis && (
-        <div className="pt-1 space-y-2">
-          <VisibilityPicker
-            connections={connections}
-            selected={localVis}
-            onChange={setLocalVis}
-          />
-          <div className="flex gap-2">
-            <button onClick={handleSaveVis} className="text-xs bg-emerald-600 text-white px-2 py-1 rounded">{t("save")}</button>
-            <button onClick={() => setEditingVis(false)} className="text-xs text-slate-500">{t("cancel")}</button>
-          </div>
-        </div>
       )}
+      {error && <p className="text-[10px] text-red-600 max-w-[72px]">{error}</p>}
     </div>
   );
 }
 
-function KnowMeCard({ entry, connections, onEdit, onDelete, onUpdateVisibility }) {
+function ThemeCard() {
   const { t } = useT();
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(entry.answer);
-  const [editingVis, setEditingVis] = useState(false);
-  const [localVis, setLocalVis] = useState(entry.visibleTo || []);
-
-  function handleSaveVis() {
-    onUpdateVisibility(entry.id, localVis);
-    setEditingVis(false);
-  }
-
+  const { theme, setTheme, themes } = useTheme();
+  // Small swatch per theme so the choice is visible before committing.
+  const swatch = {
+    light: "bg-white border-slate-300",
+    dark: "bg-slate-800 border-slate-600",
+    sunrise: "bg-orange-200 border-orange-400",
+    serene: "bg-sky-200 border-sky-400",
+  };
   return (
-    <div className="bg-white rounded-lg border border-gray-100 px-3 py-2 space-y-1">
-      <p className="text-xs font-medium text-slate-500">{entry.prompt}</p>
-      {editing ? (
-        <div className="space-y-2">
-          <textarea
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            rows={2}
-            maxLength={2000}
-            className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-          <div className="flex gap-2">
-            <button onClick={() => { onEdit(entry.id, value); setEditing(false); }} className="text-xs bg-emerald-600 text-white px-2 py-1 rounded">{t("save")}</button>
-            <button onClick={() => setEditing(false)} className="text-xs text-slate-500">{t("cancel")}</button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex justify-between items-start gap-2">
-          <div className="min-w-0">
-            <p className="text-sm text-slate-800 whitespace-pre-wrap">{entry.answer}</p>
-            {connections.length > 1 && (
-              <div className="mt-0.5">
-                <VisibilityLabel
-                  connections={connections}
-                  visibleTo={entry.visibleTo}
-                  onEdit={() => { setLocalVis(entry.visibleTo || []); setEditingVis(!editingVis); }}
-                />
-              </div>
-            )}
-          </div>
-          <div className="flex gap-2 shrink-0">
-            <button onClick={() => setEditing(true)} className="text-xs text-emerald-600">{t("edit")}</button>
-            <button onClick={() => onDelete(entry.id)} className="text-xs text-red-400">{t("me_knowme_del")}</button>
-          </div>
-        </div>
-      )}
-      {editingVis && !editing && (
-        <div className="pt-1 space-y-2">
-          <VisibilityPicker
-            connections={connections}
-            selected={localVis}
-            onChange={setLocalVis}
-          />
-          <div className="flex gap-2">
-            <button onClick={handleSaveVis} className="text-xs bg-emerald-600 text-white px-2 py-1 rounded">{t("save")}</button>
-            <button onClick={() => setEditingVis(false)} className="text-xs text-slate-500">{t("cancel")}</button>
-          </div>
-        </div>
-      )}
+    <div className="bg-white rounded-lg border border-gray-100 p-3 space-y-2">
+      <p className="text-xs font-semibold text-slate-500 uppercase">{t("theme")}</p>
+      <p className="text-[10px] text-slate-400">{t("theme_hint")}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+        {themes.map((th) => (
+          <button
+            key={th.code}
+            onClick={() => setTheme(th.code)}
+            className={`flex items-center gap-2 text-xs px-2.5 py-2 rounded-lg border transition-colors min-h-[40px] ${
+              theme === th.code
+                ? "bg-emerald-600 text-white border-emerald-600"
+                : "bg-white text-slate-600 border-gray-200"
+            }`}
+          >
+            <span className={`w-3.5 h-3.5 rounded-full border shrink-0 ${swatch[th.code] || "bg-slate-200 border-slate-300"}`} />
+            <span className="truncate">{t(th.labelKey)}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -691,7 +422,7 @@ function LanguageCard() {
           <button
             key={l.code}
             onClick={() => setLocale(l.code)}
-            className={`text-xs px-2.5 py-1.5 rounded-full border transition-colors ${
+            className={`text-xs px-3 py-1.5 rounded-full border transition-colors min-h-[32px] ${
               locale === l.code
                 ? "bg-emerald-600 text-white border-emerald-600"
                 : "bg-white text-slate-500 border-gray-200"
@@ -715,7 +446,6 @@ function PasswordCard() {
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
 
-  // Reset flow for a user who forgot their current password.
   const [resetting, setResetting] = useState(false);
   const [resetConfirm, setResetConfirm] = useState("");
   const [clearingReset, setClearingReset] = useState(false);
@@ -768,8 +498,6 @@ function PasswordCard() {
     setSaving(false);
   }
 
-  // Confirmed reset: wipe the existing hash, then hand the user the
-  // "set a password" flow (now with no current-password requirement).
   async function handleConfirmReset() {
     if (resetConfirm !== "RESET") return;
     setClearingReset(true);
@@ -817,7 +545,8 @@ function PasswordCard() {
           value={resetConfirm}
           onChange={(e) => setResetConfirm(e.target.value)}
           placeholder={t("reset_password_confirm_placeholder")}
-          className="w-full px-2 py-1.5 rounded border border-red-300 text-sm"
+          spellCheck={false}
+          className="w-full px-2 py-2 rounded border border-red-300 text-sm"
         />
         {error && <p className="text-xs text-red-600">{error}</p>}
         <div className="flex gap-2">
@@ -942,7 +671,8 @@ function DeleteAccountCard() {
         value={confirmText}
         onChange={(e) => setConfirmText(e.target.value)}
         placeholder={t("me_delete_confirm_placeholder")}
-        className="w-full px-2 py-1.5 rounded border border-red-300 text-sm"
+        spellCheck={false}
+        className="w-full px-2 py-2 rounded border border-red-300 text-sm"
       />
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-2">

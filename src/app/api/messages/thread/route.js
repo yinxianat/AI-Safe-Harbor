@@ -8,7 +8,7 @@ import { getSessionUser } from "@/lib/auth.js";
 import { findAccessibleConnection, getPartnerId } from "@/lib/connections.js";
 import prisma from "@/lib/db.js";
 
-const PERSON = { select: { id: true, displayName: true, username: true, email: true } };
+const PERSON = { select: { id: true, displayName: true, username: true, email: true, avatarUrl: true } };
 
 function personName(p) {
   return p.displayName || (p.username ? `@${p.username}` : p.email);
@@ -90,6 +90,7 @@ export async function GET(request) {
       id: partner.id,
       displayName: partner.displayName,
       username: partner.username,
+      avatarUrl: partner.avatarUrl || null,
       name: personName(partner),
     } : null,
     connectionId,

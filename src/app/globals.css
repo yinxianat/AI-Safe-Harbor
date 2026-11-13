@@ -1,13 +1,128 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f8fafc;
-  --foreground: #1e293b;
+/**
+ * Theme tokens. Pages reference semantic CSS variables instead of raw
+ * colors, so switching themes only changes these variables. The Tailwind
+ * utility selectors beneath remap common surfaces (bg-white, bg-slate-50,
+ * text-slate-900, …) so most components don't need per-token edits.
+ *
+ * Add a new theme by appending another `[data-theme="..."]` block — all
+ * existing code picks it up automatically.
+ */
+:root,
+:root[data-theme="light"] {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-muted: #f1f5f9;
+  --surface-strong: #f8fafc;
+  --surface-sunken: #e8e8ed;
+  --text: #0f172a;
+  --text-strong: #0f172a;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+  --border: #e5e7eb;
+  --border-strong: #cbd5e1;
+  --accent: #059669;
+  --accent-hover: #047857;
+  --accent-soft: #d1fae5;
+  --accent-soft-text: #047857;
+  --accent-ring: #10b981;
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
+  --danger-soft-text: #b91c1c;
+  --warn: #d97706;
+  --warn-soft: #fef3c7;
+  --warn-soft-text: #a16207;
+  --success: #059669;
+  --overlay: rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme="dark"] {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-muted: #334155;
+  --surface-strong: #0b1220;
+  --surface-sunken: #0b1220;
+  --text: #f1f5f9;
+  --text-strong: #ffffff;
+  --text-muted: #94a3b8;
+  --text-subtle: #64748b;
+  --border: #334155;
+  --border-strong: #475569;
+  --accent: #10b981;
+  --accent-hover: #34d399;
+  --accent-soft: rgba(16, 185, 129, 0.15);
+  --accent-soft-text: #6ee7b7;
+  --accent-ring: #10b981;
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.15);
+  --danger-soft-text: #fca5a5;
+  --warn: #fbbf24;
+  --warn-soft: rgba(251, 191, 36, 0.15);
+  --warn-soft-text: #fcd34d;
+  --success: #34d399;
+  --overlay: rgba(0, 0, 0, 0.65);
+}
+
+/* "Sunrise" — warm, optimistic, higher-energy. Good for lifting a mood. */
+:root[data-theme="sunrise"] {
+  --bg: #fff8f1;
+  --surface: #ffffff;
+  --surface-muted: #ffedd5;
+  --surface-strong: #fff1e6;
+  --surface-sunken: #fde6cf;
+  --text: #431407;
+  --text-strong: #1c1917;
+  --text-muted: #9a5a2b;
+  --text-subtle: #c08457;
+  --border: #fed7aa;
+  --border-strong: #fdba74;
+  --accent: #ea580c;
+  --accent-hover: #c2410c;
+  --accent-soft: #ffedd5;
+  --accent-soft-text: #9a3412;
+  --accent-ring: #fb923c;
+  --danger: #be123c;
+  --danger-soft: #ffe4e6;
+  --danger-soft-text: #9f1239;
+  --warn: #b45309;
+  --warn-soft: #fef3c7;
+  --warn-soft-text: #92400e;
+  --success: #0e7490;
+  --overlay: rgba(67, 20, 7, 0.4);
+}
+
+/* "Serene" — cool, calm, quiet. Good when someone needs the app to feel soft. */
+:root[data-theme="serene"] {
+  --bg: #f0f9ff;
+  --surface: #ffffff;
+  --surface-muted: #e0f2fe;
+  --surface-strong: #eff6ff;
+  --surface-sunken: #dbeafe;
+  --text: #0c4a6e;
+  --text-strong: #082f49;
+  --text-muted: #0369a1;
+  --text-subtle: #38bdf8;
+  --border: #bae6fd;
+  --border-strong: #7dd3fc;
+  --accent: #0284c7;
+  --accent-hover: #0369a1;
+  --accent-soft: #e0f2fe;
+  --accent-soft-text: #075985;
+  --accent-ring: #38bdf8;
+  --danger: #be123c;
+  --danger-soft: #ffe4e6;
+  --danger-soft-text: #9f1239;
+  --warn: #a16207;
+  --warn-soft: #fef3c7;
+  --warn-soft-text: #854d0e;
+  --success: #0284c7;
+  --overlay: rgba(12, 74, 110, 0.4);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -18,10 +133,14 @@ html, body {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--text);
   font-family: Arial, Helvetica, sans-serif;
   -webkit-tap-highlight-color: transparent;
+  /* Phone notch / home indicator safety — components can override but the
+     body default means rogue elements still can't reach the edge. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* Prevent any child from forcing horizontal scroll */
@@ -39,3 +158,119 @@ p, span, h1, h2, h3, h4 {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
 }
+
+/**
+ * Cancels the app layout's horizontal gutter so a page can run edge to edge
+ * (chat backgrounds, sticky headers). Kept as one class because the gutter
+ * changes at three breakpoints and hand-written negative margins drifted
+ * out of sync with it.
+ */
+.full-bleed {
+  margin-left: -0.75rem;
+  margin-right: -0.75rem;
+}
+@media (min-width: 640px) {
+  .full-bleed { margin-left: -1.25rem; margin-right: -1.25rem; }
+}
+@media (min-width: 1024px) {
+  .full-bleed { margin-left: -1.5rem; margin-right: -1.5rem; }
+}
+
+/* Taps should never be smaller than the platform minimum. */
+button, a[role="button"] {
+  touch-action: manipulation;
+}
+
+/**
+ * Theme-aware remap of common Tailwind utilities. This lets every existing
+ * className like `bg-white` or `text-slate-900` follow the active theme
+ * without a per-component rewrite. Non-light themes override only;
+ * `light` keeps Tailwind's defaults so nothing changes on the baseline.
+ *
+ * Only semantic surface/text/border classes are remapped. Branded accent
+ * colors (bg-emerald-600 buttons, red error banners) keep their palette
+ * so they stay recognizable across themes.
+ */
+:root[data-theme="dark"] .bg-white,
+:root[data-theme="dark"] .bg-slate-50 { background-color: var(--surface) !important; }
+:root[data-theme="dark"] .bg-gray-50 { background-color: var(--surface-muted) !important; }
+:root[data-theme="dark"] .bg-slate-100 { background-color: var(--surface-muted) !important; }
+:root[data-theme="dark"] .bg-gray-100 { background-color: var(--surface-muted) !important; }
+:root[data-theme="dark"] .text-slate-900,
+:root[data-theme="dark"] .text-slate-800 { color: var(--text-strong) !important; }
+:root[data-theme="dark"] .text-slate-700,
+:root[data-theme="dark"] .text-slate-600 { color: var(--text) !important; }
+:root[data-theme="dark"] .text-slate-500,
+:root[data-theme="dark"] .text-slate-400 { color: var(--text-muted) !important; }
+:root[data-theme="dark"] .text-gray-700,
+:root[data-theme="dark"] .text-gray-600,
+:root[data-theme="dark"] .text-gray-500 { color: var(--text-muted) !important; }
+:root[data-theme="dark"] .text-gray-400,
+:root[data-theme="dark"] .text-gray-300 { color: var(--text-subtle) !important; }
+:root[data-theme="dark"] .border-gray-100,
+:root[data-theme="dark"] .border-gray-200 { border-color: var(--border) !important; }
+:root[data-theme="dark"] .border-slate-100,
+:root[data-theme="dark"] .border-slate-200 { border-color: var(--border) !important; }
+:root[data-theme="dark"] .bg-emerald-50 { background-color: var(--accent-soft) !important; }
+:root[data-theme="dark"] .text-emerald-700,
+:root[data-theme="dark"] .text-emerald-800,
+:root[data-theme="dark"] .text-emerald-900 { color: var(--accent-soft-text) !important; }
+:root[data-theme="dark"] .border-emerald-100,
+:root[data-theme="dark"] .border-emerald-200 { border-color: rgba(16, 185, 129, 0.35) !important; }
+:root[data-theme="dark"] .bg-red-50 { background-color: var(--danger-soft) !important; }
+:root[data-theme="dark"] .text-red-700,
+:root[data-theme="dark"] .text-red-800 { color: var(--danger-soft-text) !important; }
+:root[data-theme="dark"] .border-red-100,
+:root[data-theme="dark"] .border-red-200 { border-color: rgba(248, 113, 113, 0.4) !important; }
+:root[data-theme="dark"] .bg-amber-50 { background-color: var(--warn-soft) !important; }
+:root[data-theme="dark"] .text-amber-700,
+:root[data-theme="dark"] .text-amber-800 { color: var(--warn-soft-text) !important; }
+:root[data-theme="dark"] .border-amber-100,
+:root[data-theme="dark"] .border-amber-200 { border-color: rgba(251, 191, 36, 0.35) !important; }
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] select {
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+:root[data-theme="dark"] input::placeholder,
+:root[data-theme="dark"] textarea::placeholder { color: var(--text-subtle) !important; }
+
+/* Sunrise overrides — warm, happy variant. */
+:root[data-theme="sunrise"] .bg-white { background-color: var(--surface) !important; }
+:root[data-theme="sunrise"] .bg-slate-50 { background-color: var(--surface-muted) !important; }
+:root[data-theme="sunrise"] .bg-gray-50,
+:root[data-theme="sunrise"] .bg-gray-100,
+:root[data-theme="sunrise"] .bg-slate-100 { background-color: var(--surface-muted) !important; }
+:root[data-theme="sunrise"] .text-slate-900,
+:root[data-theme="sunrise"] .text-slate-800 { color: var(--text-strong) !important; }
+:root[data-theme="sunrise"] .text-slate-700,
+:root[data-theme="sunrise"] .text-slate-600 { color: var(--text) !important; }
+:root[data-theme="sunrise"] .text-slate-500,
+:root[data-theme="sunrise"] .text-slate-400,
+:root[data-theme="sunrise"] .text-gray-500,
+:root[data-theme="sunrise"] .text-gray-400 { color: var(--text-muted) !important; }
+:root[data-theme="sunrise"] .border-gray-100,
+:root[data-theme="sunrise"] .border-gray-200,
+:root[data-theme="sunrise"] .border-slate-100,
+:root[data-theme="sunrise"] .border-slate-200 { border-color: var(--border) !important; }
+
+/* Serene overrides — cool, calm variant. */
+:root[data-theme="serene"] .bg-white { background-color: var(--surface) !important; }
+:root[data-theme="serene"] .bg-slate-50 { background-color: var(--surface-muted) !important; }
+:root[data-theme="serene"] .bg-gray-50,
+:root[data-theme="serene"] .bg-gray-100,
+:root[data-theme="serene"] .bg-slate-100 { background-color: var(--surface-muted) !important; }
+:root[data-theme="serene"] .text-slate-900,
+:root[data-theme="serene"] .text-slate-800 { color: var(--text-strong) !important; }
+:root[data-theme="serene"] .text-slate-700,
+:root[data-theme="serene"] .text-slate-600 { color: var(--text) !important; }
+:root[data-theme="serene"] .text-slate-500,
+:root[data-theme="serene"] .text-slate-400,
+:root[data-theme="serene"] .text-gray-500,
+:root[data-theme="serene"] .text-gray-400 { color: var(--text-muted) !important; }
+:root[data-theme="serene"] .border-gray-100,
+:root[data-theme="serene"] .border-gray-200,
+:root[data-theme="serene"] .border-slate-100,
+:root[data-theme="serene"] .border-slate-200 { border-color: var(--border) !important; }

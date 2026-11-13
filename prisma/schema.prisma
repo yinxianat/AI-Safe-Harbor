@@ -27,12 +27,24 @@ model User {
   // UI language — BCP-47 tag (e.g. "en", "zh-CN"). Used for interface
   // strings and the language the AI responds in when rephrasing.
   locale         String   @default("en")
+  // UI theme name. Known values are listed in src/lib/theme/context.js;
+  // unknown values fall back to "light" in the client so a stale row never
+  // crashes the page.
+  theme          String   @default("light")
+  // Optional base64 data URL (or external URL) for the user's avatar.
+  // Kept inline rather than in object storage to avoid a storage service
+  // dependency; clients resize before upload to keep the row small.
+  avatarUrl      String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   statusText      String?
   statusMood      String?
   statusUpdatedAt DateTime?
+  // Connection IDs allowed to see the status; empty = all contacts. Same
+  // convention as WallPost.visibleTo and KnowMeEntry.visibleTo so the
+  // per-connection isolation rule is uniform across everything shared.
+  statusVisibleTo String[]
 
   sentConnections      Connection[]       @relation("UserA")
   receivedConnections  Connection[]       @relation("UserB")
@@ -149,7 +161,10 @@ model KnowMeEntry {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  category  String   // "favorites", "love_languages", "pet_peeves", "stories", "about_me"
+  // Legacy grouping key. The UI no longer asks for a category — people
+  // write a heading and an answer — so new rows all land in "about_me".
+  // Kept (defaulted) so existing rows stay readable.
+  category  String   @default("about_me")
   prompt    String   // the question or heading
   answer    String   // the user's answer
   isPublic  Boolean  @default(true) // visible to circle members

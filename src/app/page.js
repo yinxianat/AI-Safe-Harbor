@@ -467,8 +467,11 @@ function LanguagePicker() {
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+    <div
+      className="flex min-h-[100dvh] flex-col items-center justify-center px-4 sm:px-6
+                 py-[max(1.5rem,env(safe-area-inset-top))]"
+    >
+      <div className="w-full max-w-sm sm:max-w-md">
         <LanguagePicker />
         <HomeContent />
       </div>

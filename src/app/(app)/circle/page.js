@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context.js";
+import Avatar from "@/components/Avatar.js";
 
 const MOOD_DOTS = {
   calm: "bg-blue-400",
@@ -64,8 +65,9 @@ function PersonCard({ person, onDisconnect }) {
         className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm overflow-hidden cursor-pointer active:bg-slate-50 transition-colors"
       >
         <div className="p-3 sm:p-5 space-y-2 sm:space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <Avatar src={person.avatarUrl} name={name} size="md" />
+            <div className="min-w-0 flex-1">
               <h2 className="text-base sm:text-lg font-bold text-slate-900 truncate">{name}</h2>
               {person.username && person.displayName && (
                 <p className="text-xs sm:text-sm text-slate-500 truncate">@{person.username}</p>

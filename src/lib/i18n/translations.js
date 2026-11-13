@@ -100,6 +100,24 @@ export const TRANSLATIONS = {
     language: "Language",
     sign_out: "Sign out",
 
+    // Theme
+    theme: "Theme",
+    theme_hint: "Pick what feels right today.",
+    theme_light: "Light",
+    theme_dark: "Dark",
+    theme_sunrise: "Sunrise",
+    theme_serene: "Serene",
+
+    // Avatar
+    avatar_section: "Photo",
+    avatar_add: "Add a photo",
+    avatar_change: "Change photo",
+    avatar_remove: "Remove",
+    avatar_uploading: "Uploading…",
+    avatar_too_large: "That image is too large. Try a smaller one.",
+    avatar_invalid: "Please pick a JPEG, PNG, or WebP image.",
+    avatar_failed: "Could not save that photo. Please try again.",
+
     // Account section (Me page)
     account_section: "Account",
     set_password_title: "Set a password",
@@ -122,7 +140,8 @@ export const TRANSLATIONS = {
     me_fallback_name: "Me",
     me_save_status: "Save",
     me_status_section: "Status",
-    me_status_placeholder: "How are you feeling? Calm, happy, energetic, low, neutral…",
+    me_status_placeholder: "How are you feeling right now?",
+    me_status_visibility_hint: "Choose who sees this. Different people can see different things.",
     me_wall_section: "Wall",
     me_post_placeholder: "Share something with your person…",
     me_post_button: "Post",
@@ -134,6 +153,50 @@ export const TRANSLATIONS = {
     me_knowme_prompt_placeholder: "Topic or question…",
     me_knowme_answer_placeholder: "Your answer…",
     me_knowme_del: "Del",
+
+    // Me page section links
+    me_open_story: "About Me",
+    me_open_story_hint: "Notes about who you are — {count} shared",
+    me_open_knowme: "Know Me",
+    me_open_knowme_hint: "Questions people ask — {count} answered",
+    me_open_arrow: "Open",
+
+    // About Me (formerly Wall) page
+    story_title: "About Me",
+    story_subtitle: "Notes about who you are. Pick who sees each one — different people can see different things.",
+    story_back: "← Back to Me",
+    story_placeholder: "Something about you — what you care about, what you're like, what you need. Take as much space as you want.",
+    story_add: "Add note",
+    story_adding: "Adding…",
+    story_empty: "Nothing here yet. Add your first note so your people can get to know you.",
+    story_edit: "Edit",
+    story_delete: "Delete",
+    story_delete_confirm: "Delete this note?",
+    story_save: "Save",
+    story_count: "{count} notes",
+    story_visible_edit: "Who sees this",
+    story_load_failed: "Could not load your notes.",
+    story_save_failed: "Could not save that note. Please try again.",
+    story_delete_failed: "Could not delete that note. Please try again.",
+
+    // Know Me page
+    knowme_title: "Know Me",
+    knowme_subtitle: "Answer a question about yourself, in your own words. Pick who sees each answer.",
+    knowme_back: "← Back to Me",
+    knowme_prompt_placeholder: "The question — e.g. What I need when I'm stressed",
+    knowme_answer_placeholder: "Your answer, in your own words.",
+    knowme_add: "Add answer",
+    knowme_adding: "Adding…",
+    knowme_empty: "Nothing here yet. Add a question and your answer — it helps your people understand you, and it helps the AI sound more like you.",
+    knowme_delete_confirm: "Delete this answer?",
+    knowme_count: "{count} answers",
+    knowme_load_failed: "Could not load your answers.",
+    knowme_save_failed: "Could not save that answer. Please try again.",
+    knowme_delete_failed: "Could not delete that answer. Please try again.",
+
+    // Spellcheck helper
+    spellcheck_hint: "Possible typo: {words}",
+    spellcheck_dismiss: "Looks right",
     me_session_duration: "Session Duration",
     me_session_duration_hint: "How long before you need to sign in again.",
     me_session_duration_effect: "Takes effect on your next sign-in.",
@@ -171,18 +234,6 @@ export const TRANSLATIONS = {
     mood_low: "Low",
     mood_low_energy: "Low energy",
     mood_neutral: "Neutral",
-
-    // Know Me categories
-    category_about_me: "About Me",
-    category_favorites: "Favorites",
-    category_love_languages: "Love Languages",
-    category_pet_peeves: "Pet Peeves",
-    category_stories: "Stories",
-    category_example_about_me: "e.g. What I need when I'm stressed, How I like to be comforted",
-    category_example_favorites: "e.g. My comfort food, A song that lifts me up",
-    category_example_love_languages: "e.g. What makes me feel most loved",
-    category_example_pet_peeves: "e.g. A misunderstanding that keeps happening",
-    category_example_stories: "e.g. A memory that shaped who I am",
 
     // Tone labels
     tone_warm_and_gentle: "Warm & gentle",
@@ -359,7 +410,7 @@ export const TRANSLATIONS = {
     them_no_topics_set: "No topics set",
     them_no_avoided: "No avoided topics",
     them_gentle_note: "(gentle)",
-    them_wall: "{name}'s Wall",
+    them_about: "About {name}",
     them_know: "Know {name}",
     them_message: "Message {name}",
     them_ai_tuning: "AI Tuning",
@@ -590,6 +641,24 @@ export const TRANSLATIONS = {
     language: "语言",
     sign_out: "退出登录",
 
+    // Theme
+    theme: "主题",
+    theme_hint: "选一个今天最合心意的。",
+    theme_light: "明亮",
+    theme_dark: "深色",
+    theme_sunrise: "暖阳",
+    theme_serene: "静蓝",
+
+    // Avatar
+    avatar_section: "头像",
+    avatar_add: "添加照片",
+    avatar_change: "更换照片",
+    avatar_remove: "移除",
+    avatar_uploading: "上传中…",
+    avatar_too_large: "图片太大了,请换一张小一些的。",
+    avatar_invalid: "请选择 JPEG、PNG 或 WebP 格式的图片。",
+    avatar_failed: "无法保存该照片,请重试。",
+
     // Account section (Me page)
     account_section: "账号",
     set_password_title: "设置密码",
@@ -612,7 +681,8 @@ export const TRANSLATIONS = {
     me_fallback_name: "我",
     me_save_status: "保存",
     me_status_section: "状态",
-    me_status_placeholder: "你现在感觉怎么样?平静、开心、充满活力、低落、一般…",
+    me_status_placeholder: "你现在感觉怎么样?",
+    me_status_visibility_hint: "选择谁能看到。不同的人可以看到不同的内容。",
     me_wall_section: "心墙",
     me_post_placeholder: "分享点什么给你的人…",
     me_post_button: "发布",
@@ -624,6 +694,50 @@ export const TRANSLATIONS = {
     me_knowme_prompt_placeholder: "话题或问题…",
     me_knowme_answer_placeholder: "你的回答…",
     me_knowme_del: "删",
+
+    // Me page section links
+    me_open_story: "关于我",
+    me_open_story_hint: "关于你是谁的记录 — 已分享 {count} 条",
+    me_open_knowme: "了解我",
+    me_open_knowme_hint: "别人会问的问题 — 已回答 {count} 条",
+    me_open_arrow: "打开",
+
+    // About Me page
+    story_title: "关于我",
+    story_subtitle: "关于你是谁的记录。为每一条选择谁能看到——不同的人可以看到不同的内容。",
+    story_back: "← 返回「我」",
+    story_placeholder: "关于你的一些事——你在意什么、你是什么样的人、你需要什么。想写多少都可以。",
+    story_add: "添加记录",
+    story_adding: "添加中…",
+    story_empty: "这里还是空的。添加第一条记录,让你的人更了解你。",
+    story_edit: "编辑",
+    story_delete: "删除",
+    story_delete_confirm: "删除这条记录?",
+    story_save: "保存",
+    story_count: "{count} 条记录",
+    story_visible_edit: "谁能看到",
+    story_load_failed: "无法加载你的记录。",
+    story_save_failed: "无法保存该记录,请重试。",
+    story_delete_failed: "无法删除该记录,请重试。",
+
+    // Know Me page
+    knowme_title: "了解我",
+    knowme_subtitle: "用你自己的话回答一个关于你的问题。为每个回答选择谁能看到。",
+    knowme_back: "← 返回「我」",
+    knowme_prompt_placeholder: "问题——例如:我压力大时需要什么",
+    knowme_answer_placeholder: "用你自己的话回答。",
+    knowme_add: "添加回答",
+    knowme_adding: "添加中…",
+    knowme_empty: "这里还是空的。添加一个问题和你的回答——这能帮你的人理解你,也能让 AI 更像你本人说话。",
+    knowme_delete_confirm: "删除这个回答?",
+    knowme_count: "{count} 个回答",
+    knowme_load_failed: "无法加载你的回答。",
+    knowme_save_failed: "无法保存该回答,请重试。",
+    knowme_delete_failed: "无法删除该回答,请重试。",
+
+    // Spellcheck helper
+    spellcheck_hint: "可能的拼写错误: {words}",
+    spellcheck_dismiss: "没问题",
     me_session_duration: "登录保持时间",
     me_session_duration_hint: "多久后需要重新登录。",
     me_session_duration_effect: "将在下次登录时生效。",
@@ -661,18 +775,6 @@ export const TRANSLATIONS = {
     mood_low: "低落",
     mood_low_energy: "能量低",
     mood_neutral: "一般",
-
-    // Know Me categories
-    category_about_me: "关于我",
-    category_favorites: "最爱",
-    category_love_languages: "爱的语言",
-    category_pet_peeves: "小烦恼",
-    category_stories: "故事",
-    category_example_about_me: "例如:我压力大时需要什么、我喜欢被怎样安慰",
-    category_example_favorites: "例如:我的安慰食物、让我振奋的一首歌",
-    category_example_love_languages: "例如:什么让我最感到被爱",
-    category_example_pet_peeves: "例如:反复发生的一个误会",
-    category_example_stories: "例如:塑造我的一段回忆",
 
     // Tone labels
     tone_warm_and_gentle: "温暖柔和",
@@ -849,7 +951,7 @@ export const TRANSLATIONS = {
     them_no_topics_set: "暂未设置话题",
     them_no_avoided: "没有回避的话题",
     them_gentle_note: "(温和)",
-    them_wall: "{name} 的心墙",
+    them_about: "关于 {name}",
     them_know: "了解 {name}",
     them_message: "给 {name} 发消息",
     them_ai_tuning: "AI 调整",
