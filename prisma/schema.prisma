@@ -10,6 +10,11 @@ datasource db {
 model User {
   id             String   @id @default(cuid())
   email          String   @unique
+  // Optional scrypt hash of a password. Users without one can only sign in
+  // via magic link; users with one can use either. Format is
+  // "scrypt:N:r:p:salt_hex:hash_hex" so parameters travel with the hash,
+  // letting us rotate cost factors without a one-off migration.
+  passwordHash   String?
   // Lowercase handle for finding people in-app. Null until claimed; sign-in
   // stays on email, so this is identity-for-others, not authentication.
   username       String?  @unique

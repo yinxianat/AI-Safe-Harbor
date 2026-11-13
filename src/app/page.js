@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { validateEmailShape, suggestCorrection } from "@/lib/email-hints.js";
 import { useT } from "@/lib/i18n/context.js";
@@ -261,6 +261,176 @@ function SignInForm() {
   );
 }
 
+function AuthTabs() {
+  const [tab, setTab] = useState("magic");
+  const { t } = useT();
+  return (
+    <div className="space-y-3">
+      <div className="flex bg-slate-100 rounded-xl p-1">
+        <button
+          onClick={() => setTab("magic")}
+          className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors ${
+            tab === "magic" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+          }`}
+        >
+          {t("login_magic_tab")}
+        </button>
+        <button
+          onClick={() => setTab("password")}
+          className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors ${
+            tab === "password" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+          }`}
+        >
+          {t("login_password_tab")}
+        </button>
+      </div>
+      {tab === "magic" ? <SignInForm /> : <PasswordAuthForm />}
+    </div>
+  );
+}
+
+function PasswordAuthForm() {
+  const router = useRouter();
+  const { t } = useT();
+  const [mode, setMode] = useState("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError(null);
+
+    const check = validateEmailShape(email);
+    if (!check.ok) {
+      setError(check.message);
+      return;
+    }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const url = mode === "signup" ? "/api/auth/signup" : "/api/auth/login";
+      const body = mode === "signup"
+        ? { email: check.email, password, displayName: displayName.trim() || null }
+        : { email: check.email, password };
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        router.push("/circle");
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 429) {
+        setError(`Too many attempts. Wait ${data.retryAfter || 60}s and try again.`);
+      } else if (data.error === "account_exists") {
+        setError(t("account_exists"));
+      } else if (data.error === "invalid_credentials") {
+        setError(t("invalid_credentials"));
+      } else if (data.detail) {
+        setError(data.detail);
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
+    } catch {
+      setError("Network error. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3" noValidate>
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-slate-700">
+          {t("email_label")}
+        </label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder={t("email_placeholder")}
+          autoComplete="email"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck="false"
+          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-slate-700">
+          {t("password_label")}
+        </label>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder={t("password_placeholder")}
+          autoComplete={mode === "signup" ? "new-password" : "current-password"}
+          minLength={8}
+          maxLength={200}
+          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+      </div>
+
+      {mode === "signup" && (
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">
+            Display name (optional)
+          </label>
+          <input
+            type="text"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="Your name"
+            maxLength={50}
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full rounded-xl bg-emerald-600 py-3 font-medium text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {loading
+          ? (mode === "signup" ? t("creating_account") : t("logging_in"))
+          : (mode === "signup" ? t("create_account") : t("log_in"))}
+      </button>
+
+      <p className="text-center text-xs text-slate-500">
+        {mode === "login" ? t("no_account") : t("have_account")}{" "}
+        <button
+          type="button"
+          onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(null); }}
+          className="font-medium text-emerald-600 underline hover:text-emerald-800"
+        >
+          {mode === "login" ? t("sign_up") : t("log_in")}
+        </button>
+      </p>
+    </form>
+  );
+}
+
 function LanguagePicker() {
   const { locale, setLocale, languages } = useT();
   return (
@@ -307,7 +477,7 @@ function HomeContent() {
         <ErrorBanner />
       </Suspense>
 
-      <SignInForm />
+      <AuthTabs />
 
       <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
         {t("china_notice")}

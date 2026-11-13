@@ -533,6 +533,9 @@ export default function MePage() {
       {/* --- Language --- */}
       <LanguageCard />
 
+      {/* --- Password --- */}
+      <PasswordCard />
+
       {/* --- Delete Account --- */}
       <DeleteAccountCard />
 
@@ -708,6 +711,125 @@ function LanguageCard() {
         ))}
       </div>
     </div>
+  );
+}
+
+function PasswordCard() {
+  const { t } = useT();
+  const [hasPassword, setHasPassword] = useState(null);
+  const [opened, setOpened] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/password");
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setHasPassword(Boolean(data.hasPassword));
+        }
+      } catch { /* leave as unknown */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  async function handleSave(e) {
+    e.preventDefault();
+    setSaving(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: hasPassword ? currentPassword : undefined,
+          newPassword,
+        }),
+      });
+      if (res.ok) {
+        setMessage(t("password_saved"));
+        setHasPassword(true);
+        setCurrentPassword("");
+        setNewPassword("");
+        setOpened(false);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        if (data.error === "invalid_current_password") {
+          setError(t("wrong_current_password"));
+        } else {
+          setError(data.detail || "Could not update password.");
+        }
+      }
+    } catch {
+      setError("Network error. Try again.");
+    }
+    setSaving(false);
+  }
+
+  const title = hasPassword ? t("change_password_title") : t("set_password_title");
+
+  if (!opened) {
+    return (
+      <div className="bg-white rounded-lg border border-gray-100 p-3 space-y-1">
+        <p className="text-xs font-semibold text-slate-500 uppercase">{t("account_section")}</p>
+        <button onClick={() => setOpened(true)} className="text-sm text-emerald-600 font-medium">
+          {title}
+        </button>
+        {!hasPassword && (
+          <p className="text-[10px] text-slate-400">{t("set_password_hint")}</p>
+        )}
+        {message && <p className="text-xs text-emerald-600">{message}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSave} className="bg-white rounded-lg border border-gray-100 p-3 space-y-2">
+      <p className="text-xs font-semibold text-slate-500 uppercase">{title}</p>
+      {hasPassword && (
+        <input
+          type="password"
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+          placeholder={t("current_password")}
+          autoComplete="current-password"
+          className="w-full px-3 py-2 rounded border border-gray-200 text-sm"
+        />
+      )}
+      <input
+        type="password"
+        value={newPassword}
+        onChange={(e) => setNewPassword(e.target.value)}
+        placeholder={t("new_password")}
+        autoComplete="new-password"
+        minLength={8}
+        maxLength={200}
+        className="w-full px-3 py-2 rounded border border-gray-200 text-sm"
+      />
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={saving || newPassword.length < 8 || (hasPassword && !currentPassword)}
+          className="flex-1 text-xs font-medium bg-emerald-600 text-white py-2 rounded-lg disabled:opacity-50"
+        >
+          {saving ? "..." : t("save_password")}
+        </button>
+        <button
+          type="button"
+          onClick={() => { setOpened(false); setCurrentPassword(""); setNewPassword(""); setError(null); }}
+          className="flex-1 text-xs font-medium bg-white border border-gray-200 text-slate-600 py-2 rounded-lg"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
 
