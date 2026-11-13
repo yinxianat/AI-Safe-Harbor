@@ -1,6 +1,7 @@
 import { getSessionUser } from "@/lib/auth.js";
 import prisma from "@/lib/db.js";
 import { TOPIC_KEYS, getTopicLabel, isCustomTopicKey } from "@/lib/topics.js";
+import { canView, textForViewer } from "@/lib/profile-audience.js";
 
 const VALID_TONES = {
   warm_and_gentle: "Warm & gentle",
@@ -68,15 +69,10 @@ export async function GET(request) {
     return Response.json({ error: "partner_not_found" }, { status: 404 });
   }
 
-  // Visibility filter: show only posts/entries where visibleTo is empty (all)
-  // or contains this specific connection.
-  const visibleWall = wallPosts.filter(
-    (p) => !p.visibleTo || p.visibleTo.length === 0 || p.visibleTo.includes(connectionId)
-  );
-
-  const visibleKnowMe = knowMeEntries.filter(
-    (e) => !e.visibleTo || e.visibleTo.length === 0 || e.visibleTo.includes(connectionId)
-  );
+  // visibleTo is an allow-list when set; excludedFrom (a red-topic boundary
+  // this viewer declared) always wins.
+  const visibleWall = wallPosts.filter((p) => canView(p, connectionId));
+  const visibleKnowMe = knowMeEntries.filter((e) => canView(e, connectionId));
 
   // The status follows the same per-connection rule as posts and entries.
   const statusVisible =
@@ -108,7 +104,8 @@ export async function GET(request) {
     id: e.id,
     category: e.category,
     prompt: e.prompt,
-    answer: e.answer,
+    // The variant the author approved for this reader, if any.
+    answer: textForViewer(e, connectionId, "answer"),
   }));
 
   return Response.json({
@@ -127,7 +124,7 @@ export async function GET(request) {
     knowMe: entries,
     wall: visibleWall.map((p) => ({
       id: p.id,
-      text: p.text,
+      text: textForViewer(p, connectionId, "text"),
       mood: p.mood,
       createdAt: p.createdAt,
     })),

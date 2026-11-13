@@ -60,27 +60,27 @@ function StatCard({ label, value, hint, detail }) {
     <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
       <button
         onClick={() => hasDetail && setOpen(!open)}
-        className={`w-full p-4 text-left ${hasDetail ? "cursor-pointer hover:bg-slate-50 transition-colors" : "cursor-default"}`}
+        className={`w-full p-3 sm:p-4 text-left ${hasDetail ? "cursor-pointer hover:bg-slate-50 transition-colors" : "cursor-default"}`}
       >
         <div className="flex items-center justify-between">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
+          <p className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
           {hasDetail && (
-            <svg className={`w-3.5 h-3.5 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
           )}
         </div>
-        <p className="mt-1 text-2xl font-semibold text-slate-900">{value}</p>
-        {hint && <p className="mt-0.5 text-xs text-slate-400">{hint}</p>}
+        <p className="mt-0.5 sm:mt-1 text-xl sm:text-2xl font-semibold text-slate-900">{value}</p>
+        {hint && <p className="mt-0.5 text-[10px] sm:text-xs text-slate-400 truncate">{hint}</p>}
       </button>
       {open && hasDetail && (
-        <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-3 max-h-64 overflow-y-auto">
+        <div className="border-t border-slate-100 bg-slate-50/50 px-3 sm:px-4 py-2 sm:py-3 max-h-64 overflow-y-auto">
           {detail.map((row, i) => (
-            <div key={i} className="flex items-center gap-3 py-1.5 text-sm border-b border-slate-50 last:border-0">
+            <div key={i} className="flex items-center gap-2 sm:gap-3 py-1.5 text-xs sm:text-sm border-b border-slate-50 last:border-0">
               <span className="flex-1 text-slate-700 truncate">{row.primary}</span>
-              {row.secondary && <span className="shrink-0 text-xs text-slate-400">{row.secondary}</span>}
+              {row.secondary && <span className="shrink-0 text-[10px] sm:text-xs text-slate-400">{row.secondary}</span>}
               {row.badge && (
-                <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${row.badgeStyle || "bg-slate-100 text-slate-600"}`}>
+                <span className={`shrink-0 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-medium ${row.badgeStyle || "bg-slate-100 text-slate-600"}`}>
                   {row.badge}
                 </span>
               )}
@@ -204,7 +204,7 @@ export default function AdminPage() {
     );
   }
 
-  const { findings, metrics, logs, environment, generatedAt, viewer, userIssues, details } = state.data;
+  const { findings, metrics, logs, environment, generatedAt, viewer, userIssues, details, costs } = state.data;
   const unresolvedLogs = logs?.filter((l) => !l.resolved) || [];
   const resolvedLogs = logs?.filter((l) => l.resolved) || [];
 
@@ -228,42 +228,42 @@ export default function AdminPage() {
   ];
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-5 py-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Admin Portal</h1>
-          <p className="mt-0.5 text-sm text-slate-500">
+    <div className="space-y-4 sm:space-y-6">
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl font-bold text-slate-900">Admin</h1>
+          <p className="mt-0.5 text-[10px] sm:text-sm text-slate-500 truncate">
             {environment}{viewer ? ` · ${viewer}` : ""} · {new Date(generatedAt).toLocaleString()}
           </p>
         </div>
-        <button onClick={load} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+        <button onClick={load} className="rounded-lg border border-slate-200 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50">
           Refresh
         </button>
       </header>
 
       {/* Headline card */}
-      <div className={`mt-5 rounded-xl border-l-4 border p-4 ${
+      <div className={`rounded-xl border-l-4 border p-3 sm:p-4 ${
         highFindings.length > 0
           ? "border-l-red-500 border-red-200 bg-red-50 text-red-800"
           : medFindings.length > 0
             ? "border-l-amber-400 border-amber-200 bg-amber-50 text-amber-800"
             : "border-l-emerald-500 border-emerald-200 bg-emerald-50 text-emerald-800"
       }`}>
-        <p className="font-semibold">{headlineText}</p>
-        <p className="mt-0.5 text-sm">
+        <p className="text-sm sm:text-base font-semibold">{headlineText}</p>
+        <p className="mt-0.5 text-xs sm:text-sm">
           {highFindings.length > 0
             ? highFindings[0].detail
             : "Configuration looks complete and nothing critical was logged."}
         </p>
       </div>
 
-      {/* Tab navigation */}
-      <nav className="mt-6 flex gap-1 overflow-x-auto border-b border-slate-200 pb-px">
+      {/* Tab navigation — horizontal scroll on phone */}
+      <nav className="flex gap-1 overflow-x-auto border-b border-slate-200 pb-px -mx-3 px-3 sm:-mx-0 sm:px-0 scrollbar-hide">
         {TABS.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors rounded-t-lg ${
+            className={`whitespace-nowrap px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors rounded-t-lg shrink-0 ${
               activeTab === tab.key
                 ? "bg-white border border-slate-200 border-b-white text-emerald-700 -mb-px"
                 : "text-slate-500 hover:text-slate-700"
@@ -274,12 +274,12 @@ export default function AdminPage() {
         ))}
       </nav>
 
-      <div className="mt-6">
+      <div>
         {activeTab === "overview" && (
           <OverviewTab metrics={metrics} findings={findings} userIssues={userIssues} details={details}
             highFindings={highFindings} medFindings={medFindings} lowFindings={lowFindings} />
         )}
-        {activeTab === "ai" && <AICallsTab details={details} metrics={metrics} />}
+        {activeTab === "ai" && <AICallsTab details={details} metrics={metrics} costs={costs} />}
         {activeTab === "logs" && (
           <LogsTab logs={showResolved ? logs : unresolvedLogs}
             unresolvedCount={unresolvedLogs.length} resolvedCount={resolvedLogs.length}
@@ -296,7 +296,7 @@ export default function AdminPage() {
 // ─── Overview Tab ───────────────────────────────────────────────────────────
 
 function OverviewTab({ metrics, userIssues, details, highFindings, medFindings, lowFindings }) {
-  if (!metrics) return <p className="text-sm text-slate-500">Metrics unavailable.</p>;
+  if (!metrics) return <p className="text-xs sm:text-sm text-slate-500">Metrics unavailable.</p>;
 
   const userDetail = details?.users?.map((u) => ({
     primary: u.name, secondary: new Date(u.joined).toLocaleDateString(),
@@ -319,7 +319,7 @@ function OverviewTab({ metrics, userIssues, details, highFindings, medFindings, 
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
         <StatCard label="Users" value={metrics.users} detail={userDetail} />
         <StatCard label="Connections" value={metrics.connections} detail={connDetail} />
         <StatCard label="Sent" value={metrics.messagesSent} />
@@ -422,13 +422,116 @@ function FindingCard({ finding: f }) {
 
 // ─── AI Calls Tab ───────────────────────────────────────────────────────────
 
-function AICallsTab({ details, metrics }) {
+function formatUsd(n) {
+  if (n == null || isNaN(n)) return "$0.00";
+  if (n < 0.01 && n > 0) return "<$0.01";
+  return `$${n.toFixed(2)}`;
+}
+
+function CostPanel({ costs }) {
+  if (!costs) return null;
+
+  const windows = [
+    { key: "last24h", label: "24 hours" },
+    { key: "last7d", label: "7 days" },
+    { key: "last30d", label: "30 days" },
+  ];
+
+  const primary = costs.last30d || costs.last7d || costs.last24h;
+  const hasUnknown = primary?.unknownModels?.length > 0;
+
+  return (
+    <section className="space-y-3">
+      <h3 className="text-sm sm:text-base font-semibold text-slate-900">Estimated Cost</h3>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+        {windows.map(({ key, label }) => {
+          const w = costs[key];
+          if (!w) return null;
+          return (
+            <div key={key} className="rounded-xl border border-slate-100 bg-white shadow-sm p-3 sm:p-4">
+              <p className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
+              <p className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900">{formatUsd(w.totalUsd)}</p>
+              <div className="mt-1 space-y-0.5 text-[10px] sm:text-xs text-slate-500">
+                <p>{w.totalCalls} calls · {w.totalTokens.toLocaleString()} tokens</p>
+                <p>{w.userCount} user{w.userCount !== 1 ? "s" : ""} · {formatUsd(w.usdPerUser)}/user</p>
+                {w.projectedMonthlyUsd != null && key !== "last30d" && (
+                  <p className="text-emerald-600 font-medium">~{formatUsd(w.projectedMonthlyUsd)}/mo projected</p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Projected monthly from the 30d window */}
+      {costs.last30d && (
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-xs sm:text-sm font-semibold text-emerald-800">Monthly projection</p>
+              <p className="text-[10px] sm:text-xs text-emerald-600 mt-0.5">
+                Based on the last 30 days · {costs.activeUsers30d} active user{costs.activeUsers30d !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <p className="text-xl sm:text-2xl font-bold text-emerald-800">
+              {formatUsd(costs.last30d.projectedMonthlyUsd)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Per-model breakdown */}
+      {primary?.byModel?.length > 0 && (
+        <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+          <p className="px-3 sm:px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase border-b border-slate-100">By model</p>
+          <div className="divide-y divide-slate-50">
+            {primary.byModel.map((m) => (
+              <div key={m.model} className="px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-slate-800 truncate">{m.model}</p>
+                  <p className="text-[10px] sm:text-xs text-slate-400">{m.calls} calls · {m.tokens.toLocaleString()} tokens</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xs sm:text-sm font-semibold text-slate-900">{formatUsd(m.usd)}</p>
+                  {!m.rateKnown && (
+                    <p className="text-[10px] text-amber-600">est.</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Staleness + unknown model warnings */}
+      <div className="flex flex-wrap gap-2 text-[10px] sm:text-xs text-slate-400">
+        {primary?.ratesVerifiedOn && (
+          <span>Rates as of {primary.ratesVerifiedOn}</span>
+        )}
+        {primary?.assumedOutputShare != null && (
+          <span>· {Math.round(primary.assumedOutputShare * 100)}% output share assumed</span>
+        )}
+      </div>
+      {hasUnknown && (
+        <p className="text-[10px] sm:text-xs text-amber-600">
+          ⚠ Fallback rate used for: {primary.unknownModels.join(", ")}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function AICallsTab({ details, metrics, costs }) {
   const aiCalls = details?.aiCalls || [];
 
   return (
-    <>
+    <div className="space-y-4 sm:space-y-6">
+      {/* Cost estimation panel */}
+      <CostPanel costs={costs} />
+
       {metrics?.aiPipeline && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-6">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
           <StatCard label="Succeeded (24h)" value={metrics.aiPipeline.succeeded24h} hint="delivered" />
           <StatCard label="Failed (24h)" value={metrics.aiPipeline.failed24h} hint="ai_failed" />
           <StatCard label="Refused (24h)" value={metrics.aiPipeline.refused24h} hint="content policy" />
@@ -439,21 +542,21 @@ function AICallsTab({ details, metrics }) {
       )}
 
       {metrics?.aiPipeline?.byProvider?.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
           {metrics.aiPipeline.byProvider.map((p) => (
-            <span key={p.provider} className="rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-medium text-emerald-700">
-              {p.provider}: {p.count} calls
+            <span key={p.provider} className="rounded-full bg-emerald-50 border border-emerald-200 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-medium text-emerald-700">
+              {p.provider}: {p.count}
             </span>
           ))}
         </div>
       )}
 
       {metrics?.heldReasons?.length > 0 && (
-        <div className="mb-6">
-          <p className="text-sm font-medium text-slate-700 mb-2">Held reasons (all time)</p>
-          <div className="flex flex-wrap gap-2">
+        <div>
+          <p className="text-xs sm:text-sm font-medium text-slate-700 mb-2">Held reasons (all time)</p>
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {metrics.heldReasons.map((r) => (
-              <span key={r.reason} className="rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs text-amber-700">
+              <span key={r.reason} className="rounded-full bg-amber-50 border border-amber-200 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs text-amber-700">
                 {r.reason}: {r.count}
               </span>
             ))}
@@ -461,49 +564,75 @@ function AICallsTab({ details, metrics }) {
         </div>
       )}
 
-      <h3 className="text-base font-semibold text-slate-900 mb-3">Recent AI Calls (24h)</h3>
-      {aiCalls.length === 0 ? (
-        <p className="text-sm text-slate-500">No AI calls in the last 24 hours.</p>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow-sm">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase text-slate-400 border-b border-slate-100">
-                <th className="px-4 py-3 font-medium">Time</th>
-                <th className="px-4 py-3 font-medium">Sender</th>
-                <th className="px-4 py-3 font-medium">Provider</th>
-                <th className="px-4 py-3 font-medium">Model</th>
-                <th className="px-4 py-3 font-medium">Tokens</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
+      <div>
+        <h3 className="text-sm sm:text-base font-semibold text-slate-900 mb-3">Recent AI Calls (24h)</h3>
+        {aiCalls.length === 0 ? (
+          <p className="text-xs sm:text-sm text-slate-500">No AI calls in the last 24 hours.</p>
+        ) : (
+          <>
+            {/* Card layout on mobile, table on larger screens */}
+            <div className="sm:hidden space-y-2">
               {aiCalls.map((call) => (
-                <tr key={call.id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                  <td className="px-4 py-2.5 text-xs text-slate-500 whitespace-nowrap">
-                    {new Date(call.createdAt).toLocaleTimeString()}
-                  </td>
-                  <td className="px-4 py-2.5 text-slate-700 truncate max-w-[120px]">{call.sender}</td>
-                  <td className="px-4 py-2.5">
-                    {call.provider
-                      ? <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">{call.provider}</span>
-                      : <span className="text-xs text-slate-400">—</span>}
-                  </td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-slate-500">{call.model || "—"}</td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-slate-500">{call.tokens ?? "—"}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${AI_STATUS_STYLE[call.status] || "bg-slate-100 text-slate-600"}`}>
+                <div key={call.id} className="rounded-xl border border-slate-100 bg-white shadow-sm p-3 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium text-slate-700 truncate">{call.sender}</span>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${AI_STATUS_STYLE[call.status] || "bg-slate-100 text-slate-600"}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${call.status === "sent" ? "bg-emerald-500" : call.status === "held" ? "bg-red-500" : "bg-amber-500"}`} />
-                      {call.status}{call.heldReason && call.heldReason !== call.status ? ` (${call.heldReason})` : ""}
+                      {call.status}
                     </span>
-                  </td>
-                </tr>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                    <span>{new Date(call.createdAt).toLocaleTimeString()}</span>
+                    {call.provider && <span className="rounded bg-emerald-50 px-1 text-emerald-600">{call.provider}</span>}
+                    {call.model && <span className="font-mono truncate">{call.model}</span>}
+                    {call.tokens != null && <span>{call.tokens} tok</span>}
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </>
+            </div>
+
+            {/* Table on sm+ */}
+            <div className="hidden sm:block overflow-x-auto rounded-xl border border-slate-100 bg-white shadow-sm">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase text-slate-400 border-b border-slate-100">
+                    <th className="px-4 py-3 font-medium">Time</th>
+                    <th className="px-4 py-3 font-medium">Sender</th>
+                    <th className="px-4 py-3 font-medium">Provider</th>
+                    <th className="px-4 py-3 font-medium">Model</th>
+                    <th className="px-4 py-3 font-medium">Tokens</th>
+                    <th className="px-4 py-3 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {aiCalls.map((call) => (
+                    <tr key={call.id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                      <td className="px-4 py-2.5 text-xs text-slate-500 whitespace-nowrap">
+                        {new Date(call.createdAt).toLocaleTimeString()}
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-700 truncate max-w-[120px]">{call.sender}</td>
+                      <td className="px-4 py-2.5">
+                        {call.provider
+                          ? <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">{call.provider}</span>
+                          : <span className="text-xs text-slate-400">—</span>}
+                      </td>
+                      <td className="px-4 py-2.5 font-mono text-xs text-slate-500">{call.model || "—"}</td>
+                      <td className="px-4 py-2.5 font-mono text-xs text-slate-500">{call.tokens ?? "—"}</td>
+                      <td className="px-4 py-2.5">
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${AI_STATUS_STYLE[call.status] || "bg-slate-100 text-slate-600"}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${call.status === "sent" ? "bg-emerald-500" : call.status === "held" ? "bg-red-500" : "bg-amber-500"}`} />
+                          {call.status}{call.heldReason && call.heldReason !== call.status ? ` (${call.heldReason})` : ""}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -512,17 +641,17 @@ function AICallsTab({ details, metrics }) {
 function LogsTab({ logs, unresolvedCount, resolvedCount, showResolved, setShowResolved, resolveLog }) {
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
         <div>
-          <h3 className="text-base font-semibold text-slate-900">Error Log</h3>
-          <p className="text-sm text-slate-500">
+          <h3 className="text-sm sm:text-base font-semibold text-slate-900">Error Log</h3>
+          <p className="text-xs sm:text-sm text-slate-500">
             {unresolvedCount} active{resolvedCount > 0 ? ` · ${resolvedCount} resolved` : ""}
           </p>
         </div>
         {resolvedCount > 0 && (
           <button onClick={() => setShowResolved(!showResolved)}
-            className="text-xs font-medium text-emerald-600 hover:text-emerald-800">
-            {showResolved ? "Hide resolved" : `Show resolved (${resolvedCount})`}
+            className="text-[10px] sm:text-xs font-medium text-emerald-600 hover:text-emerald-800">
+            {showResolved ? "Hide resolved" : `Show (${resolvedCount})`}
           </button>
         )}
       </div>
@@ -537,22 +666,22 @@ function LogsTab({ logs, unresolvedCount, resolvedCount, showResolved, setShowRe
 
       <div className="space-y-2">
         {logs?.map((l) => (
-          <div key={l.id} className={`rounded-xl border bg-white p-4 shadow-sm transition-opacity ${l.resolved ? "border-slate-50 opacity-50" : "border-slate-100"}`}>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${LEVEL_STYLE[l.level] || "bg-slate-100 text-slate-600"}`}>
+          <div key={l.id} className={`rounded-xl border bg-white p-3 sm:p-4 shadow-sm transition-opacity ${l.resolved ? "border-slate-50 opacity-50" : "border-slate-100"}`}>
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className={`rounded px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-semibold uppercase ${LEVEL_STYLE[l.level] || "bg-slate-100 text-slate-600"}`}>
                 {l.level}
               </span>
-              <span className="font-mono text-xs text-slate-500">{l.source}</span>
-              <span className="ml-auto text-xs text-slate-400">×{l.count} · {new Date(l.lastSeenAt).toLocaleString()}</span>
+              <span className="font-mono text-[10px] sm:text-xs text-slate-500 truncate">{l.source}</span>
+              <span className="ml-auto text-[10px] sm:text-xs text-slate-400 shrink-0">×{l.count}</span>
             </div>
-            <p className="mt-2 text-sm font-medium text-slate-800">{l.message}</p>
+            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-medium text-slate-800">{l.message}</p>
             {l.detail && (
-              <pre className="mt-1 overflow-x-auto whitespace-pre-wrap rounded bg-slate-50 p-2 font-mono text-xs text-slate-600">{l.detail}</pre>
+              <pre className="mt-1 overflow-x-auto whitespace-pre-wrap rounded bg-slate-50 p-2 font-mono text-[10px] sm:text-xs text-slate-600 max-h-32 overflow-y-auto">{l.detail}</pre>
             )}
             {l.resolved ? (
-              <p className="mt-2 text-xs text-emerald-600 font-medium">Resolved</p>
+              <p className="mt-2 text-[10px] sm:text-xs text-emerald-600 font-medium">Resolved</p>
             ) : (
-              <button onClick={() => resolveLog(l.id)} className="mt-2 text-xs font-medium text-emerald-600 hover:text-emerald-800">
+              <button onClick={() => resolveLog(l.id)} className="mt-2 text-[10px] sm:text-xs font-medium text-emerald-600 hover:text-emerald-800">
                 Mark resolved
               </button>
             )}
@@ -605,58 +734,61 @@ function DataLensTab() {
 
   return (
     <>
-      <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm mb-6">
-        <h3 className="text-base font-semibold text-slate-900">Data Lens</h3>
-        <p className="mt-1 text-sm text-slate-500">
-          Read-only queries against the database. Every query runs in a transaction the database refuses writes in.
+      <div className="rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm mb-4 sm:mb-6">
+        <h3 className="text-sm sm:text-base font-semibold text-slate-900">Data Lens</h3>
+        <p className="mt-1 text-xs sm:text-sm text-slate-500">
+          Read-only queries against the database.
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-[280px_1fr]">
-        {/* Left sidebar: query catalog */}
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Queries</p>
-          {loadingCatalog && <p className="text-xs text-slate-400">Loading...</p>}
-          {catalog.map((q) => (
-            <button
-              key={q.key}
-              onClick={() => runQuery(q.key)}
-              disabled={loading}
-              className={`w-full text-left rounded-lg border px-3 py-2.5 transition-colors ${
-                result?.query === q.key
-                  ? "border-emerald-300 bg-emerald-50"
-                  : "border-slate-100 bg-white hover:bg-slate-50"
-              } disabled:opacity-50`}
-            >
-              <p className="text-sm font-medium text-slate-900">{q.title}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{q.question}</p>
-            </button>
-          ))}
+      {/* Stacked on mobile, side-by-side on md+ */}
+      <div className="space-y-4 md:grid md:gap-6 md:grid-cols-[280px_1fr] md:space-y-0">
+        {/* Query catalog — horizontal scroll on mobile, vertical on md+ */}
+        <div>
+          <p className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase mb-2">Queries</p>
+          <div className="flex gap-2 overflow-x-auto pb-2 md:flex-col md:overflow-x-visible md:pb-0">
+            {loadingCatalog && <p className="text-xs text-slate-400">Loading...</p>}
+            {catalog.map((q) => (
+              <button
+                key={q.key}
+                onClick={() => runQuery(q.key)}
+                disabled={loading}
+                className={`shrink-0 text-left rounded-lg border px-3 py-2 sm:py-2.5 transition-colors md:shrink md:w-full ${
+                  result?.query === q.key
+                    ? "border-emerald-300 bg-emerald-50"
+                    : "border-slate-100 bg-white hover:bg-slate-50"
+                } disabled:opacity-50`}
+              >
+                <p className="text-xs sm:text-sm font-medium text-slate-900 whitespace-nowrap md:whitespace-normal">{q.title}</p>
+                <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 hidden md:block">{q.question}</p>
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Main area: results */}
+        {/* Results area */}
         <div>
           {loading && (
-            <div className="flex justify-center py-12">
+            <div className="flex justify-center py-8 sm:py-12">
               <div className="h-6 w-6 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
             </div>
           )}
           {result?.error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <div className="rounded-xl border border-red-200 bg-red-50 p-3 sm:p-4 text-xs sm:text-sm text-red-700">
               {result.error}
             </div>
           )}
           {result?.rows && !loading && (
             <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                <p className="text-sm font-semibold text-slate-900">{result.title}</p>
-                <span className="text-xs text-slate-400">
+              <div className="px-3 sm:px-4 py-2.5 border-b border-slate-100 flex items-center justify-between gap-2">
+                <p className="text-xs sm:text-sm font-semibold text-slate-900 truncate">{result.title}</p>
+                <span className="text-[10px] sm:text-xs text-slate-400 shrink-0">
                   {result.count} row{result.count !== 1 ? "s" : ""} · {result.durationMs}ms
                 </span>
               </div>
-              <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+              <div className="overflow-x-auto max-h-[400px] sm:max-h-[500px] overflow-y-auto">
                 {result.rows.length === 0 ? (
-                  <p className="px-4 py-8 text-sm text-slate-500 text-center">No rows returned.</p>
+                  <p className="px-3 sm:px-4 py-6 sm:py-8 text-xs sm:text-sm text-slate-500 text-center">No rows returned.</p>
                 ) : (
                   <DataTable rows={result.rows} />
                 )}
@@ -664,7 +796,7 @@ function DataLensTab() {
             </div>
           )}
           {!result && !loading && (
-            <div className="flex items-center justify-center py-16 text-sm text-slate-400">
+            <div className="flex items-center justify-center py-8 sm:py-16 text-xs sm:text-sm text-slate-400">
               Select a query to run
             </div>
           )}
@@ -765,36 +897,36 @@ function RootCauseTab() {
 
   return (
     <>
-      <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm mb-6">
-        <h3 className="text-base font-semibold text-slate-900">Root Cause</h3>
-        <p className="mt-1 text-sm text-slate-500">
-          Ask why something is happening in production. The AI reads the monitoring data, recent logs, and diagnostics, then says what to do about it.
+      <div className="rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm mb-4 sm:mb-6">
+        <h3 className="text-sm sm:text-base font-semibold text-slate-900">Root Cause</h3>
+        <p className="mt-1 text-xs sm:text-sm text-slate-500">
+          Ask why something is happening in production. The AI reads the monitoring data and logs.
         </p>
-        <p className="mt-1 text-xs text-slate-400">
+        <p className="mt-1 text-[10px] sm:text-xs text-slate-400">
           Read-only — it cannot change anything.
         </p>
       </div>
 
       {/* Question input */}
-      <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm mb-6">
-        <p className="text-sm font-medium text-slate-700 mb-2">Your question</p>
+      <div className="rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm mb-4 sm:mb-6">
+        <p className="text-xs sm:text-sm font-medium text-slate-700 mb-2">Your question</p>
         <textarea
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Why is there no AI article in this environment at all?"
-          rows={3}
+          placeholder="Why is there no AI activity in this environment?"
+          rows={2}
           maxLength={1000}
-          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        <div className="mt-3 flex items-center gap-3">
+        <div className="mt-2 sm:mt-3 flex items-center gap-3">
           <button
             onClick={() => ask()}
             disabled={loading || !question.trim()}
-            className="bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50 hover:bg-emerald-700"
+            className="bg-emerald-600 text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-2 rounded-lg disabled:opacity-50 hover:bg-emerald-700"
           >
-            {loading ? "Analyzing..." : "Ask"}
+            {loading ? "Analyzing…" : "Ask"}
           </button>
-          {loading && <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600" />}
+          {loading && <div className="h-4 w-4 sm:h-5 sm:w-5 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600" />}
         </div>
       </div>
 

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context.js";
 import { VisibilityPicker, VisibilityLabel } from "@/components/VisibilityPicker.js";
+import { AudienceReview, TunePanel, useAudienceReview } from "@/components/AudienceReview.js";
+import VoiceInput from "@/components/VoiceInput.js";
 
 const MAX_PROMPT = 200;
 const MAX_ANSWER = 2000;
@@ -15,8 +17,25 @@ export default function KnowMePage() {
   const [prompt, setPrompt] = useState("");
   const [answer, setAnswer] = useState("");
   const [draftVisibility, setDraftVisibility] = useState([]);
+  const [draftVariants, setDraftVariants] = useState({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // The heading can name a topic too, so both fields are checked together —
+  // matching what the server does on save.
+  const { review, checking } = useAudienceReview(
+    prompt.trim() || answer.trim() ? `${prompt}\n${answer}` : "",
+    draftVisibility
+  );
+
+  function chooseVariant(connectionId, tuned) {
+    setDraftVariants((prev) => {
+      const next = { ...prev };
+      if (tuned) next[connectionId] = tuned;
+      else delete next[connectionId];
+      return next;
+    });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -50,17 +69,23 @@ export default function KnowMePage() {
           prompt: prompt.trim(),
           answer: answer.trim(),
           visibleTo: draftVisibility,
+          variants: Object.keys(draftVariants).length > 0 ? draftVariants : undefined,
         }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError(body.detail || t("knowme_save_failed"));
+        setError(
+          body.error === "blocked_entirely"
+            ? t("review_blocked_all")
+            : body.detail || t("knowme_save_failed")
+        );
       } else {
         const data = await res.json();
         setEntries((prev) => [...(prev || []), data.entry]);
         setPrompt("");
         setAnswer("");
         setDraftVisibility([]);
+        setDraftVariants({});
       }
     } catch {
       setError(t("network_error"));
@@ -150,15 +175,36 @@ export default function KnowMePage() {
           spellCheck
           className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
+        <div className="flex justify-end">
+          <VoiceInput
+            onTranscript={(spoken) => setAnswer((prev) => prev ? `${prev} ${spoken}` : spoken)}
+            disabled={saving}
+            className="p-2"
+          />
+        </div>
         <VisibilityPicker
           connections={connections}
           selected={draftVisibility}
           onChange={setDraftVisibility}
           hint={t("story_visible_edit")}
         />
+
+        {answer.trim() && connections.length > 0 && (
+          <>
+            <AudienceReview review={review} checking={checking} />
+            <TunePanel
+              text={answer}
+              visibleTo={draftVisibility}
+              chosen={draftVariants}
+              onChoose={chooseVariant}
+              disabled={saving || review?.blockedEntirely}
+            />
+          </>
+        )}
+
         <button
           type="submit"
-          disabled={!prompt.trim() || !answer.trim() || saving}
+          disabled={!prompt.trim() || !answer.trim() || saving || review?.blockedEntirely}
           className="w-full bg-emerald-600 text-white text-sm font-medium py-2.5 rounded-xl disabled:opacity-50"
         >
           {saving ? t("knowme_adding") : t("knowme_add")}

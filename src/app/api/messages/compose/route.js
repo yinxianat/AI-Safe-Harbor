@@ -63,7 +63,8 @@ export async function POST(request) {
     );
   }
 
-  // Red topic: hold before spending anything on an AI call.
+  // Red topic with no clarifying note: hold before spending anything on AI.
+  // Red topic WITH a note is handled below — the AI decides, reading the note.
   if (!boundaryCheck.allowed) {
     const held = await prisma.message.create({
       data: {
@@ -87,13 +88,16 @@ export async function POST(request) {
   const yellowTopics = boundaryCheck.yellowTopics || [];
 
   // AI contextual topic analysis — catches indirect references that keyword
-  // matching misses (e.g. "how much does it make" for money).
+  // matching misses (e.g. "how much does it make" for money), and reads the
+  // receiver's per-topic notes so narrowed rules like "family = in-laws only"
+  // are respected instead of blocking every mention of "mom" or "son".
   const nonGreenTopics = receiverSettings
     .filter((s) => s.comfortLevel === "red" || s.comfortLevel === "yellow")
     .map((s) => ({
       key: s.topicName,
       label: s.sanitizedLabel || getTopicLabel(s.topicName),
       level: s.comfortLevel,
+      note: s.note || null,
     }));
 
   // Run AI topic analysis and rephrasing in parallel to avoid double latency.
@@ -131,6 +135,29 @@ export async function POST(request) {
       heldReason: "red_topic",
       topics: aiRedTopics,
       aiReasons: aiTopicCheck.flaggedTopics.map((f) => f.reason),
+      draftId: held.id,
+    });
+  }
+
+  // Keyword hit a red-with-note topic AND the AI couldn't adjudicate it
+  // (skipped, unavailable, or returned junk). Fail closed: hold as red_topic
+  // because we can't confirm the note's exception applies.
+  if (boundaryCheck.needsAIReview && aiTopicCheck.verdict !== "clear" && aiTopicCheck.verdict !== "caution") {
+    const held = await prisma.message.create({
+      data: {
+        senderId: user.id,
+        connectionId,
+        contentRaw,
+        topicTags: boundaryCheck.redTopicsWithNote || [],
+        heldReason: "red_topic",
+        status: "held",
+      },
+    });
+
+    return Response.json({
+      held: true,
+      heldReason: "red_topic",
+      topics: boundaryCheck.redTopicsWithNote || [],
       draftId: held.id,
     });
   }

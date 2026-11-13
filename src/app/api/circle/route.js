@@ -32,7 +32,14 @@ export async function GET(request) {
 
   const connections = await prisma.connection.findMany({
     where: { OR: [{ userAId: user.id }, { userBId: user.id }] },
-    include: { userA: PERSON, userB: PERSON },
+    include: {
+      userA: PERSON,
+      userB: PERSON,
+      preferences: {
+        where: { userId: user.id },
+        select: { nickname: true },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -44,11 +51,13 @@ export async function GET(request) {
   for (const c of connections) {
     const partner = c.userAId === user.id ? c.userB : c.userA;
     const showStatus = statusVisibleOn(partner, c.id);
+    const myPref = c.preferences?.[0];
     const entry = {
       connectionId: c.id,
       userId: partner.id,
       username: partner.username,
       displayName: partner.displayName || null,
+      nickname: myPref?.nickname || null,
       avatarUrl: partner.avatarUrl || null,
       relationshipType: c.relationshipType || "spouse",
       tonePreference: partner.tonePreference || "warm_and_gentle",

@@ -1,0 +1,4 @@
+ALTER TABLE "WallPost" ADD COLUMN "excludedFrom" TEXT[] DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "WallPost" ADD COLUMN "variants" JSONB;
+ALTER TABLE "KnowMeEntry" ADD COLUMN "excludedFrom" TEXT[] DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "KnowMeEntry" ADD COLUMN "variants" JSONB;

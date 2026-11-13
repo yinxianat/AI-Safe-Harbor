@@ -225,8 +225,15 @@ export async function generateInsight(context) {
 
 /**
  * AI-powered topic boundary analysis. Keyword matching catches literal
- * references; this catches indirect ones like "how much does it make" for money
- * or "are they still together" for family. Returns a structured verdict.
+ * references; this catches indirect ones ("how much does it make" for money)
+ * AND respects user notes that narrow or expand a topic ("family means
+ * in-laws, not my own son"). Returns a structured verdict.
+ *
+ * boundaryTopics: [{ key, label, level, note? }]
+ *   `note` is the receiver's free-text clarification for that topic; when
+ *   present, the AI must treat it as the actual rule. Pure keyword match
+ *   without the AI reading the note would reject messages the receiver
+ *   explicitly allowed.
  */
 export async function analyzeTopics(rawMessage, boundaryTopics) {
   if (!rawMessage?.trim() || !boundaryTopics?.length) {
@@ -238,8 +245,14 @@ export async function analyzeTopics(rawMessage, boundaryTopics) {
     return { verdict: "skip", flaggedTopics: [], error: "ai_unavailable" };
   }
 
+  // A note trims or widens the default scope of a topic. Showing it inline
+  // with the topic means the model doesn't have to cross-reference a second
+  // list, which is the mode it reasons best in.
   const topicList = boundaryTopics
-    .map((t) => `- ${t.label} [${t.level}]`)
+    .map((t) => {
+      const note = t.note ? ` — receiver's note: "${String(t.note).trim()}"` : "";
+      return `- ${t.label} [${t.level}]${note}`;
+    })
     .join("\n");
 
   const system = `You are a topic boundary analyzer for a safe communication app. The receiver has set these topic boundaries:
@@ -248,7 +261,13 @@ ${topicList}
 
 Levels: "red" = forbidden, "yellow" = handle gently.
 
-Analyze the user's message and determine if it touches any of these topics — directly OR indirectly. Consider context, implications, and conversational intent, not just keywords.
+A receiver's note is their own clarification of what the topic means for them. It is AUTHORITATIVE — it narrows or widens the default scope of that topic. Examples:
+- Topic "Family [red] — receiver's note: 'in-laws only, not other family'" means a message about the sender's own son does NOT violate the boundary, but a message about the sender's mother-in-law DOES.
+- Topic "Money [red] — receiver's note: 'only my salary, groceries are fine'" means "did you buy milk" is CLEAR, "how much do you earn" is BLOCKED.
+
+If a topic has no note, apply the usual scope of the label.
+
+Analyze the user's message and determine if it touches any of these topics as scoped by the notes — directly OR indirectly. Consider context, implications, and conversational intent, not just keywords.
 
 Respond in EXACTLY this JSON format, nothing else:
 {"flagged": [{"topic": "topic_label", "level": "red|yellow", "reason": "one short sentence"}], "clear": true|false}

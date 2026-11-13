@@ -2,14 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useT } from "@/lib/i18n/context.js";
-
-const NAV_ITEMS = [
-  { href: "/circle", labelKey: "nav_circle", icon: "circle" },
-  { href: "/chat", labelKey: "nav_chat", icon: "chat" },
-  { href: "/me", labelKey: "nav_me", icon: "me" },
-];
+import { useUser } from "@/lib/user/context.js";
 
 function NavIcon({ icon, active }) {
   const color = active ? "text-emerald-600" : "text-gray-400";
@@ -38,13 +33,34 @@ function NavIcon({ icon, active }) {
     );
   }
 
+  if (icon === "admin") {
+    return (
+      <svg className={`w-6 h-6 ${color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+      </svg>
+    );
+  }
+
   return null;
 }
 
 export default function BottomNav() {
   const pathname = usePathname();
   const { t } = useT();
+  const user = useUser();
   const [unread, setUnread] = useState(0);
+
+  const navItems = useMemo(() => {
+    const items = [
+      { href: "/circle", labelKey: "nav_circle", icon: "circle" },
+      { href: "/chat", labelKey: "nav_chat", icon: "chat" },
+      { href: "/me", labelKey: "nav_me", icon: "me" },
+    ];
+    if (user?.isAdmin) {
+      items.push({ href: "/admin", labelKey: "nav_admin", icon: "admin" });
+    }
+    return items;
+  }, [user?.isAdmin]);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,7 +81,7 @@ export default function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)] z-50">
       <div className="flex justify-around items-center h-16 max-w-lg md:max-w-2xl lg:max-w-3xl mx-auto px-[env(safe-area-inset-left)]">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const active = pathname === item.href || pathname?.startsWith(item.href + "/");
           return (
             <Link

@@ -25,6 +25,10 @@ export const TRANSLATIONS = {
     send: "Send",
     sending: "Sending…",
 
+    // Voice
+    voice_start: "Speak to type",
+    voice_stop: "Stop listening",
+
     // Common errors
     network_error: "Network error. Check your connection and try again.",
     generic_error: "Something went wrong. Please try again.",
@@ -94,9 +98,10 @@ export const TRANSLATIONS = {
     forgot_password_help: "Switch to the Email link tab, sign in with the link we email you, then reset your password from the Me page.",
 
     // Nav & global
-    nav_circle: "Circle",
+    nav_circle: "Folks",
     nav_chat: "Chat",
     nav_me: "Me",
+    nav_admin: "Admin",
     language: "Language",
     sign_out: "Sign out",
 
@@ -194,6 +199,43 @@ export const TRANSLATIONS = {
     knowme_save_failed: "Could not save that answer. Please try again.",
     knowme_delete_failed: "Could not delete that answer. Please try again.",
 
+    // Audience review (boundary checking on profile content)
+    review_checking: "Checking who can see this…",
+    review_all_clear: "Clear for everyone who can see this.",
+    review_blocked_title: "Held back from {names}",
+    review_blocked_one: "{name} has {topics} marked as off-limits, so this won't be shown to them.",
+    review_blocked_many: "{names} have marked these topics off-limits, so this won't be shown to them: {topics}",
+    review_blocked_all: "Everyone you picked has marked this topic off-limits, so there's no one left to show it to. Edit the note or choose different people.",
+    review_softened_title: "Will be handled gently",
+    review_softened_detail: "{names} marked {topics} as sensitive. Tune per person to soften the wording for them.",
+    review_unverifiable: "Couldn't check {topics} for {name} — review this one yourself.",
+    review_will_reach: "Will be shown to {count} of {total}",
+
+    // Per-person tuning
+    tune_per_person: "Personalize for each reader",
+    tune_working: "Writing a version for each person…",
+    tune_heading: "One version per person",
+    tune_explain: "Nothing is saved until you choose. Skip anyone you'd rather see your own words.",
+    tune_for: "For {name}",
+    tune_tone_note: "prefers {tone}",
+    tune_softened_note: "softened: {topics}",
+    tune_use: "Use this",
+    tune_used: "Using this",
+    tune_skip: "Use my words",
+    tune_failed_one: "Couldn't write a version for {name}. They'll see your own words.",
+    tune_failed_all: "AI tuning is unavailable right now. Your own words will be used for everyone.",
+    tune_close: "Done",
+    tune_rate_limited: "Too many tuning requests. Wait a moment and try again.",
+
+    // Why a variant reads the way it does
+    why_heading: "Why it reads this way",
+    why_tone: "Prefers tone: {tone}",
+    why_relationship: "Relationship: {relationship}",
+    why_softened: "Softened {topics} because they marked it sensitive",
+    why_custom: "Their extra request: \"{instruction}\"",
+    why_topic_note: "Their note on {topic}: \"{note}\"",
+    why_minimal: "Nothing needed adjusting — only light wording changes.",
+
     // Spellcheck helper
     spellcheck_hint: "Possible typo: {words}",
     spellcheck_dismiss: "Looks right",
@@ -225,7 +267,7 @@ export const TRANSLATIONS = {
     me_delete_ask_continue: "Yes, continue",
     me_delete_ask_keep: "Keep my account",
     me_delete_account_title: "Delete Account",
-    me_delete_account_body: "This will permanently delete your profile, messages, posts, Know Me entries, and disconnect you from everyone in your circle. This cannot be undone. Type DELETE to confirm.",
+    me_delete_account_body: "This will permanently delete your profile, messages, posts, Know Me entries, and disconnect you from everyone. This cannot be undone. Type DELETE to confirm.",
     me_delete_confirm_placeholder: "Type DELETE",
     me_delete_forever: "Delete forever",
     me_deleting: "Deleting…",
@@ -272,19 +314,19 @@ export const TRANSLATIONS = {
     comfort_avoid: "Avoid",
     comfort_not_ready: "Not Ready",
 
-    // Circle page
-    your_circle: "Your Circle",
+    // Folks page (formerly Circle)
+    your_circle: "My Folks",
     circle_blurb: "Your people and how you relate to each of them.",
-    circle_empty_title: "No one in your circle yet",
+    circle_empty_title: "No one here yet",
     circle_empty_hint: "Search below or invite someone to get started.",
     circle_wants_to_connect: "Wants to connect",
     circle_waiting_on_them: "Waiting on them",
     circle_find_someone: "Find someone",
-    circle_search_placeholder: "Search by @username or name…",
+    circle_search_placeholder: "Search by username or name…",
     circle_searching: "Searching…",
     circle_no_one_found_invite: "No one found. They may not have claimed a username yet —",
     circle_invite_by_email: "invite them by email",
-    circle_status_in_circle: "In your circle",
+    circle_status_in_circle: "Connected",
     circle_status_requested: "Requested",
     circle_action_accept: "Accept",
     circle_action_decline: "Decline",
@@ -302,8 +344,8 @@ export const TRANSLATIONS = {
     circle_tap_boundaries: "Tap to see {name}'s boundaries",
     circle_card_message: "Message",
     circle_card_profile: "Profile",
-    circle_card_ai_tuning: "AI Tuning",
-    circle_card_ai_tuning_sub: "Adjust tone & topics",
+    circle_card_ai_tuning: "Adjust Tone",
+    circle_card_ai_tuning_sub: "Personalize how messages sound",
     circle_boundaries_title: "{name}'s Boundaries",
     circle_boundaries_hint: "These are the topics {name} has set preferences for. The AI will warn you if your message touches a sensitive topic.",
     circle_boundaries_empty: "No boundaries set yet",
@@ -322,10 +364,14 @@ export const TRANSLATIONS = {
     circle_claim_hint: "This is how people find you — like a phone number you choose.",
     circle_claim_placeholder: "yourname",
     circle_claim_could_not_save: "Could not save that username.",
+    circle_nickname: "My name for them",
+    circle_nickname_hint: "A name only you see — won't change if they update theirs.",
+    circle_nickname_placeholder: "E.g. Tom, Mom, Boss",
+    circle_nickname_saved: "Nickname saved",
 
-    // Circle Settings (AI Tuning)
-    tuning_back_to_circle: "← Back to Circle",
-    tuning_title: "AI Tuning",
+    // Folks Settings (Adjust Tone)
+    tuning_back_to_circle: "← Back to Folks",
+    tuning_title: "Adjust Tone",
     tuning_blurb: "Control how you receive messages from {name}. The AI adjusts their messages before they reach you.",
     tuning_relationship_section: "Relationship",
     tuning_relationship_hint: "Tell the AI who {name} is to you. A message to a sibling sounds different than one to a coworker.",
@@ -361,8 +407,8 @@ export const TRANSLATIONS = {
 
     // Chat (list)
     chat_no_conversations_title: "No conversations yet",
-    chat_no_conversations_hint: "Add someone to your circle to start chatting.",
-    chat_go_to_circle: "Go to Circle",
+    chat_no_conversations_hint: "Add someone to your folks to start chatting.",
+    chat_go_to_circle: "Go to Folks",
     conversations: "Conversations",
 
     // Chat (thread)
@@ -389,8 +435,8 @@ export const TRANSLATIONS = {
     chat_tuned_version: "Tuned version",
     chat_could_not_send: "Could not send. Try again.",
     chat_write_message: "Write a message…",
-    chat_tuning: "Tuning",
-    chat_ai_tune: "AI Tune",
+    chat_tuning: "Adjusting…",
+    chat_ai_tune: "Send",
     chat_no_messages_yet: "No messages yet",
     chat_send_first: "Send {name} a message to start the conversation.",
     chat_latest: "Latest",
@@ -402,7 +448,7 @@ export const TRANSLATIONS = {
 
     // Them page
     them_your_person: "Your Person",
-    them_empty_title: "No one in your circle yet",
+    them_empty_title: "No one here yet",
     them_empty_hint: "Add your person so you can see their profile.",
     them_find_person: "Find your person",
     them_load_failed: "Could not load details.",
@@ -436,8 +482,8 @@ export const TRANSLATIONS = {
     compose_sent_title: "Message Sent",
     compose_sent_body: "Your message has been delivered safely.",
     compose_send_another: "Send another message",
-    compose_no_connections_title: "No one in your circle yet",
-    compose_no_connections_body: "Add someone to your circle first so you can send them a message.",
+    compose_no_connections_title: "No one here yet",
+    compose_no_connections_body: "Add someone to your folks first so you can send them a message.",
     compose_writing_to: "Writing to",
     compose_message_placeholder: "Write what you want to say…",
     compose_tune: "Tune Message",
@@ -539,8 +585,8 @@ export const TRANSLATIONS = {
     about_knowme_body: "Share bite-sized facts about yourself — favorites, love languages, pet peeves, stories. Your person can browse them, and the AI uses them to craft rephrasings that feel more like you.",
     about_practice_title: "Practice Pad",
     about_practice_body: "Rehearse a difficult conversation with an AI partner before sending the real message. Get tips on phrasing, try different approaches, build confidence.",
-    about_circle_title: "Your Circle",
-    about_circle_body: "Find your person by their @username, send a request, and connect. Each connection gets its own topic boundaries, so you can be at different levels of openness with different people.",
+    about_circle_title: "Your Folks",
+    about_circle_body: "Find your person by their username, send a request, and connect. Each connection gets its own topic boundaries, so you can be at different levels of openness with different people.",
     about_who_title: "Who it's for",
     about_who_1: "Two people who matter to each other and want to keep it that way. Partners, spouses, a parent and a grown child, two close friends going through something heavy. Anyone where getting it wrong is expensive.",
     about_who_2: "It is not a group chat, not a social network, and not therapy. One connection, two people, nobody else.",
@@ -569,6 +615,10 @@ export const TRANSLATIONS = {
     loading: "加载中…",
     send: "发送",
     sending: "发送中…",
+
+    // Voice
+    voice_start: "语音输入",
+    voice_stop: "停止录音",
 
     // Common errors
     network_error: "网络错误，请检查连接后重试。",
@@ -639,9 +689,10 @@ export const TRANSLATIONS = {
     forgot_password_help: "切换到「邮箱链接」标签,用我们发送的链接登录,然后在「我」页面重置密码。",
 
     // Nav & global
-    nav_circle: "圈子",
+    nav_circle: "伙伴们",
     nav_chat: "聊天",
     nav_me: "我",
+    nav_admin: "管理",
     language: "语言",
     sign_out: "退出登录",
 
@@ -739,6 +790,43 @@ export const TRANSLATIONS = {
     knowme_save_failed: "无法保存该回答,请重试。",
     knowme_delete_failed: "无法删除该回答,请重试。",
 
+    // Audience review
+    review_checking: "正在检查谁可以看到…",
+    review_all_clear: "对所有能看到的人都没有问题。",
+    review_blocked_title: "已对 {names} 隐藏",
+    review_blocked_one: "{name} 把 {topics} 标记为回避话题,因此这条内容不会展示给他们。",
+    review_blocked_many: "{names} 把这些话题标记为回避,因此这条内容不会展示给他们:{topics}",
+    review_blocked_all: "你选择的所有人都把这个话题标记为回避,没有人能看到它。请修改内容或选择其他人。",
+    review_softened_title: "将被温和处理",
+    review_softened_detail: "{names} 把 {topics} 标记为敏感话题。可以用「为每个人调整」来软化措辞。",
+    review_unverifiable: "无法为 {name} 检查 {topics} —— 请你自己确认一下。",
+    review_will_reach: "将展示给 {total} 人中的 {count} 人",
+
+    // Per-person tuning
+    tune_per_person: "为每位读者定制",
+    tune_working: "正在为每个人生成一个版本…",
+    tune_heading: "每人一个版本",
+    tune_explain: "在你选择之前不会保存任何内容。希望某人看到你的原话,就跳过他。",
+    tune_for: "给 {name}",
+    tune_tone_note: "偏好{tone}",
+    tune_softened_note: "已软化:{topics}",
+    tune_use: "使用这个",
+    tune_used: "正在使用",
+    tune_skip: "用我的原话",
+    tune_failed_one: "无法为 {name} 生成版本,他们将看到你的原话。",
+    tune_failed_all: "AI 调整暂时不可用,所有人都将看到你的原话。",
+    tune_close: "完成",
+    tune_rate_limited: "调整请求过于频繁,请稍后再试。",
+
+    // Why a variant reads the way it does
+    why_heading: "为什么是这样",
+    why_tone: "偏好的语气:{tone}",
+    why_relationship: "关系:{relationship}",
+    why_softened: "已软化 {topics},因为他们标记为敏感",
+    why_custom: "他们的补充要求:「{instruction}」",
+    why_topic_note: "{topic} 的具体说明:「{note}」",
+    why_minimal: "没有需要调整的地方,仅做了措辞上的微调。",
+
     // Spellcheck helper
     spellcheck_hint: "可能的拼写错误: {words}",
     spellcheck_dismiss: "没问题",
@@ -817,19 +905,19 @@ export const TRANSLATIONS = {
     comfort_avoid: "回避",
     comfort_not_ready: "暂不",
 
-    // Circle
-    your_circle: "我的圈子",
-    circle_blurb: "你圈子中的人以及你与他们的关系。",
-    circle_empty_title: "圈子里还没有人",
+    // Folks (formerly Circle)
+    your_circle: "我的伙伴们",
+    circle_blurb: "你的伙伴们以及你与他们的关系。",
+    circle_empty_title: "还没有伙伴",
     circle_empty_hint: "在下方搜索或邀请他人开始使用。",
     circle_wants_to_connect: "希望连接",
     circle_waiting_on_them: "等待回应",
     circle_find_someone: "寻找他人",
-    circle_search_placeholder: "按 @用户名 或姓名搜索…",
+    circle_search_placeholder: "按用户名或姓名搜索…",
     circle_searching: "搜索中…",
     circle_no_one_found_invite: "未找到此人。他们可能还没设置用户名——",
     circle_invite_by_email: "通过邮箱邀请",
-    circle_status_in_circle: "已在你的圈子",
+    circle_status_in_circle: "已连接",
     circle_status_requested: "已申请",
     circle_action_accept: "接受",
     circle_action_decline: "拒绝",
@@ -847,8 +935,8 @@ export const TRANSLATIONS = {
     circle_tap_boundaries: "点击查看 {name} 的边界",
     circle_card_message: "消息",
     circle_card_profile: "资料",
-    circle_card_ai_tuning: "AI 调整",
-    circle_card_ai_tuning_sub: "调整语气和话题",
+    circle_card_ai_tuning: "调整语气",
+    circle_card_ai_tuning_sub: "定制消息的表达方式",
     circle_boundaries_title: "{name} 的边界",
     circle_boundaries_hint: "这些是 {name} 设置了偏好的话题。当你的消息触及敏感话题时,AI 会提醒你。",
     circle_boundaries_empty: "暂未设置边界",
@@ -867,10 +955,14 @@ export const TRANSLATIONS = {
     circle_claim_hint: "这是人们找到你的方式——就像一个你自己选择的手机号。",
     circle_claim_placeholder: "yourname",
     circle_claim_could_not_save: "无法保存该用户名。",
+    circle_nickname: "我给 TA 起的名字",
+    circle_nickname_hint: "只有你能看到——不会因为对方改名而变化。",
+    circle_nickname_placeholder: "例如:小明、妈妈、老板",
+    circle_nickname_saved: "昵称已保存",
 
-    // Circle Settings (AI Tuning)
-    tuning_back_to_circle: "← 返回圈子",
-    tuning_title: "AI 调整",
+    // Folks Settings (Adjust Tone)
+    tuning_back_to_circle: "← 返回伙伴们",
+    tuning_title: "调整语气",
     tuning_blurb: "控制你从 {name} 那里接收消息的方式。AI 会在消息到达你之前进行调整。",
     tuning_relationship_section: "关系",
     tuning_relationship_hint: "告诉 AI {name} 对你来说是谁。给兄弟姐妹的消息和给同事的消息听起来是不同的。",
@@ -907,7 +999,7 @@ export const TRANSLATIONS = {
     // Chat (list)
     chat_no_conversations_title: "暂无对话",
     chat_no_conversations_hint: "把某人加入你的圈子以开始聊天。",
-    chat_go_to_circle: "前往圈子",
+    chat_go_to_circle: "前往伙伴们",
     conversations: "对话",
 
     // Chat (thread)
@@ -934,8 +1026,8 @@ export const TRANSLATIONS = {
     chat_tuned_version: "调整后的版本",
     chat_could_not_send: "发送失败,请重试。",
     chat_write_message: "写一条消息…",
-    chat_tuning: "调整中",
-    chat_ai_tune: "AI 调整",
+    chat_tuning: "调整中…",
+    chat_ai_tune: "发送",
     chat_no_messages_yet: "还没有消息",
     chat_send_first: "向 {name} 发送一条消息开始对话。",
     chat_latest: "最新",
@@ -1084,8 +1176,8 @@ export const TRANSLATIONS = {
     about_knowme_body: "分享关于你自己的小片段——最爱、爱的语言、小烦恼、故事。你的人可以浏览这些,AI 也会用它们让改写更像你本人。",
     about_practice_title: "练习本",
     about_practice_body: "在发送真正的消息之前,先与 AI 伴侣演练一段难对话。获得措辞建议,尝试不同的说法,建立信心。",
-    about_circle_title: "我的圈子",
-    about_circle_body: "通过 @用户名 找到你的人,发送请求,建立连接。每个连接都有自己的话题边界,所以你可以对不同的人保持不同程度的开放。",
+    about_circle_title: "我的伙伴们",
+    about_circle_body: "通过用户名找到你的人,发送请求,建立连接。每个连接都有自己的话题边界,所以你可以对不同的人保持不同程度的开放。",
     about_who_title: "适合谁",
     about_who_1: "两个在乎彼此、想继续在乎下去的人。伴侣、配偶、父母和成年孩子、正在经历艰难时刻的两个好友。任何让错误代价高昂的关系。",
     about_who_2: "这不是群聊,不是社交网络,也不是治疗。一个连接,两个人,没别人。",

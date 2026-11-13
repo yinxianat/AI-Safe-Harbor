@@ -151,4 +151,67 @@ describe("Topic Boundary Checker", () => {
     const result = checkTopicBoundaries("are you still upset about it", settings);
     expect(result.allowed).toBe(false);
   });
+
+  // Regression: a red topic with a user note means the note narrows the rule.
+  // The old behavior keyword-blocked anything mentioning "mom" or "son" even
+  // when the receiver wrote "in-laws only". With a note, the checker now
+  // defers to the AI by returning allowed=true + needsAIReview=true.
+  describe("red topics with user notes", () => {
+    test("defers a red-with-note match to AI review instead of hard blocking", () => {
+      const settings = [
+        { topicName: "family", comfortLevel: "red", note: "in-laws only, not other family" },
+      ];
+      const result = checkTopicBoundaries("my mom just called", settings);
+      expect(result.allowed).toBe(true);
+      expect(result.needsAIReview).toBe(true);
+      expect(result.redTopicsWithNote).toContain("family");
+    });
+
+    test("hard-blocks a red topic WITHOUT a note", () => {
+      const settings = [{ topicName: "family", comfortLevel: "red" }];
+      const result = checkTopicBoundaries("my mom just called", settings);
+      expect(result.allowed).toBe(false);
+      expect(result.needsAIReview).toBe(false);
+    });
+
+    test("empty-string note counts as no note (hard block)", () => {
+      const settings = [{ topicName: "family", comfortLevel: "red", note: "   " }];
+      const result = checkTopicBoundaries("mom called", settings);
+      expect(result.allowed).toBe(false);
+    });
+
+    test("mixed: one red hard-block wins over another red with note", () => {
+      const settings = [
+        { topicName: "family", comfortLevel: "red", note: "in-laws only" },
+        { topicName: "money", comfortLevel: "red" },
+      ];
+      const result = checkTopicBoundaries(
+        "my mom wants to buy a gift with her money",
+        settings
+      );
+      // Money is red without a note → hard block, not deferred.
+      expect(result.allowed).toBe(false);
+      expect(result.needsAIReview).toBe(false);
+      expect(result.redTopics).toContain("money");
+    });
+
+    test("no keyword match: topic with note is irrelevant", () => {
+      const settings = [
+        { topicName: "family", comfortLevel: "red", note: "in-laws only" },
+      ];
+      const result = checkTopicBoundaries("the weather is nice", settings);
+      expect(result.allowed).toBe(true);
+      expect(result.needsAIReview).toBe(false);
+    });
+
+    test("yellow with note still softens, does not defer", () => {
+      const settings = [
+        { topicName: "family", comfortLevel: "yellow", note: "any family is fine except my mother-in-law" },
+      ];
+      const result = checkTopicBoundaries("my mom is visiting", settings);
+      expect(result.allowed).toBe(true);
+      expect(result.needsSoftening).toBe(true);
+      expect(result.needsAIReview).toBe(false);
+    });
+  });
 });

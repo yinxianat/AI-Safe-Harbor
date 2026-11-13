@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context.js";
 import Avatar from "@/components/Avatar.js";
+import VoiceInput from "@/components/VoiceInput.js";
 
 const MOOD_DOTS = {
   calm: "bg-blue-400",
@@ -38,13 +39,18 @@ function useTimeAgo() {
   };
 }
 
-function PersonCard({ person, onDisconnect }) {
+function PersonCard({ person, onDisconnect, onNicknameChange }) {
   const { t } = useT();
   const timeAgo = useTimeAgo();
   const [showBoundaries, setShowBoundaries] = useState(false);
   const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
-  const name = person.displayName || (person.username ? `@${person.username}` : t("circle_fallback_name"));
+  const [editingNickname, setEditingNickname] = useState(false);
+  const [nickDraft, setNickDraft] = useState(person.nickname || "");
+  const [savingNick, setSavingNick] = useState(false);
+  // Nickname takes priority so the card always shows the name the user chose.
+  const name = person.nickname || person.displayName || (person.username ? `@${person.username}` : t("circle_fallback_name"));
+  const realName = person.displayName || (person.username ? `@${person.username}` : null);
   const moodDot = MOOD_DOTS[person.statusMood] || MOOD_DOTS.neutral;
   const moodLabel = t(`mood_${person.statusMood || "neutral"}`);
   const bs = person.boundarySummary || { red: 0, yellow: 0, green: 0 };
@@ -58,6 +64,22 @@ function PersonCard({ person, onDisconnect }) {
     setShowBoundaries(false);
   }
 
+  async function saveNickname() {
+    setSavingNick(true);
+    try {
+      const res = await fetch("/api/connections", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connectionId: person.connectionId, nickname: nickDraft.trim() || null }),
+      });
+      if (res.ok) {
+        onNicknameChange(person.connectionId, nickDraft.trim() || null);
+        setEditingNickname(false);
+      }
+    } catch { /* ignore */ }
+    setSavingNick(false);
+  }
+
   return (
     <>
       <div
@@ -69,9 +91,12 @@ function PersonCard({ person, onDisconnect }) {
             <Avatar src={person.avatarUrl} name={name} size="md" />
             <div className="min-w-0 flex-1">
               <h2 className="text-base sm:text-lg font-bold text-slate-900 truncate">{name}</h2>
-              {person.username && person.displayName && (
+              {/* When a nickname is set, show the real name underneath */}
+              {person.nickname && realName ? (
+                <p className="text-xs sm:text-sm text-slate-500 truncate">{realName}</p>
+              ) : person.username && person.displayName ? (
                 <p className="text-xs sm:text-sm text-slate-500 truncate">@{person.username}</p>
-              )}
+              ) : null}
             </div>
             <svg className="w-5 h-5 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -175,6 +200,44 @@ function PersonCard({ person, onDisconnect }) {
             </div>
 
             <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
+              {/* Nickname editor */}
+              <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+                <p className="text-xs font-medium text-slate-600">{t("circle_nickname")}</p>
+                {editingNickname ? (
+                  <div className="flex gap-2">
+                    <input
+                      value={nickDraft}
+                      onChange={(e) => setNickDraft(e.target.value)}
+                      placeholder={t("circle_nickname_placeholder")}
+                      maxLength={50}
+                      className="flex-1 px-2 py-1.5 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <button
+                      onClick={saveNickname}
+                      disabled={savingNick}
+                      className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
+                    >
+                      {savingNick ? "…" : t("save")}
+                    </button>
+                    <button onClick={() => setEditingNickname(false)} className="text-xs text-slate-500 px-2">
+                      {t("cancel")}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm text-slate-700">
+                      {person.nickname || <span className="text-slate-400 italic">{t("circle_nickname_hint")}</span>}
+                    </p>
+                    <button
+                      onClick={() => { setNickDraft(person.nickname || ""); setEditingNickname(true); }}
+                      className="text-xs text-emerald-600 font-medium shrink-0"
+                    >
+                      {person.nickname ? t("edit") : t("circle_change")}
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <p className="text-xs text-slate-500">{t("circle_boundaries_hint", { name })}</p>
 
               {boundaries.length === 0 ? (
@@ -478,7 +541,19 @@ export default function CirclePage() {
       {circle.members.length > 0 && (
         <div className="space-y-2 sm:space-y-4">
           {circle.members.map((p) => (
-            <PersonCard key={p.connectionId} person={p} onDisconnect={disconnect} />
+            <PersonCard
+              key={p.connectionId}
+              person={p}
+              onDisconnect={disconnect}
+              onNicknameChange={(connId, nick) => {
+                setCircle((prev) => ({
+                  ...prev,
+                  members: prev.members.map((m) =>
+                    m.connectionId === connId ? { ...m, nickname: nick } : m
+                  ),
+                }));
+              }}
+            />
           ))}
         </div>
       )}
@@ -544,12 +619,20 @@ export default function CirclePage() {
       {/* Search / Invite */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">{t("circle_find_someone")}</h2>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t("circle_search_placeholder")}
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        />
+        <div className="relative">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("circle_search_placeholder")}
+            className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-white text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <VoiceInput
+              onTranscript={(spoken) => setQuery(spoken.trim())}
+              className="p-2"
+            />
+          </div>
+        </div>
         {searching && <p className="text-sm text-slate-400">{t("circle_searching")}</p>}
         {results && results.length === 0 && !searching && (
           <p className="text-sm text-slate-500">

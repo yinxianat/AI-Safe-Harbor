@@ -1,9 +1,38 @@
 import { getSessionUser } from "@/lib/auth.js";
 import { parseJsonBody, badRequest } from "@/lib/http.js";
+import { loadContactsWithBoundaries } from "@/lib/profile-contacts.js";
+import { reviewForAudience, canView, textForViewer, pruneVariants } from "@/lib/profile-audience.js";
 import prisma from "@/lib/db.js";
 
 const CATEGORIES = ["about_me", "favorites", "love_languages", "pet_peeves", "stories"];
 const MAX_ENTRIES = 30;
+const MAX_ANSWER = 2000;
+
+/**
+ * Re-judge an entry against its audience and store who it must be withheld
+ * from. Both the heading and the answer are checked, since either can name a
+ * topic a contact marked red.
+ */
+async function resolveAudience(userId, prompt, answer, visibleTo, variants) {
+  const contacts = await loadContactsWithBoundaries(userId);
+  const review = reviewForAudience(`${prompt}\n${answer}`, contacts, visibleTo);
+  return {
+    review,
+    excludedFrom: review.excludedFrom,
+    variants: pruneVariants(variants, review.deliverableTo),
+  };
+}
+
+function sanitizeVariants(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const out = {};
+  for (const [connectionId, value] of Object.entries(raw)) {
+    if (typeof connectionId !== "string" || connectionId.length > 64) continue;
+    if (typeof value !== "string" || !value.trim()) continue;
+    out[connectionId] = value.trim().slice(0, MAX_ANSWER);
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
 
 async function getUserConnectionIds(userId) {
   const conns = await prisma.connection.findMany({
@@ -20,7 +49,11 @@ function sanitizeVisibleTo(raw, validIds) {
 
 function formatEntry(e, isOwner = true) {
   const base = { id: e.id, category: e.category, prompt: e.prompt, answer: e.answer, isPublic: e.isPublic, sortOrder: e.sortOrder, createdAt: e.createdAt };
-  if (isOwner) base.visibleTo = e.visibleTo || [];
+  if (isOwner) {
+    base.visibleTo = e.visibleTo || [];
+    base.excludedFrom = e.excludedFrom || [];
+    base.variants = e.variants || null;
+  }
   return base;
 }
 
@@ -60,12 +93,19 @@ export async function GET(request) {
   const isOwner = targetUserId === user.id;
   let visible = entries;
   if (!isOwner && connectionForView) {
-    visible = entries.filter(
-      (e) => !e.visibleTo || e.visibleTo.length === 0 || e.visibleTo.includes(connectionForView.id)
-    );
+    visible = entries.filter((e) => canView(e, connectionForView.id));
   }
 
-  return Response.json({ entries: visible.map((e) => formatEntry(e, isOwner)), categories: CATEGORIES });
+  return Response.json({
+    entries: visible.map((e) => {
+      const formatted = formatEntry(e, isOwner);
+      if (!isOwner && connectionForView) {
+        formatted.answer = textForViewer(e, connectionForView.id, "answer");
+      }
+      return formatted;
+    }),
+    categories: CATEGORIES,
+  });
 }
 
 export async function POST(request) {
@@ -93,6 +133,17 @@ export async function POST(request) {
   const validIds = await getUserConnectionIds(user.id);
   const sanitizedVisibleTo = sanitizeVisibleTo(visibleTo, validIds);
 
+  const resolved = await resolveAudience(
+    user.id, prompt, answer, sanitizedVisibleTo, sanitizeVariants(body.data.variants)
+  );
+
+  if (resolved.review.blockedEntirely) {
+    return Response.json(
+      { error: "blocked_entirely", blocked: resolved.review.blocked },
+      { status: 400 }
+    );
+  }
+
   const entry = await prisma.knowMeEntry.create({
     data: {
       userId: user.id,
@@ -101,11 +152,16 @@ export async function POST(request) {
       answer,
       isPublic: Boolean(isPublic),
       visibleTo: sanitizedVisibleTo,
+      excludedFrom: resolved.excludedFrom,
+      variants: resolved.variants,
       sortOrder: count,
     },
   });
 
-  return Response.json({ entry: formatEntry(entry) }, { status: 201 });
+  return Response.json(
+    { entry: formatEntry(entry), excluded: resolved.review.blocked },
+    { status: 201 }
+  );
 }
 
 export async function PUT(request) {
@@ -141,9 +197,32 @@ export async function PUT(request) {
     const validIds = await getUserConnectionIds(user.id);
     data.visibleTo = sanitizeVisibleTo(visibleTo, validIds);
   }
+  if (body.data.variants !== undefined) {
+    data.variants = sanitizeVariants(body.data.variants);
+  }
+
+  // Recomputed from the entry's resulting state: editing either field, or
+  // widening the audience, can move someone across a boundary.
+  const resolved = await resolveAudience(
+    user.id,
+    data.prompt ?? entry.prompt,
+    data.answer ?? entry.answer,
+    data.visibleTo ?? entry.visibleTo ?? [],
+    data.variants !== undefined ? data.variants : entry.variants
+  );
+
+  if (resolved.review.blockedEntirely) {
+    return Response.json(
+      { error: "blocked_entirely", blocked: resolved.review.blocked },
+      { status: 400 }
+    );
+  }
+
+  data.excludedFrom = resolved.excludedFrom;
+  data.variants = resolved.variants;
 
   const updated = await prisma.knowMeEntry.update({ where: { id }, data });
-  return Response.json({ entry: formatEntry(updated) });
+  return Response.json({ entry: formatEntry(updated), excluded: resolved.review.blocked });
 }
 
 export async function DELETE(request) {

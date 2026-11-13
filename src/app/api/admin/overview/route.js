@@ -1,7 +1,50 @@
 import { requireAdmin } from "@/lib/admin-auth.js";
 import { getFindings, getMetrics, getRecentLogs } from "@/lib/diagnostics.js";
 import { logError } from "@/lib/logger.js";
+import { summarizeUsage, projectMonthly } from "@/lib/ai/pricing.js";
 import prisma from "@/lib/db.js";
+
+/**
+ * AI spend over several windows. Reads every message in the window rather
+ * than the 50-row sample `getRecentAICalls` returns, because a cost total
+ * built from a truncated sample would understate spend without saying so.
+ */
+async function getCostEstimates() {
+  const windows = [
+    { key: "last24h", days: 1 },
+    { key: "last7d", days: 7 },
+    { key: "last30d", days: 30 },
+  ];
+
+  const out = {};
+  for (const { key, days } of windows) {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const rows = await prisma.message.findMany({
+      where: { createdAt: { gte: since }, aiTokensUsed: { not: null } },
+      select: { aiModel: true, aiTokensUsed: true, senderId: true },
+    });
+
+    const summary = summarizeUsage(
+      rows.map((r) => ({ model: r.aiModel, tokens: r.aiTokensUsed, userId: r.senderId }))
+    );
+
+    out[key] = {
+      ...summary,
+      windowDays: days,
+      projectedMonthlyUsd: projectMonthly(summary.totalUsd, days),
+    };
+  }
+
+  // Active users in the last 30 days, so cost-per-user reflects people who
+  // actually sent something rather than everyone who ever signed up.
+  const activeSenders = await prisma.message.findMany({
+    where: { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
+    select: { senderId: true },
+    distinct: ["senderId"],
+  });
+
+  return { ...out, activeUsers30d: activeSenders.length };
+}
 
 async function getUserIssues() {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -152,7 +195,7 @@ export async function GET(request) {
   const auth = await requireAdmin(request);
   if (!auth.ok) return auth.response;
 
-  const [findings, metrics, logs, userIssues, aiCalls, users, connections, heldMessages, draftMessages] = await Promise.all([
+  const [findings, metrics, logs, userIssues, costs, aiCalls, users, connections, heldMessages, draftMessages] = await Promise.all([
     getFindings().catch((err) => {
       logError("api.admin.overview", "findings unavailable", err?.message);
       return null;
@@ -167,6 +210,10 @@ export async function GET(request) {
     }),
     getUserIssues().catch((err) => {
       logError("api.admin.overview", "user issues unavailable", err?.message);
+      return null;
+    }),
+    getCostEstimates().catch((err) => {
+      logError("api.admin.overview", "cost estimates unavailable", err?.message);
       return null;
     }),
     getRecentAICalls().catch(() => []),
@@ -184,6 +231,7 @@ export async function GET(request) {
     metrics,
     logs,
     userIssues,
+    costs,
     details: {
       aiCalls,
       users,

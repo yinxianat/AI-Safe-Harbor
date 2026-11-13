@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context.js";
 import { VisibilityPicker, VisibilityLabel } from "@/components/VisibilityPicker.js";
+import { AudienceReview, TunePanel, useAudienceReview } from "@/components/AudienceReview.js";
+import VoiceInput from "@/components/VoiceInput.js";
 
 const MAX_LENGTH = 1000;
 
@@ -13,8 +15,21 @@ export default function StoryPage() {
   const [connections, setConnections] = useState([]);
   const [draft, setDraft] = useState("");
   const [draftVisibility, setDraftVisibility] = useState([]);
+  // connectionId -> approved rewrite. Only entries the author accepted.
+  const [draftVariants, setDraftVariants] = useState({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  const { review, checking } = useAudienceReview(draft, draftVisibility);
+
+  function chooseVariant(connectionId, tuned) {
+    setDraftVariants((prev) => {
+      const next = { ...prev };
+      if (tuned) next[connectionId] = tuned;
+      else delete next[connectionId];
+      return next;
+    });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -45,16 +60,25 @@ export default function StoryPage() {
       const res = await fetch("/api/wall", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, visibleTo: draftVisibility }),
+        body: JSON.stringify({
+          text,
+          visibleTo: draftVisibility,
+          variants: Object.keys(draftVariants).length > 0 ? draftVariants : undefined,
+        }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError(body.detail || t("story_save_failed"));
+        setError(
+          body.error === "blocked_entirely"
+            ? t("review_blocked_all")
+            : body.detail || t("story_save_failed")
+        );
       } else {
         const post = await res.json();
         setPosts((prev) => [post, ...(prev || [])]);
         setDraft("");
         setDraftVisibility([]);
+        setDraftVariants({});
       }
     } catch {
       setError(t("network_error"));
@@ -138,16 +162,36 @@ export default function StoryPage() {
         />
         <div className="flex items-center justify-between gap-2">
           <span className="text-[10px] text-slate-400">{draft.length}/{MAX_LENGTH}</span>
+          <VoiceInput
+            onTranscript={(spoken) => setDraft((prev) => prev ? `${prev} ${spoken}` : spoken)}
+            disabled={saving}
+            className="p-2 shrink-0"
+          />
         </div>
+
         <VisibilityPicker
           connections={connections}
           selected={draftVisibility}
           onChange={setDraftVisibility}
           hint={t("story_visible_edit")}
         />
+
+        {draft.trim() && connections.length > 0 && (
+          <>
+            <AudienceReview review={review} checking={checking} />
+            <TunePanel
+              text={draft}
+              visibleTo={draftVisibility}
+              chosen={draftVariants}
+              onChoose={chooseVariant}
+              disabled={saving || review?.blockedEntirely}
+            />
+          </>
+        )}
+
         <button
           type="submit"
-          disabled={!draft.trim() || saving}
+          disabled={!draft.trim() || saving || review?.blockedEntirely}
           className="w-full bg-emerald-600 text-white text-sm font-medium py-2.5 rounded-xl disabled:opacity-50"
         >
           {saving ? t("story_adding") : t("story_add")}

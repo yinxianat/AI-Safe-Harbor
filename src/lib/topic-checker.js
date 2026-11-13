@@ -5,8 +5,24 @@ const EMPTY_RESULT = {
   topics: [],
   yellowTopics: [],
   needsSoftening: false,
+  needsAIReview: false,
 };
 
+/**
+ * Keyword-based first pass over receiver's topic boundaries.
+ *
+ * Returns three outcomes:
+ *   - allowed: nothing red matched, maybe some yellow
+ *   - allowed=false, needsAIReview=false: red match with no note → hard block
+ *   - allowed=false, needsAIReview=true: red match WITH a note → defer to AI
+ *
+ * The third outcome matters because a note like "in-laws only, not other
+ * family" shrinks the real boundary. Keyword matching alone cannot tell
+ * whether a message about the sender's own son violates a rule that only
+ * forbids in-law topics — so we hand the decision to the AI, which gets the
+ * note as context. Without this branch, any mention of "mother" or "son"
+ * blocks the message regardless of what the receiver actually described.
+ */
 export function checkTopicBoundaries(messageText, receiverTopicSettings) {
   if (typeof messageText !== "string" || !messageText.trim()) {
     return { ...EMPTY_RESULT };
@@ -19,6 +35,9 @@ export function checkTopicBoundaries(messageText, receiverTopicSettings) {
   const lowerMessage = messageText.toLowerCase();
   const detectedTopics = [];
   const redTopics = [];
+  // Red topics whose matched boundary carries a user note — these are not
+  // hard-blocked; the AI has to interpret them against the note.
+  const redTopicsWithNote = [];
   const yellowTopics = [];
   const unenforceable = [];
 
@@ -47,14 +66,20 @@ export function checkTopicBoundaries(messageText, receiverTopicSettings) {
     const matched = keywords.some((keyword) => lowerMessage.includes(keyword));
     if (!matched) continue;
 
-    detectedTopics.push(topic?.key ?? key);
+    const topicKey = topic?.key ?? key;
+    detectedTopics.push(topicKey);
     if (setting.comfortLevel === "red") {
-      redTopics.push(topic?.key ?? key);
+      if (setting.note && String(setting.note).trim()) {
+        redTopicsWithNote.push(topicKey);
+      } else {
+        redTopics.push(topicKey);
+      }
     } else if (setting.comfortLevel === "yellow") {
-      yellowTopics.push(topic?.key ?? key);
+      yellowTopics.push(topicKey);
     }
   }
 
+  // Hard red without a note: block before any AI call.
   if (redTopics.length > 0) {
     return {
       allowed: false,
@@ -63,6 +88,21 @@ export function checkTopicBoundaries(messageText, receiverTopicSettings) {
       redTopics,
       yellowTopics: [],
       needsSoftening: false,
+      needsAIReview: false,
+      unenforceable,
+    };
+  }
+
+  // Red with a note: don't block yet. The caller runs AI analysis with the
+  // note; if the AI confirms the violation the message is held there.
+  if (redTopicsWithNote.length > 0) {
+    return {
+      allowed: true,
+      needsAIReview: true,
+      redTopicsWithNote,
+      topics: detectedTopics,
+      yellowTopics,
+      needsSoftening: yellowTopics.length > 0,
       unenforceable,
     };
   }
@@ -72,6 +112,7 @@ export function checkTopicBoundaries(messageText, receiverTopicSettings) {
     topics: detectedTopics,
     yellowTopics,
     needsSoftening: yellowTopics.length > 0,
+    needsAIReview: false,
     unenforceable,
   };
 }

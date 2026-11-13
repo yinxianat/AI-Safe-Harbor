@@ -2,7 +2,8 @@ import { getSessionUser } from "@/lib/auth.js";
 import { parseJsonBody, badRequest, requireString } from "@/lib/http.js";
 import prisma from "@/lib/db.js";
 import { checkTopicBoundaries } from "@/lib/topic-checker.js";
-import { rephraseMessage } from "@/lib/ai/index.js";
+import { rephraseMessage, analyzeTopics } from "@/lib/ai/index.js";
+import { getTopicLabel } from "@/lib/topics.js";
 
 export async function POST(request) {
   const user = await getSessionUser(request);
@@ -56,6 +57,37 @@ export async function POST(request) {
       heldReason: boundaryCheck.heldReason,
       topics: boundaryCheck.redTopics,
     });
+  }
+
+  // Red-with-note: defer to the AI with the note so a narrowing clause like
+  // "in-laws only" isn't ignored. Mirrors the compose route; fails closed
+  // when the AI can't adjudicate.
+  if (boundaryCheck.needsAIReview) {
+    const nonGreenTopics = receiverSettings
+      .filter((s) => s.comfortLevel === "red" || s.comfortLevel === "yellow")
+      .map((s) => ({
+        key: s.topicName,
+        label: s.sanitizedLabel || getTopicLabel(s.topicName),
+        level: s.comfortLevel,
+        note: s.note || null,
+      }));
+
+    const aiTopicCheck = await analyzeTopics(message.contentRaw, nonGreenTopics)
+      .catch(() => ({ verdict: "skip", flaggedTopics: [] }));
+
+    if (aiTopicCheck.verdict === "blocked"
+        || (aiTopicCheck.verdict !== "clear" && aiTopicCheck.verdict !== "caution")) {
+      const topics = aiTopicCheck.verdict === "blocked"
+        ? aiTopicCheck.flaggedTopics.filter((f) => f.level === "red").map((f) => f.topic)
+        : boundaryCheck.redTopicsWithNote || [];
+
+      await prisma.message.update({
+        where: { id: messageId },
+        data: { status: "held", heldReason: "red_topic", topicTags: topics },
+      });
+
+      return Response.json({ held: true, heldReason: "red_topic", topics });
+    }
   }
 
   const aiResult = await rephraseMessage(message.contentRaw, {

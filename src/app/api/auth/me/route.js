@@ -1,4 +1,5 @@
 import { getSessionUser } from "@/lib/auth.js";
+import { isAdminEmail } from "@/lib/admin-auth.js";
 import { parseJsonBody, badRequest, requireString } from "@/lib/http.js";
 import prisma from "@/lib/db.js";
 
@@ -18,6 +19,7 @@ function serialize(u) {
     locale: u.locale || "en",
     theme: u.theme || "light",
     avatarUrl: u.avatarUrl || null,
+    isAdmin: isAdminEmail(u.email),
   };
 }
 

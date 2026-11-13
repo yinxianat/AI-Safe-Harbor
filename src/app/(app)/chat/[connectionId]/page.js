@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getReaction } from "@/lib/reactions.js";
 import { useT } from "@/lib/i18n/context.js";
 import Avatar from "@/components/Avatar.js";
+import VoiceInput from "@/components/VoiceInput.js";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -364,6 +365,11 @@ function ComposeBar({ connectionId, onMessageSent }) {
       )}
       {error && <p className="text-xs text-red-600 px-1">{error}</p>}
       <div className="flex items-end gap-1.5">
+        <VoiceInput
+          onTranscript={(spoken) => setText((prev) => prev ? `${prev} ${spoken}` : spoken)}
+          disabled={tuning}
+          className="p-2.5 shrink-0 min-h-[40px]"
+        />
         <textarea
           ref={textareaRef}
           value={text}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { UserProvider } from "@/lib/user/context.js";
 
 export default function AuthGuard({ children }) {
   const [user, setUser] = useState(null);
@@ -37,5 +38,5 @@ export default function AuthGuard({ children }) {
 
   if (!user) return null;
 
-  return children;
+  return <UserProvider user={user}>{children}</UserProvider>;
 }
