@@ -13,8 +13,13 @@ export const metadata = {
   description: "Share safely with your closest person",
   manifest: "/manifest.json",
   icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    // iOS never renders an SVG here and silently falls back to a screenshot
+    // of the page, so the home-screen icon has to be a PNG.
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
   themeColor: "#059669",
   appleWebApp: {

@@ -1,4 +1,4 @@
-import { checkTopicBoundaries } from "../src/lib/topic-checker.js";
+import { checkTopicBoundaries, matchesKeyword } from "../src/lib/topic-checker.js";
 
 describe("Topic Boundary Checker", () => {
 
@@ -212,6 +212,97 @@ describe("Topic Boundary Checker", () => {
       expect(result.allowed).toBe(true);
       expect(result.needsSoftening).toBe(true);
       expect(result.needsAIReview).toBe(false);
+    });
+  });
+});
+
+/**
+ * Word-boundary matching.
+ *
+ * Matching used to be `message.includes(keyword)`, which matches inside
+ * words: "however" contains "owe", "multiple" contains "tip", "moment"
+ * contains "mom". With those topics marked red, three innocuous messages
+ * were blocked and the sender was told they had hit a forbidden topic.
+ *
+ * Both directions are tested, because the obvious fix — requiring a word
+ * boundary at both ends — under-matches ("invest" would stop matching
+ * "investment"), and under-matching a red topic delivers a message the
+ * receiver forbade, which is the worse of the two failures.
+ */
+describe("keyword matching respects word boundaries", () => {
+  const red = (topicName) => [{ topicName, comfortLevel: "red" }];
+
+  describe("does not match inside an unrelated word", () => {
+    it.each([
+      ["I would love to come, however I have to work late", "money", "'owe' inside 'however'"],
+      ["There are multiple things I want to tell you", "money", "'tip' inside 'multiple'"],
+      ["Just a moment, I am almost ready", "family", "'mom' inside 'moment'"],
+      ["That painting you made is beautiful", "health", "'pain' inside 'painting'"],
+      ["I saw somebody at the shop", "money", "no keyword at a word boundary"],
+    ])("allows %j under a red %s boundary (%s)", (message, topic) => {
+      const result = checkTopicBoundaries(message, red(topic));
+      expect(result.allowed).toBe(true);
+      expect(result.topics).toEqual([]);
+    });
+  });
+
+  describe("still matches the word itself and its inflections", () => {
+    it.each([
+      ["Can we talk about the rent this week", "money"],
+      ["You still owe me for the tickets", "money"],
+      ["The bills are piling up", "money"],
+      ["I am worried about our investments", "money"],
+      ["How much did that cost", "money"],
+      ["I left you a tip on the counter", "money"],
+      ["My mom called today", "family"],
+      ["I have been in a lot of pain", "health"],
+    ])("blocks %j under a red %s boundary", (message, topic) => {
+      const result = checkTopicBoundaries(message, red(topic));
+      expect(result.allowed).toBe(false);
+      expect(result.heldReason).toBe("red_topic");
+      expect(result.redTopics).toContain(topic);
+    });
+  });
+
+  it("matches a multi-word keyword across extra whitespace", () => {
+    expect(checkTopicBoundaries("my credit  card is maxed out", red("money")).allowed).toBe(false);
+  });
+
+  it("matches a hyphenated keyword inside a longer hyphenation", () => {
+    expect(checkTopicBoundaries("my mother-in-law is visiting", red("family")).allowed).toBe(false);
+  });
+
+  describe("matchesKeyword", () => {
+    it("matches at a word boundary", () => {
+      expect(matchesKeyword("the rent is due", "rent")).toBe(true);
+    });
+
+    it("does not match mid-word", () => {
+      expect(matchesKeyword("however", "owe")).toBe(false);
+      expect(matchesKeyword("different", "fer")).toBe(false);
+    });
+
+    it("allows an inflectional suffix", () => {
+      expect(matchesKeyword("investments", "invest")).toBe(true);
+      expect(matchesKeyword("billing", "bill")).toBe(true);
+    });
+
+    it("rejects a non-inflectional continuation", () => {
+      expect(matchesKeyword("moment", "mom")).toBe(false);
+      expect(matchesKeyword("painting", "pain")).toBe(false);
+    });
+
+    it("does not throw on bad input", () => {
+      expect(matchesKeyword(null, "rent")).toBe(false);
+      expect(matchesKeyword("the rent", "")).toBe(false);
+      expect(matchesKeyword("the rent", null)).toBe(false);
+    });
+
+    // A custom topic label becomes its own keywords, so a label containing a
+    // regex metacharacter must not throw or match everything.
+    it("treats regex metacharacters in a keyword literally", () => {
+      expect(matchesKeyword("anything at all", ".*")).toBe(false);
+      expect(matchesKeyword("a+b is the code", "a+b")).toBe(true);
     });
   });
 });

@@ -96,9 +96,21 @@ export async function POST(request) {
   });
 
   if (aiResult.error) {
+    const heldReason = aiResult.error === "content_refused" ? "content_refused" : "ai_failed";
+
+    // A refused retry is recorded, not just reported: leaving the row as
+    // "ai_failed" would keep offering a retry button for text the provider
+    // has already judged, and would count the refusal as an outage.
+    if (heldReason !== message.heldReason) {
+      await prisma.message.update({
+        where: { id: messageId },
+        data: { heldReason, aiProvider: aiResult.provider || null },
+      });
+    }
+
     return Response.json({
       held: true,
-      heldReason: "ai_failed",
+      heldReason,
       error: aiResult.error,
     });
   }

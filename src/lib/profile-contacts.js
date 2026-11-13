@@ -12,8 +12,8 @@ export async function loadContactsWithBoundaries(userId) {
   const connections = await prisma.connection.findMany({
     where: { status: "active", OR: [{ userAId: userId }, { userBId: userId }] },
     include: {
-      userA: { select: { id: true, displayName: true, username: true, email: true, tonePreference: true } },
-      userB: { select: { id: true, displayName: true, username: true, email: true, tonePreference: true } },
+      userA: { select: { id: true, displayName: true, username: true, email: true, tonePreference: true, avatarUrl: true } },
+      userB: { select: { id: true, displayName: true, username: true, email: true, tonePreference: true, avatarUrl: true } },
     },
   });
 
@@ -48,6 +48,7 @@ export async function loadContactsWithBoundaries(userId) {
       connectionId: c.id,
       partnerId: partner.id,
       name: partner.displayName || (partner.username ? `@${partner.username}` : partner.email),
+      avatarUrl: partner.avatarUrl || null,
       relationshipType: c.relationshipType || "spouse",
       // Per-connection override wins over the account-wide preference.
       tonePreference: pref?.tonePreference || partner.tonePreference || "warm_and_gentle",

@@ -5,25 +5,7 @@ import Link from "next/link";
 import { useT } from "@/lib/i18n/context.js";
 import Avatar from "@/components/Avatar.js";
 import VoiceInput from "@/components/VoiceInput.js";
-
-const MOOD_DOTS = {
-  calm: "bg-blue-400",
-  happy: "bg-emerald-400",
-  energetic: "bg-orange-400",
-  low: "bg-slate-400",
-  neutral: "bg-violet-400",
-};
-
-const TONE_SHORT_KEYS = {
-  warm_and_gentle: "tone_warm_and_gentle_short",
-  direct_and_clear: "tone_direct_and_clear",
-  playful_and_light: "tone_playful_and_light",
-  calm_and_neutral: "tone_calm_and_neutral",
-  encouraging_and_supportive: "tone_encouraging_short",
-  brief_and_to_the_point: "tone_brief_short",
-  thoughtful_and_reflective: "tone_thoughtful_short",
-  reassuring_and_patient: "tone_reassuring_short",
-};
+import { toneShortLabelKey } from "@/lib/tones.js";
 
 function useTimeAgo() {
   const { t } = useT();
@@ -51,8 +33,6 @@ function PersonCard({ person, onDisconnect, onNicknameChange }) {
   // Nickname takes priority so the card always shows the name the user chose.
   const name = person.nickname || person.displayName || (person.username ? `@${person.username}` : t("circle_fallback_name"));
   const realName = person.displayName || (person.username ? `@${person.username}` : null);
-  const moodDot = MOOD_DOTS[person.statusMood] || MOOD_DOTS.neutral;
-  const moodLabel = t(`mood_${person.statusMood || "neutral"}`);
   const bs = person.boundarySummary || { red: 0, yellow: 0, green: 0 };
   const boundaries = person.boundaries || [];
 
@@ -64,16 +44,17 @@ function PersonCard({ person, onDisconnect, onNicknameChange }) {
     setShowBoundaries(false);
   }
 
-  async function saveNickname() {
+  async function saveNickname(raw = nickDraft) {
+    const nickname = (raw || "").trim() || null;
     setSavingNick(true);
     try {
       const res = await fetch("/api/connections", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ connectionId: person.connectionId, nickname: nickDraft.trim() || null }),
+        body: JSON.stringify({ connectionId: person.connectionId, nickname }),
       });
       if (res.ok) {
-        onNicknameChange(person.connectionId, nickDraft.trim() || null);
+        onNicknameChange(person.connectionId, nickname);
         setEditingNickname(false);
       }
     } catch { /* ignore */ }
@@ -89,27 +70,83 @@ function PersonCard({ person, onDisconnect, onNicknameChange }) {
         <div className="p-3 sm:p-5 space-y-2 sm:space-y-4">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <Avatar src={person.avatarUrl} name={name} size="md" />
-            <div className="min-w-0 flex-1">
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 truncate">{name}</h2>
-              {/* When a nickname is set, show the real name underneath */}
-              {person.nickname && realName ? (
-                <p className="text-xs sm:text-sm text-slate-500 truncate">{realName}</p>
-              ) : person.username && person.displayName ? (
-                <p className="text-xs sm:text-sm text-slate-500 truncate">@{person.username}</p>
-              ) : null}
-            </div>
-            <svg className="w-5 h-5 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
+            {/* Renaming lives on the card itself, not only inside the detail
+                sheet: the list is where someone realises they cannot tell two
+                contacts apart, and a contact can change their own display
+                name at any time. */}
+            {editingNickname ? (
+              <div className="min-w-0 flex-1 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                <input
+                  value={nickDraft}
+                  onChange={(e) => setNickDraft(e.target.value)}
+                  placeholder={t("circle_nickname_placeholder")}
+                  maxLength={50}
+                  autoFocus
+                  className="w-full px-2 py-1.5 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={() => saveNickname()}
+                    disabled={savingNick}
+                    className="text-xs font-medium bg-emerald-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
+                  >
+                    {savingNick ? "…" : t("save")}
+                  </button>
+                  <button
+                    onClick={() => { setEditingNickname(false); setNickDraft(person.nickname || ""); }}
+                    className="text-xs text-slate-500"
+                  >
+                    {t("cancel")}
+                  </button>
+                  {person.nickname && (
+                    <button
+                      onClick={() => { setNickDraft(""); saveNickname(""); }}
+                      disabled={savingNick}
+                      className="text-xs text-slate-500 underline disabled:opacity-50"
+                    >
+                      {t("circle_nickname_clear")}
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400">{t("circle_nickname_hint")}</p>
+              </div>
+            ) : (
+              <>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-1.5 min-w-0">
+                    <h2 className="text-base sm:text-lg font-bold text-slate-900 truncate">{name}</h2>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setNickDraft(person.nickname || "");
+                        setEditingNickname(true);
+                      }}
+                      className="text-[10px] sm:text-xs font-medium text-emerald-600 shrink-0"
+                    >
+                      {person.nickname ? t("edit") : t("circle_rename")}
+                    </button>
+                  </div>
+                  {/* When a nickname is set, show the real name underneath */}
+                  {person.nickname && realName ? (
+                    <p className="text-xs sm:text-sm text-slate-500 truncate">{realName}</p>
+                  ) : person.username && person.displayName ? (
+                    <p className="text-xs sm:text-sm text-slate-500 truncate">@{person.username}</p>
+                  ) : null}
+                </div>
+                <svg className="w-5 h-5 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </>
+            )}
           </div>
 
           {person.statusText ? (
             <div className="flex items-start gap-2">
-              <span className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${moodDot} mt-1.5 shrink-0`} />
+              <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs sm:text-sm text-slate-700 line-clamp-2">{person.statusText}</p>
                 <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">
-                  {moodLabel} · {timeAgo(person.statusUpdatedAt)}
+                  {timeAgo(person.statusUpdatedAt)}
                 </p>
               </div>
             </div>
@@ -121,7 +158,7 @@ function PersonCard({ person, onDisconnect, onNicknameChange }) {
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="text-[10px] sm:text-xs text-slate-500 shrink-0">{t("circle_prefers")}</span>
               <span className="text-[10px] sm:text-xs font-medium text-emerald-600 bg-emerald-50 px-1.5 sm:px-2 py-0.5 rounded-full truncate">
-                {t(TONE_SHORT_KEYS[person.tonePreference] || "tone_warm_and_gentle_short")}
+                {t(toneShortLabelKey(person.tonePreference))}
               </span>
             </div>
             <div className="flex items-center gap-1 shrink-0">

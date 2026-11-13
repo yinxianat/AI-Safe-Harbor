@@ -2,17 +2,7 @@ import { getSessionUser } from "@/lib/auth.js";
 import prisma from "@/lib/db.js";
 import { TOPIC_KEYS, getTopicLabel, isCustomTopicKey } from "@/lib/topics.js";
 import { canView, textForViewer } from "@/lib/profile-audience.js";
-
-const VALID_TONES = {
-  warm_and_gentle: "Warm & gentle",
-  direct_and_clear: "Direct & clear",
-  playful_and_light: "Playful & light",
-  calm_and_neutral: "Calm & neutral",
-  encouraging_and_supportive: "Encouraging & supportive",
-  brief_and_to_the_point: "Brief & to the point",
-  thoughtful_and_reflective: "Thoughtful & reflective",
-  reassuring_and_patient: "Reassuring & patient",
-};
+import { toneLabelKey } from "@/lib/tones.js";
 
 export async function GET(request) {
   const user = await getSessionUser(request);
@@ -114,7 +104,7 @@ export async function GET(request) {
       displayName: partner.displayName,
       username: partner.username,
       tonePreference: partner.tonePreference,
-      toneLabel: VALID_TONES[partner.tonePreference] || partner.tonePreference,
+      toneLabelKey: toneLabelKey(partner.tonePreference),
       avatarUrl: partner.avatarUrl || null,
       statusText: statusVisible ? partner.statusText : null,
       statusMood: statusVisible ? partner.statusMood : null,

@@ -1,8 +1,37 @@
 import { requireAdmin } from "@/lib/admin-auth.js";
 import { parseJsonBody, badRequest, requireString } from "@/lib/http.js";
 import { getFindings, getRecentLogs } from "@/lib/diagnostics.js";
-import { resolveChain } from "@/lib/ai/index.js";
+import { resolveChain, REGISTRY } from "@/lib/ai/index.js";
+import { summarizeReasons } from "@/lib/message-reasons.js";
 import prisma from "@/lib/db.js";
+
+/**
+ * Which agents the operator may ask.
+ *
+ * Every configured provider is listed, including ones the failover chain
+ * would never reach. Comparing two agents on the same question is how you
+ * tell "the data says nothing" from "this model is guessing", and the chain
+ * order alone hides the second provider's answer completely.
+ */
+export async function GET(request) {
+  const auth = await requireAdmin(request);
+  if (!auth.ok) return auth.response;
+
+  const chain = resolveChain();
+  const chainNames = chain.map((p) => p.name);
+
+  const agents = Object.values(REGISTRY)
+    .filter((provider) => provider.isConfigured())
+    .map((provider) => ({
+      name: provider.name,
+      model: provider.defaultModel(),
+      inChain: chainNames.includes(provider.name),
+      // The one the "Auto" option would reach first.
+      isDefault: chainNames[0] === provider.name,
+    }));
+
+  return Response.json({ agents, chain: chainNames });
+}
 
 export async function POST(request) {
   const auth = await requireAdmin(request);
@@ -14,7 +43,25 @@ export async function POST(request) {
   const question = requireString(body.data.question, { maxLength: 1000 });
   if (!question) return badRequest("missing_question");
 
-  const chain = resolveChain();
+  // No agent named means the normal failover chain. Naming one pins the
+  // question to it and skips the fallback, so a provider that is failing
+  // shows up as a failure instead of being silently answered by the next one.
+  const requestedAgent = body.data.agent === undefined || body.data.agent === null
+    ? null
+    : requireString(body.data.agent, { maxLength: 32 });
+
+  let chain;
+  if (requestedAgent) {
+    const provider = REGISTRY[requestedAgent];
+    if (!provider) return badRequest("unknown_agent");
+    if (!provider.isConfigured()) {
+      return Response.json({ error: "agent_not_configured", agent: requestedAgent }, { status: 503 });
+    }
+    chain = [provider];
+  } else {
+    chain = resolveChain();
+  }
+
   if (chain.length === 0) {
     return Response.json({ error: "ai_unavailable" }, { status: 503 });
   }
@@ -26,7 +73,10 @@ export async function POST(request) {
     getRecentLogs({ limit: 20 }).catch(() => []),
     prisma.message.findMany({
       where: { createdAt: { gte: since } },
-      select: { status: true, heldReason: true, aiProvider: true, aiModel: true },
+      select: {
+        status: true, heldReason: true, aiProvider: true, aiModel: true,
+        topicTags: true, contentRephrased: true,
+      },
       take: 100,
     }),
     prisma.user.count(),
@@ -42,12 +92,25 @@ export async function POST(request) {
     aiFailed: recentMessages.filter((m) => m.heldReason === "ai_failed").length,
   };
 
+  // The same breakdown the Data Lens shows, so the agent reasons about the
+  // reason a message stalled rather than inferring it from a raw status.
+  // Without it, every answer treated a boundary block — the product working —
+  // as evidence of a fault.
+  const stalled = recentMessages.filter((m) => m.status === "held" || m.status === "draft");
+  const reasonLines = summarizeReasons(
+    stalled.map((m) => ({ ...m, contentRephrased: Boolean(m.contentRephrased) }))
+  ).map((r) => `  ${r.count}× ${r.reason} [${r.category}]${r.needsAttention ? " — needs an operator" : " — no action needed"}`);
+
   const context = [
     `Leeway is a private two-person messaging app with AI-powered tone tuning and topic boundaries.`,
     `Environment: ${process.env.NODE_ENV || "development"}`,
     `Users: ${userCount}, Active connections: ${connectionCount}`,
     `Messages (24h): ${msgStats.total} total, ${msgStats.sent} sent, ${msgStats.held} held, ${msgStats.draft} drafts, ${msgStats.aiFailed} AI failures`,
-    `AI providers configured: ${chain.map((p) => p.name).join(", ")}`,
+    `AI providers configured: ${resolveChain().map((p) => p.name).join(", ") || "none"}`,
+    `Answering as: ${chain.map((p) => p.name).join(", ")}${requestedAgent ? " (pinned by the operator, no failover)" : " (failover chain)"}`,
+    "",
+    `Why messages stalled in the last 24h (${stalled.length} held or draft):`,
+    ...(reasonLines.length > 0 ? reasonLines : ["  nothing held or drafted"]),
     "",
     `Active findings (${findings.length}):`,
     ...findings.map((f) => `  [${f.severity}] ${f.title}: ${f.detail}`),
@@ -88,6 +151,7 @@ ${context}`;
           model: result.model,
           tokens: result.tokensUsed,
           durationMs: Date.now() - start,
+          pinned: Boolean(requestedAgent),
         },
       });
     } catch {
@@ -95,5 +159,8 @@ ${context}`;
     }
   }
 
-  return Response.json({ error: "ai_unavailable" }, { status: 503 });
+  return Response.json(
+    { error: "ai_unavailable", agent: requestedAgent || null },
+    { status: 503 }
+  );
 }

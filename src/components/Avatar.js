@@ -27,7 +27,7 @@ export default function Avatar({ src, name, size = "md", tone = "slate", classNa
   const toneClass = {
     slate: "bg-slate-100 text-slate-600",
     emerald: "bg-emerald-100 text-emerald-700",
-    solid: "bg-emerald-500 text-white",
+    solid: "bg-emerald-600 text-white",
   }[tone] || "bg-slate-100 text-slate-600";
 
   if (src) {

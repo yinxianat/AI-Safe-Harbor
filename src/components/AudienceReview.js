@@ -2,17 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "@/lib/i18n/context.js";
-
-const TONE_KEYS = {
-  warm_and_gentle: "tone_warm_and_gentle",
-  direct_and_clear: "tone_direct_and_clear",
-  playful_and_light: "tone_playful_and_light",
-  calm_and_neutral: "tone_calm_and_neutral",
-  encouraging_and_supportive: "tone_encouraging_and_supportive",
-  brief_and_to_the_point: "tone_brief_and_to_the_point",
-  thoughtful_and_reflective: "tone_thoughtful_and_reflective",
-  reassuring_and_patient: "tone_reassuring_and_patient",
-};
+import { toneLabelKey } from "@/lib/tones.js";
 
 const REL_KEYS = {
   spouse: "rel_spouse", partner: "rel_partner", friend: "rel_friend",
@@ -146,7 +136,7 @@ function Reason({ reason }) {
   const { t } = useT();
   switch (reason.kind) {
     case "tone":
-      return <li>{t("why_tone", { tone: t(TONE_KEYS[reason.tone] || "tone_warm_and_gentle") })}</li>;
+      return <li>{t("why_tone", { tone: t(toneLabelKey(reason.tone)) })}</li>;
     case "relationship":
       return <li>{t("why_relationship", { relationship: t(REL_KEYS[reason.relationshipType] || "rel_other") })}</li>;
     case "softened":

@@ -699,6 +699,8 @@ function DataLensTab() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
+  // Held while a query runs so the statement is on screen before its rows.
+  const [pending, setPending] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -718,6 +720,7 @@ function DataLensTab() {
   async function runQuery(key) {
     setLoading(true);
     setResult(null);
+    setPending(catalog.find((q) => q.key === key) || null);
     try {
       const res = await fetch("/api/admin/data-lens", {
         method: "POST",
@@ -737,8 +740,32 @@ function DataLensTab() {
       <div className="rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm mb-4 sm:mb-6">
         <h3 className="text-sm sm:text-base font-semibold text-slate-900">Data Lens</h3>
         <p className="mt-1 text-xs sm:text-sm text-slate-500">
-          Read-only queries against the database.
+          Read-only queries against the database. Picking one shows the exact statement it runs.
         </p>
+      </div>
+
+      {/* The statement that produced what is below. A result table with no
+          query next to it cannot be reasoned about: "recent messages" does not
+          say whether that is 24 hours or a week, or what the row cap drops. */}
+      <div className="mb-4 sm:mb-6 rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 sm:px-4 py-2">
+          <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Query that ran
+          </p>
+          {(result?.title || pending?.title) && (
+            <span className="shrink-0 text-[10px] sm:text-xs font-medium text-slate-500 truncate">
+              {result?.title || pending?.title}
+            </span>
+          )}
+        </div>
+        {(result?.question || pending?.question) && (
+          <p className="px-3 sm:px-4 pt-2 text-[11px] sm:text-xs text-slate-500">
+            {result?.question || pending?.question}
+          </p>
+        )}
+        <pre className="px-3 sm:px-4 py-2 sm:py-3 text-[10px] sm:text-xs font-mono leading-relaxed text-slate-700 whitespace-pre-wrap overflow-x-auto max-h-56 overflow-y-auto">
+{result?.source || pending?.source || "— pick a query on the left and its statement appears here —"}
+        </pre>
       </div>
 
       {/* Stacked on mobile, side-by-side on md+ */}
@@ -806,6 +833,10 @@ function DataLensTab() {
   );
 }
 
+// Derived explanation columns carry sentences. Truncating them to the same
+// width as an id is what made the reason unreadable in the first place.
+const WIDE_COLUMNS = new Set(["why", "whatToDo", "reason", "contentRaw", "action", "detail", "message"]);
+
 function DataTable({ rows }) {
   if (!rows || rows.length === 0) return null;
 
@@ -844,12 +875,29 @@ function DataTable({ rows }) {
       </thead>
       <tbody>
         {rows.map((row, i) => (
-          <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/50">
-            {allCols.map((col) => (
-              <td key={col} className="px-4 py-2 text-slate-700 whitespace-nowrap max-w-[200px] truncate">
-                {cellValue(row, col)}
-              </td>
-            ))}
+          <tr
+            key={i}
+            className={`border-b border-slate-50 hover:bg-slate-50/50 ${
+              row.needsAttention ? "bg-amber-50/40" : ""
+            }`}
+          >
+            {allCols.map((col) => {
+              const value = cellValue(row, col);
+              const wide = WIDE_COLUMNS.has(col);
+              return (
+                <td
+                  key={col}
+                  title={wide ? value : undefined}
+                  className={`px-4 py-2 align-top text-slate-700 ${
+                    wide
+                      ? "min-w-[14rem] max-w-[22rem] whitespace-pre-wrap text-xs"
+                      : "max-w-[200px] truncate whitespace-nowrap"
+                  }`}
+                >
+                  {value}
+                </td>
+              );
+            })}
           </tr>
         ))}
       </tbody>
@@ -863,6 +911,21 @@ function RootCauseTab() {
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [agents, setAgents] = useState([]);
+  // null = the failover chain. A named agent is asked alone, so a provider
+  // that is misbehaving cannot be masked by the next one answering for it.
+  const [agent, setAgent] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/root-cause");
+        if (!cancelled && res.ok) setAgents((await res.json()).agents || []);
+      } catch { /* the picker falls back to Auto */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const EXAMPLES = [
     "Why are messages getting held as drafts?",
@@ -882,7 +945,7 @@ function RootCauseTab() {
       const res = await fetch("/api/admin/root-cause", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: text }),
+        body: JSON.stringify({ question: text, agent }),
       });
       if (res.ok) setResult(await res.json());
       else {
@@ -905,6 +968,48 @@ function RootCauseTab() {
         <p className="mt-1 text-[10px] sm:text-xs text-slate-400">
           Read-only — it cannot change anything.
         </p>
+      </div>
+
+      {/* Agent picker */}
+      <div className="rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm mb-4 sm:mb-6">
+        <p className="text-xs sm:text-sm font-medium text-slate-700 mb-2">Agent</p>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setAgent(null)}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+              agent === null
+                ? "bg-emerald-600 text-white border-emerald-600"
+                : "bg-white text-slate-600 border-gray-200"
+            }`}
+          >
+            Auto (failover)
+          </button>
+          {agents.map((a) => (
+            <button
+              key={a.name}
+              onClick={() => setAgent(a.name)}
+              title={a.model}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                agent === a.name
+                  ? "bg-emerald-600 text-white border-emerald-600"
+                  : "bg-white text-slate-600 border-gray-200"
+              }`}
+            >
+              {a.name}
+              {!a.inChain && <span className="ml-1 opacity-60">(off-chain)</span>}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-[10px] sm:text-xs text-slate-400">
+          {agent === null
+            ? `Tries each configured provider in order${agents.length > 0 ? ` — ${agents.filter((a) => a.inChain).map((a) => a.name).join(" → ") || "none in the chain"}` : ""}.`
+            : `Asks ${agent} only (${agents.find((a) => a.name === agent)?.model || "default model"}). No fallback, so a failure is reported rather than answered by another provider.`}
+        </p>
+        {agents.length === 0 && (
+          <p className="mt-1 text-[10px] sm:text-xs text-amber-700">
+            No provider is configured — add an API key before asking.
+          </p>
+        )}
       </div>
 
       {/* Question input */}
@@ -951,7 +1056,13 @@ function RootCauseTab() {
       {/* Result */}
       {result?.error && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {result.error === "ai_unavailable" ? "No AI provider available. Check your API keys." : result.error}
+          {result.error === "ai_unavailable"
+            ? (agent
+                ? `${agent} did not answer. Try Auto, or another agent, to tell a provider outage from a wider one.`
+                : "No AI provider available. Check your API keys.")
+            : result.error === "agent_not_configured"
+              ? `${agent} has no API key configured.`
+              : result.error}
         </div>
       )}
 
@@ -1009,6 +1120,7 @@ function RootCauseTab() {
               <div className="pt-3 border-t border-slate-100">
                 <p className="text-xs text-slate-400">
                   {result.meta.provider} · {result.meta.model} · {result.meta.tokens} tokens · {result.meta.durationMs}ms
+                  {result.meta.pinned ? " · pinned agent" : " · via failover chain"}
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Written by an AI from the monitoring data and logs — verify before acting.

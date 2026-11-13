@@ -32,7 +32,13 @@ export async function GET(request) {
   }
 
   const partnerId = getPartnerId(connection, user.id);
-  const partner = await prisma.user.findUnique({ where: { id: partnerId }, ...PERSON });
+  const [partner, myPref] = await Promise.all([
+    prisma.user.findUnique({ where: { id: partnerId }, ...PERSON }),
+    prisma.connectionPreference.findUnique({
+      where: { connectionId_userId: { connectionId, userId: user.id } },
+      select: { nickname: true },
+    }),
+  ]);
 
   const messages = await prisma.message.findMany({
     where: {
@@ -91,7 +97,10 @@ export async function GET(request) {
       displayName: partner.displayName,
       username: partner.username,
       avatarUrl: partner.avatarUrl || null,
-      name: personName(partner),
+      // The chat header has to agree with the chat list, which shows the
+      // reader's own label for this person rather than the name they set.
+      name: myPref?.nickname || personName(partner),
+      realName: personName(partner),
     } : null,
     connectionId,
   });
