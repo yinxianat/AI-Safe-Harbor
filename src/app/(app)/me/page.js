@@ -6,23 +6,10 @@ import { useT } from "@/lib/i18n/context.js";
 
 const MOOD_OPTIONS = ["calm", "happy", "energetic", "low", "neutral"];
 
-const CATEGORY_LABELS = {
-  about_me: "About Me",
-  favorites: "Favorites",
-  love_languages: "Love Languages",
-  pet_peeves: "Pet Peeves",
-  stories: "Stories",
-};
-
-const CATEGORY_EXAMPLES = {
-  about_me: "e.g. What I need when I'm stressed, How I like to be comforted",
-  favorites: "e.g. My comfort food, A song that lifts me up",
-  love_languages: "e.g. What makes me feel most loved",
-  pet_peeves: "e.g. A misunderstanding that keeps happening",
-  stories: "e.g. A memory that shaped who I am",
-};
+const CATEGORY_KEYS = ["about_me", "favorites", "love_languages", "pet_peeves", "stories"];
 
 function VisibilityPicker({ connections, selected, onChange }) {
+  const { t } = useT();
   if (connections.length === 0) return null;
 
   const isEveryone = selected.length === 0;
@@ -37,7 +24,7 @@ function VisibilityPicker({ connections, selected, onChange }) {
 
   return (
     <div className="space-y-1.5">
-      <p className="text-xs text-slate-500">Visible to:</p>
+      <p className="text-xs text-slate-500">{t("me_visible_to")}</p>
       <div className="flex flex-wrap gap-1.5">
         <button
           type="button"
@@ -48,7 +35,7 @@ function VisibilityPicker({ connections, selected, onChange }) {
               : "bg-white text-slate-500 border-gray-200"
           }`}
         >
-          Everyone
+          {t("me_visible_everyone")}
         </button>
         {connections.map((c) => (
           <button
@@ -70,10 +57,11 @@ function VisibilityPicker({ connections, selected, onChange }) {
 }
 
 function VisibilityLabel({ connections, visibleTo, onEdit }) {
+  const { t } = useT();
   if (!visibleTo || visibleTo.length === 0) {
     return (
       <button onClick={onEdit} className="text-xs text-slate-400 hover:text-emerald-600 transition-colors">
-        Everyone
+        {t("me_visible_everyone")}
       </button>
     );
   }
@@ -84,13 +72,14 @@ function VisibilityLabel({ connections, visibleTo, onEdit }) {
 
   return (
     <button onClick={onEdit} className="text-xs text-slate-400 hover:text-emerald-600 transition-colors">
-      {names.length > 0 ? names.join(", ") : "Limited"}
+      {names.length > 0 ? names.join(", ") : t("me_visible_limited")}
     </button>
   );
 }
 
 export default function MePage() {
   const router = useRouter();
+  const { t } = useT();
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -138,37 +127,37 @@ export default function MePage() {
           setStatusText(me.statusText || "");
           setStatusMood(me.statusMood || "neutral");
         } else {
-          setError("Could not load your profile. Please try again.");
+          setError(t("me_profile_load_failed"));
         }
         if (knowMeRes.ok) setKnowMeEntries((await knowMeRes.json()).entries || []);
         if (wallRes.ok) setWallPosts((await wallRes.json()).posts || []);
         if (connRes.ok) setConnections((await connRes.json()).connections || []);
       } catch {
-        if (!cancelled) setError("Could not load your profile.");
+        if (!cancelled) setError(t("me_profile_load_failed_short"));
       }
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [t]);
 
-  async function runAction(label, fn) {
+  async function runAction(actionLabel, fn) {
     try {
       const res = await fn();
       if (res && res.ok === false) {
         const body = await res.json().catch(() => ({}));
-        setError(body.detail || body.error || `Could not ${label}. Please try again.`);
+        setError(body.detail || body.error || t("me_action_fail", { action: actionLabel }));
         return null;
       }
       return res;
     } catch {
-      setError(`Network error while trying to ${label}. Check your connection.`);
+      setError(t("me_action_network_fail", { action: actionLabel }));
       return null;
     }
   }
 
   async function handleSaveStatus() {
     setStatusSaving(true);
-    const res = await runAction("save status", () =>
+    const res = await runAction(t("me_action_save_status"), () =>
       fetch("/api/status", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -183,7 +172,7 @@ export default function MePage() {
     e.preventDefault();
     if (!newPost.trim()) return;
     setPostSaving(true);
-    const res = await runAction("post", () =>
+    const res = await runAction(t("me_action_post"), () =>
       fetch("/api/wall", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -200,7 +189,7 @@ export default function MePage() {
   }
 
   async function handleUpdatePostVisibility(postId, visibleTo) {
-    const res = await runAction("update visibility", () =>
+    const res = await runAction(t("me_action_update_vis"), () =>
       fetch("/api/wall", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -214,7 +203,7 @@ export default function MePage() {
   }
 
   async function handleDeletePost(postId) {
-    const res = await runAction("delete post", () =>
+    const res = await runAction(t("me_action_delete_post"), () =>
       fetch("/api/wall", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -227,7 +216,7 @@ export default function MePage() {
   async function handleAddEntry(e) {
     e.preventDefault();
     if (!newPrompt.trim() || !newAnswer.trim()) return;
-    const res = await runAction("add entry", () =>
+    const res = await runAction(t("me_action_add_entry"), () =>
       fetch("/api/knowme", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -250,7 +239,7 @@ export default function MePage() {
   }
 
   async function handleEditEntry(id, answer) {
-    const res = await runAction("save edit", () =>
+    const res = await runAction(t("me_action_save_edit"), () =>
       fetch("/api/knowme", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -261,7 +250,7 @@ export default function MePage() {
   }
 
   async function handleUpdateEntryVisibility(id, visibleTo) {
-    const res = await runAction("update visibility", () =>
+    const res = await runAction(t("me_action_update_vis"), () =>
       fetch("/api/knowme", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -276,7 +265,7 @@ export default function MePage() {
   }
 
   async function handleDeleteEntry(id) {
-    const res = await runAction("delete entry", () =>
+    const res = await runAction(t("me_action_delete_entry"), () =>
       fetch("/api/knowme", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -288,7 +277,7 @@ export default function MePage() {
 
   async function handleSaveName() {
     setNameSaving(true);
-    const res = await runAction("save name", () =>
+    const res = await runAction(t("me_action_save_name"), () =>
       fetch("/api/auth/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -322,7 +311,7 @@ export default function MePage() {
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
           <p>{error}</p>
-          <button onClick={() => setError(null)} className="text-xs font-medium underline mt-1">Dismiss</button>
+          <button onClick={() => setError(null)} className="text-xs font-medium underline mt-1">{t("dismiss")}</button>
         </div>
       )}
 
@@ -339,18 +328,18 @@ export default function MePage() {
                 autoFocus
               />
               <button onClick={handleSaveName} disabled={nameSaving} className="text-sm font-medium text-emerald-600">
-                {nameSaving ? "..." : "Save"}
+                {nameSaving ? "…" : t("save")}
               </button>
               <button onClick={() => { setEditingName(false); setNameInput(profile?.displayName || ""); }} className="text-sm text-slate-400">
-                Cancel
+                {t("cancel")}
               </button>
             </div>
           ) : (
             <div className="flex items-baseline gap-2">
               <h1 className="text-xl font-bold text-slate-900">
-                {profile?.displayName || "Me"}
+                {profile?.displayName || t("me_fallback_name")}
               </h1>
-              <button onClick={() => setEditingName(true)} className="text-xs text-emerald-600">Edit</button>
+              <button onClick={() => setEditingName(true)} className="text-xs text-emerald-600">{t("edit")}</button>
             </div>
           )}
           {profile?.username && (
@@ -364,17 +353,17 @@ export default function MePage() {
           onClick={handleSignOut}
           className="text-xs text-red-500 font-medium"
         >
-          Sign out
+          {t("sign_out")}
         </button>
       </div>
 
       {/* --- Status (compact) --- */}
       <div className="bg-white rounded-lg border border-gray-100 p-3 space-y-2">
-        <p className="text-xs font-semibold text-slate-500 uppercase">Status</p>
+        <p className="text-xs font-semibold text-slate-500 uppercase">{t("me_status_section")}</p>
         <input
           value={statusText}
           onChange={(e) => { setStatusText(e.target.value); setStatusDirty(true); }}
-          placeholder="How are you feeling? Calm, happy, energetic, low, neutral..."
+          placeholder={t("me_status_placeholder")}
           maxLength={200}
           className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
@@ -390,7 +379,7 @@ export default function MePage() {
                     : "bg-gray-100 text-slate-500"
                 }`}
               >
-                {m.charAt(0).toUpperCase() + m.slice(1)}
+                {t(`mood_${m}`)}
               </button>
             ))}
           </div>
@@ -400,7 +389,7 @@ export default function MePage() {
               disabled={statusSaving}
               className="bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
             >
-              {statusSaving ? "..." : "Save"}
+              {statusSaving ? "…" : t("save")}
             </button>
           )}
         </div>
@@ -408,13 +397,13 @@ export default function MePage() {
 
       {/* --- Wall (compact) --- */}
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-slate-500 uppercase">Wall</p>
+        <p className="text-xs font-semibold text-slate-500 uppercase">{t("me_wall_section")}</p>
         <form onSubmit={handleNewPost} className="space-y-2">
           <div className="flex gap-2">
             <input
               value={newPost}
               onChange={(e) => setNewPost(e.target.value)}
-              placeholder="Share something with your person..."
+              placeholder={t("me_post_placeholder")}
               maxLength={280}
               className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
@@ -423,7 +412,7 @@ export default function MePage() {
               disabled={!newPost.trim() || postSaving}
               className="bg-emerald-600 text-white text-xs font-medium px-3 rounded-lg disabled:opacity-50"
             >
-              {postSaving ? "..." : "Post"}
+              {postSaving ? "…" : t("me_post_button")}
             </button>
           </div>
           {connections.length > 1 && (
@@ -449,17 +438,17 @@ export default function MePage() {
             onClick={() => setWallExpanded(!wallExpanded)}
             className="text-xs text-emerald-600 font-medium"
           >
-            {wallExpanded ? "Show less" : `View all ${wallPosts.length} posts`}
+            {wallExpanded ? t("me_show_less") : t("me_view_all_posts", { count: wallPosts.length })}
           </button>
         )}
       </div>
 
       {/* --- Know Me (compact) --- */}
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-slate-500 uppercase">Know Me</p>
+        <p className="text-xs font-semibold text-slate-500 uppercase">{t("me_knowme_section")}</p>
 
         <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4">
-          {Object.keys(CATEGORY_LABELS).map((cat) => (
+          {CATEGORY_KEYS.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
@@ -469,14 +458,14 @@ export default function MePage() {
                   : "bg-white text-slate-500 border-gray-200"
               }`}
             >
-              {CATEGORY_LABELS[cat]}
+              {t(`category_${cat}`)}
             </button>
           ))}
         </div>
 
         {filteredEntries.length === 0 && !adding && (
           <p className="text-xs text-slate-400 py-2">
-            {CATEGORY_EXAMPLES[activeCategory] || "Add something about yourself."}
+            {t(`category_example_${activeCategory}`) || t("me_knowme_empty_hint")}
           </p>
         )}
 
@@ -496,14 +485,14 @@ export default function MePage() {
             <input
               value={newPrompt}
               onChange={(e) => setNewPrompt(e.target.value)}
-              placeholder="Topic or question..."
+              placeholder={t("me_knowme_prompt_placeholder")}
               maxLength={200}
               className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
             <textarea
               value={newAnswer}
               onChange={(e) => setNewAnswer(e.target.value)}
-              placeholder="Your answer..."
+              placeholder={t("me_knowme_answer_placeholder")}
               rows={2}
               maxLength={2000}
               className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -516,8 +505,8 @@ export default function MePage() {
               />
             )}
             <div className="flex gap-2">
-              <button type="submit" disabled={!newAnswer.trim()} className="bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50">Save</button>
-              <button type="button" onClick={() => { setAdding(false); setNewPrompt(""); setNewAnswer(""); setNewEntryVisibility([]); }} className="text-xs text-slate-500">Cancel</button>
+              <button type="submit" disabled={!newAnswer.trim()} className="bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50">{t("save")}</button>
+              <button type="button" onClick={() => { setAdding(false); setNewPrompt(""); setNewAnswer(""); setNewEntryVisibility([]); }} className="text-xs text-slate-500">{t("cancel")}</button>
             </div>
           </form>
         ) : (
@@ -525,7 +514,7 @@ export default function MePage() {
             onClick={() => setAdding(true)}
             className="w-full py-2 rounded-lg border border-dashed border-gray-200 text-slate-400 text-xs font-medium hover:border-emerald-300 hover:text-emerald-600 transition-colors"
           >
-            + Add entry
+            {t("me_knowme_add_entry")}
           </button>
         )}
       </div>
@@ -541,8 +530,8 @@ export default function MePage() {
 
       {/* --- Session Duration --- */}
       <div className="bg-white rounded-lg border border-gray-100 p-3 space-y-2">
-        <p className="text-xs font-semibold text-slate-500 uppercase">Session Duration</p>
-        <p className="text-[10px] text-slate-400">How long before you need to sign in again.</p>
+        <p className="text-xs font-semibold text-slate-500 uppercase">{t("me_session_duration")}</p>
+        <p className="text-[10px] text-slate-400">{t("me_session_duration_hint")}</p>
         <div className="flex gap-1.5">
           {[7, 14, 30, 90].map((d) => (
             <button
@@ -561,17 +550,18 @@ export default function MePage() {
                   : "bg-white text-slate-500 border-gray-200"
               }`}
             >
-              {d === 7 ? "1 week" : d === 14 ? "2 weeks" : d === 30 ? "1 month" : "3 months"}
+              {d === 7 ? t("me_session_1_week") : d === 14 ? t("me_session_2_weeks") : d === 30 ? t("me_session_1_month") : t("me_session_3_months")}
             </button>
           ))}
         </div>
-        <p className="text-[10px] text-slate-400">Takes effect on your next sign-in.</p>
+        <p className="text-[10px] text-slate-400">{t("me_session_duration_effect")}</p>
       </div>
     </div>
   );
 }
 
 function WallPostCard({ post, connections, onDelete, onUpdateVisibility }) {
+  const { t } = useT();
   const [editingVis, setEditingVis] = useState(false);
   const [localVis, setLocalVis] = useState(post.visibleTo || []);
 
@@ -605,7 +595,7 @@ function WallPostCard({ post, connections, onDelete, onUpdateVisibility }) {
           onClick={() => onDelete(post.id)}
           className="text-xs text-red-400 opacity-0 group-hover:opacity-100 shrink-0 mt-1"
         >
-          Delete
+          {t("delete")}
         </button>
       </div>
       {editingVis && (
@@ -616,8 +606,8 @@ function WallPostCard({ post, connections, onDelete, onUpdateVisibility }) {
             onChange={setLocalVis}
           />
           <div className="flex gap-2">
-            <button onClick={handleSaveVis} className="text-xs bg-emerald-600 text-white px-2 py-1 rounded">Save</button>
-            <button onClick={() => setEditingVis(false)} className="text-xs text-slate-500">Cancel</button>
+            <button onClick={handleSaveVis} className="text-xs bg-emerald-600 text-white px-2 py-1 rounded">{t("save")}</button>
+            <button onClick={() => setEditingVis(false)} className="text-xs text-slate-500">{t("cancel")}</button>
           </div>
         </div>
       )}
@@ -626,6 +616,7 @@ function WallPostCard({ post, connections, onDelete, onUpdateVisibility }) {
 }
 
 function KnowMeCard({ entry, connections, onEdit, onDelete, onUpdateVisibility }) {
+  const { t } = useT();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(entry.answer);
   const [editingVis, setEditingVis] = useState(false);
@@ -649,8 +640,8 @@ function KnowMeCard({ entry, connections, onEdit, onDelete, onUpdateVisibility }
             className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
           <div className="flex gap-2">
-            <button onClick={() => { onEdit(entry.id, value); setEditing(false); }} className="text-xs bg-emerald-600 text-white px-2 py-1 rounded">Save</button>
-            <button onClick={() => setEditing(false)} className="text-xs text-slate-500">Cancel</button>
+            <button onClick={() => { onEdit(entry.id, value); setEditing(false); }} className="text-xs bg-emerald-600 text-white px-2 py-1 rounded">{t("save")}</button>
+            <button onClick={() => setEditing(false)} className="text-xs text-slate-500">{t("cancel")}</button>
           </div>
         </div>
       ) : (
@@ -668,8 +659,8 @@ function KnowMeCard({ entry, connections, onEdit, onDelete, onUpdateVisibility }
             )}
           </div>
           <div className="flex gap-2 shrink-0">
-            <button onClick={() => setEditing(true)} className="text-xs text-emerald-600">Edit</button>
-            <button onClick={() => onDelete(entry.id)} className="text-xs text-red-400">Del</button>
+            <button onClick={() => setEditing(true)} className="text-xs text-emerald-600">{t("edit")}</button>
+            <button onClick={() => onDelete(entry.id)} className="text-xs text-red-400">{t("me_knowme_del")}</button>
           </div>
         </div>
       )}
@@ -681,8 +672,8 @@ function KnowMeCard({ entry, connections, onEdit, onDelete, onUpdateVisibility }
             onChange={setLocalVis}
           />
           <div className="flex gap-2">
-            <button onClick={handleSaveVis} className="text-xs bg-emerald-600 text-white px-2 py-1 rounded">Save</button>
-            <button onClick={() => setEditingVis(false)} className="text-xs text-slate-500">Cancel</button>
+            <button onClick={handleSaveVis} className="text-xs bg-emerald-600 text-white px-2 py-1 rounded">{t("save")}</button>
+            <button onClick={() => setEditingVis(false)} className="text-xs text-slate-500">{t("cancel")}</button>
           </div>
         </div>
       )}
@@ -724,6 +715,11 @@ function PasswordCard() {
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
 
+  // Reset flow for a user who forgot their current password.
+  const [resetting, setResetting] = useState(false);
+  const [resetConfirm, setResetConfirm] = useState("");
+  const [clearingReset, setClearingReset] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -763,13 +759,36 @@ function PasswordCard() {
         if (data.error === "invalid_current_password") {
           setError(t("wrong_current_password"));
         } else {
-          setError(data.detail || "Could not update password.");
+          setError(data.detail || t("password_update_failed"));
         }
       }
     } catch {
-      setError("Network error. Try again.");
+      setError(t("network_error"));
     }
     setSaving(false);
+  }
+
+  // Confirmed reset: wipe the existing hash, then hand the user the
+  // "set a password" flow (now with no current-password requirement).
+  async function handleConfirmReset() {
+    if (resetConfirm !== "RESET") return;
+    setClearingReset(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/password", { method: "DELETE" });
+      if (res.ok) {
+        setHasPassword(false);
+        setResetting(false);
+        setResetConfirm("");
+        setCurrentPassword("");
+        setMessage(t("reset_password_cleared"));
+      } else {
+        setError(t("password_update_failed"));
+      }
+    } catch {
+      setError(t("network_error"));
+    }
+    setClearingReset(false);
   }
 
   const title = hasPassword ? t("change_password_title") : t("set_password_title");
@@ -789,18 +808,58 @@ function PasswordCard() {
     );
   }
 
+  if (resetting) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+        <p className="text-xs font-semibold text-red-700 uppercase">{t("reset_password_title")}</p>
+        <p className="text-[11px] text-red-700">{t("reset_password_body")}</p>
+        <input
+          value={resetConfirm}
+          onChange={(e) => setResetConfirm(e.target.value)}
+          placeholder={t("reset_password_confirm_placeholder")}
+          className="w-full px-2 py-1.5 rounded border border-red-300 text-sm"
+        />
+        {error && <p className="text-xs text-red-600">{error}</p>}
+        <div className="flex gap-2">
+          <button
+            onClick={handleConfirmReset}
+            disabled={resetConfirm !== "RESET" || clearingReset}
+            className="flex-1 text-xs font-medium bg-red-600 text-white py-2 rounded-lg disabled:opacity-50"
+          >
+            {clearingReset ? "…" : t("reset_password_button")}
+          </button>
+          <button
+            onClick={() => { setResetting(false); setResetConfirm(""); setError(null); }}
+            className="flex-1 text-xs font-medium bg-white border border-gray-200 text-slate-600 py-2 rounded-lg"
+          >
+            {t("cancel")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSave} className="bg-white rounded-lg border border-gray-100 p-3 space-y-2">
       <p className="text-xs font-semibold text-slate-500 uppercase">{title}</p>
       {hasPassword && (
-        <input
-          type="password"
-          value={currentPassword}
-          onChange={(e) => setCurrentPassword(e.target.value)}
-          placeholder={t("current_password")}
-          autoComplete="current-password"
-          className="w-full px-3 py-2 rounded border border-gray-200 text-sm"
-        />
+        <>
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder={t("current_password")}
+            autoComplete="current-password"
+            className="w-full px-3 py-2 rounded border border-gray-200 text-sm"
+          />
+          <button
+            type="button"
+            onClick={() => setResetting(true)}
+            className="text-[11px] text-slate-500 underline"
+          >
+            {t("forgot_current_password")}
+          </button>
+        </>
       )}
       <input
         type="password"
@@ -819,14 +878,14 @@ function PasswordCard() {
           disabled={saving || newPassword.length < 8 || (hasPassword && !currentPassword)}
           className="flex-1 text-xs font-medium bg-emerald-600 text-white py-2 rounded-lg disabled:opacity-50"
         >
-          {saving ? "..." : t("save_password")}
+          {saving ? "…" : t("save_password")}
         </button>
         <button
           type="button"
           onClick={() => { setOpened(false); setCurrentPassword(""); setNewPassword(""); setError(null); }}
           className="flex-1 text-xs font-medium bg-white border border-gray-200 text-slate-600 py-2 rounded-lg"
         >
-          Cancel
+          {t("cancel")}
         </button>
       </div>
     </form>
@@ -835,6 +894,7 @@ function PasswordCard() {
 
 function DeleteAccountCard() {
   const router = useRouter();
+  const { t } = useT();
   const [opened, setOpened] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -854,9 +914,9 @@ function DeleteAccountCard() {
         return;
       }
       const body = await res.json().catch(() => ({}));
-      setError(body.detail || body.error || "Could not delete your account.");
+      setError(body.detail || body.error || t("me_delete_fail"));
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("network_error"));
     }
     setDeleting(false);
   }
@@ -868,7 +928,7 @@ function DeleteAccountCard() {
           onClick={() => setOpened(true)}
           className="text-xs text-red-500 font-medium"
         >
-          Delete my account
+          {t("me_delete_my_account")}
         </button>
       </div>
     );
@@ -876,15 +936,12 @@ function DeleteAccountCard() {
 
   return (
     <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
-      <p className="text-xs font-semibold text-red-700 uppercase">Delete Account</p>
-      <p className="text-[11px] text-red-700">
-        This will permanently delete your profile, messages, posts, Know Me entries, and disconnect
-        you from everyone in your circle. This cannot be undone. Type <strong>DELETE</strong> to confirm.
-      </p>
+      <p className="text-xs font-semibold text-red-700 uppercase">{t("me_delete_account_title")}</p>
+      <p className="text-[11px] text-red-700">{t("me_delete_account_body")}</p>
       <input
         value={confirmText}
         onChange={(e) => setConfirmText(e.target.value)}
-        placeholder="Type DELETE"
+        placeholder={t("me_delete_confirm_placeholder")}
         className="w-full px-2 py-1.5 rounded border border-red-300 text-sm"
       />
       {error && <p className="text-xs text-red-600">{error}</p>}
@@ -894,13 +951,13 @@ function DeleteAccountCard() {
           disabled={confirmText !== "DELETE" || deleting}
           className="flex-1 text-xs font-medium bg-red-600 text-white py-2 rounded-lg disabled:opacity-50"
         >
-          {deleting ? "Deleting..." : "Delete forever"}
+          {deleting ? t("me_deleting") : t("me_delete_forever")}
         </button>
         <button
           onClick={() => { setOpened(false); setConfirmText(""); setError(null); }}
           className="flex-1 text-xs font-medium bg-white border border-gray-200 text-slate-600 py-2 rounded-lg"
         >
-          Cancel
+          {t("cancel")}
         </button>
       </div>
     </div>

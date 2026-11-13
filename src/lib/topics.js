@@ -145,6 +145,22 @@ export const TOPICS = [
 
 export const TOPIC_KEYS = TOPICS.map((t) => t.key);
 
+// A deliberately short default UI list. The full TOPIC_KEYS set is still used
+// to detect keywords in outgoing messages; this list only decides which topics
+// a user sees pinned by default in the AI-Tuning page. Everything else is
+// available as a quick-add suggestion so the preset list stays uncluttered.
+export const CORE_PRESET_KEYS = [
+  "health",
+  "money",
+  "past_conflicts",
+  "parenting",
+  "personal_growth",
+];
+
+export function isCorePresetKey(key) {
+  return CORE_PRESET_KEYS.includes(key);
+}
+
 const BY_KEY = new Map(TOPICS.map((t) => [t.key, t]));
 
 export function getTopic(key) {

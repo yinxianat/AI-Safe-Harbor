@@ -50,3 +50,19 @@ export async function GET(request) {
   }
   return Response.json({ hasPassword: Boolean(user.passwordHash) });
 }
+
+// A signed-in user who forgot their password can clear it here. The threat
+// model is: they still have session access (typically fresh from a magic
+// link), so letting them wipe the hash is no worse than letting them change
+// email or delete the account from the same screen.
+export async function DELETE(request) {
+  const user = await getSessionUser(request);
+  if (!user) {
+    return Response.json({ error: "unauthorized" }, { status: 401 });
+  }
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash: null },
+  });
+  return Response.json({ ok: true });
+}

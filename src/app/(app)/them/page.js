@@ -3,24 +3,20 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/context.js";
 
-const CATEGORY_LABELS = {
-  about_me: "About Me",
-  favorites: "Favorites",
-  love_languages: "Love Languages",
-  pet_peeves: "Pet Peeves",
-  stories: "Stories",
+const MOOD_DOTS = {
+  calm: "bg-blue-400",
+  happy: "bg-emerald-400",
+  energetic: "bg-orange-400",
+  low: "bg-slate-400",
+  neutral: "bg-violet-400",
 };
 
-const MOOD_STYLES = {
-  calm: { dot: "bg-blue-400", label: "Calm" },
-  happy: { dot: "bg-emerald-400", label: "Happy" },
-  energetic: { dot: "bg-orange-400", label: "Energetic" },
-  low: { dot: "bg-slate-400", label: "Low energy" },
-  neutral: { dot: "bg-violet-400", label: "Neutral" },
-};
+const CATEGORY_KEYS = ["about_me", "favorites", "love_languages", "pet_peeves", "stories"];
 
 export default function ThemPage() {
+  const { t } = useT();
   const searchParams = useSearchParams();
   const connectionIdParam = searchParams.get("connectionId");
 
@@ -78,17 +74,15 @@ export default function ThemPage() {
   if (error === "no_connection") {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Your Person</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{t("them_your_person")}</h1>
         <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-6 text-center space-y-3">
-          <p className="text-base text-emerald-800 font-medium">No one in your circle yet</p>
-          <p className="text-sm text-emerald-600">
-            Add your person so you can see their profile.
-          </p>
+          <p className="text-base text-emerald-800 font-medium">{t("them_empty_title")}</p>
+          <p className="text-sm text-emerald-600">{t("them_empty_hint")}</p>
           <Link
             href="/circle"
             className="inline-block bg-emerald-600 text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-emerald-700 transition-colors"
           >
-            Find your person
+            {t("them_find_person")}
           </Link>
         </div>
       </div>
@@ -98,16 +92,16 @@ export default function ThemPage() {
   if (error || !data) {
     return (
       <div className="space-y-4">
-        <Link href="/circle" className="text-sm text-emerald-600 font-medium">← Back to Circle</Link>
+        <Link href="/circle" className="text-sm text-emerald-600 font-medium">{t("tuning_back_to_circle")}</Link>
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
-          <p>{error === "network" ? "Network error. Check your connection." : "Could not load details."}</p>
+          <p>{error === "network" ? t("network_error") : t("them_load_failed")}</p>
         </div>
       </div>
     );
   }
 
   const { partner, boundaries, knowMe, wall } = data;
-  const name = partner.displayName || (partner.username ? `@${partner.username}` : "Your person");
+  const name = partner.displayName || (partner.username ? `@${partner.username}` : t("circle_fallback_name"));
 
   const categorized = {};
   for (const entry of knowMe) {
@@ -121,9 +115,9 @@ export default function ThemPage() {
 
   return (
     <div className="space-y-4">
-      <Link href="/circle" className="text-sm text-emerald-600 font-medium">← Circle</Link>
+      <Link href="/circle" className="text-sm text-emerald-600 font-medium">← {t("nav_circle")}</Link>
 
-      <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold">{name}&apos;s Profile</p>
+      <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold">{t("them_profile_header", { name })}</p>
 
       {/* Profile Card */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -140,7 +134,7 @@ export default function ThemPage() {
             )}
             {partner.statusText && (
               <div className="flex items-center gap-1.5 mt-1">
-                <span className={`w-2 h-2 rounded-full ${(MOOD_STYLES[partner.statusMood] || MOOD_STYLES.neutral).dot} shrink-0`} />
+                <span className={`w-2 h-2 rounded-full ${MOOD_DOTS[partner.statusMood] || MOOD_DOTS.neutral} shrink-0`} />
                 <p className="text-xs text-slate-500 truncate">{partner.statusText}</p>
               </div>
             )}
@@ -150,19 +144,19 @@ export default function ThemPage() {
 
       {/* What they're comfortable with */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
-        <p className="text-sm font-semibold text-slate-700 uppercase tracking-wide">What {name} is comfortable with</p>
-        <p className="text-[10px] text-slate-400 mt-0.5">The AI will warn you if your message touches a sensitive topic.</p>
+        <p className="text-sm font-semibold text-slate-700 uppercase tracking-wide">{t("them_comfortable_with", { name })}</p>
+        <p className="text-[10px] text-slate-400 mt-0.5">{t("them_comfortable_hint")}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="bg-emerald-500 px-3 py-2 flex items-center justify-between">
-            <p className="text-xs font-bold text-white uppercase tracking-wide">{name} enjoys</p>
+            <p className="text-xs font-bold text-white uppercase tracking-wide">{t("them_enjoys", { name })}</p>
             <span className="text-lg">👍</span>
           </div>
           <div className="bg-white p-3 space-y-1.5">
             {greenTopics.length === 0 && yellowTopics.length === 0 && (
-              <p className="text-xs text-slate-400 italic">No topics set</p>
+              <p className="text-xs text-slate-400 italic">{t("them_no_topics_set")}</p>
             )}
             {greenTopics.map((b) => (
               <div key={b.topicName} className="bg-gray-50 rounded-lg px-2.5 py-1.5">
@@ -172,7 +166,7 @@ export default function ThemPage() {
             {yellowTopics.map((b) => (
               <div key={b.topicName} className="bg-amber-50 rounded-lg px-2.5 py-1.5 border border-amber-100">
                 <span className="text-xs text-amber-700">{b.label}</span>
-                <span className="text-[10px] text-amber-500 ml-1">(gentle)</span>
+                <span className="text-[10px] text-amber-500 ml-1">{t("them_gentle_note")}</span>
               </div>
             ))}
           </div>
@@ -180,12 +174,12 @@ export default function ThemPage() {
 
         <div className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="bg-red-500 px-3 py-2 flex items-center justify-between">
-            <p className="text-xs font-bold text-white uppercase tracking-wide">{name} avoids</p>
+            <p className="text-xs font-bold text-white uppercase tracking-wide">{t("them_avoids", { name })}</p>
             <span className="text-lg">🛡️</span>
           </div>
           <div className="bg-white p-3 space-y-1.5">
             {redTopics.length === 0 ? (
-              <p className="text-xs text-slate-400 italic">No avoided topics</p>
+              <p className="text-xs text-slate-400 italic">{t("them_no_avoided")}</p>
             ) : (
               redTopics.map((b) => (
                 <div key={b.topicName} className="bg-gray-50 rounded-lg px-2.5 py-1.5">
@@ -199,14 +193,14 @@ export default function ThemPage() {
 
       {wall && wall.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
-          <p className="text-sm font-semibold text-slate-700">{name}&apos;s Wall</p>
+          <p className="text-sm font-semibold text-slate-700">{t("them_wall", { name })}</p>
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {wall.map((post) => (
               <div key={post.id} className="bg-gray-50 rounded-xl p-3">
                 <p className="text-sm text-slate-800 whitespace-pre-wrap">{post.text}</p>
                 <div className="flex items-center gap-2 mt-1.5">
                   {post.mood && (
-                    <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">{post.mood}</span>
+                    <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">{t(`mood_${post.mood}`) || post.mood}</span>
                   )}
                   <span className="text-[10px] text-slate-400">
                     {new Date(post.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
@@ -220,10 +214,10 @@ export default function ThemPage() {
 
       {knowMe.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
-          <p className="text-sm font-semibold text-slate-700">Know {name}</p>
+          <p className="text-sm font-semibold text-slate-700">{t("them_know", { name })}</p>
           {Object.entries(categorized).map(([cat, entries]) => (
             <div key={cat} className="space-y-1.5">
-              <p className="text-xs font-semibold text-slate-500 uppercase">{CATEGORY_LABELS[cat] || cat}</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase">{CATEGORY_KEYS.includes(cat) ? t(`category_${cat}`) : cat}</p>
               {entries.map((entry) => (
                 <div key={entry.id} className="bg-gray-50 rounded-xl p-3">
                   <p className="text-xs font-medium text-slate-500">{entry.prompt}</p>
@@ -241,13 +235,13 @@ export default function ThemPage() {
           href={`/chat/${connectionId}`}
           className="block bg-emerald-600 text-white text-center font-medium py-3 rounded-xl hover:bg-emerald-700 transition-colors"
         >
-          Message {name}
+          {t("them_message", { name })}
         </Link>
         <Link
           href={`/circle/settings?connectionId=${connectionId}`}
           className="block bg-white border border-emerald-200 text-emerald-700 text-center font-medium py-3 rounded-xl hover:bg-emerald-50 transition-colors"
         >
-          AI Tuning
+          {t("them_ai_tuning")}
         </Link>
       </div>
     </div>

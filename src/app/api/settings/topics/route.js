@@ -3,6 +3,8 @@ import { parseJsonBody, badRequest, requireString } from "@/lib/http.js";
 import { findAccessibleConnection } from "@/lib/connections.js";
 import {
   TOPIC_KEYS,
+  CORE_PRESET_KEYS,
+  isCorePresetKey,
   isValidTopicKey,
   getTopicLabel,
   isCustomTopicKey,
@@ -36,17 +38,20 @@ async function resolveScope(user, connectionId) {
   };
 }
 
+// Only topics the user has explicitly saved show up; nothing is pinned.
+// That makes delete work uniformly — a preset the user removes stays gone
+// until they add it back from the suggested list.
 function formatRows(stored) {
-  const byTopic = Object.fromEntries(stored.map((s) => [s.topicName, s]));
-
-  const presets = TOPIC_KEYS.map((key) => ({
-    topicName: key,
-    label: getTopicLabel(key),
-    comfortLevel: byTopic[key]?.comfortLevel || "green",
-    note: byTopic[key]?.note || "",
-    isCustom: false,
-    id: byTopic[key]?.id || null,
-  }));
+  const presets = stored
+    .filter((s) => !isCustomTopicKey(s.topicName))
+    .map((s) => ({
+      topicName: s.topicName,
+      label: getTopicLabel(s.topicName),
+      comfortLevel: s.comfortLevel,
+      note: s.note || "",
+      isCustom: false,
+      id: s.id,
+    }));
 
   const customs = stored
     .filter((s) => isCustomTopicKey(s.topicName))
@@ -62,6 +67,17 @@ function formatRows(stored) {
   return [...presets, ...customs];
 }
 
+/** All preset topics the user hasn't yet saved — shown as quick-adds. */
+function suggestedPresetKeys(stored) {
+  const seen = new Set(stored.map((s) => s.topicName));
+  return TOPIC_KEYS.filter((k) => !seen.has(k)).map((key) => ({
+    topicName: key,
+    label: getTopicLabel(key),
+    // Flag so the UI can emphasize the usual starting picks on empty state.
+    isCore: isCorePresetKey(key),
+  }));
+}
+
 export async function GET(request) {
   const user = await getSessionUser(request);
   if (!user) {
@@ -75,7 +91,11 @@ export async function GET(request) {
   }
 
   const stored = await scope.model.findMany({ where: scope.where });
-  return Response.json({ settings: formatRows(stored), presetTopics: TOPIC_KEYS });
+  return Response.json({
+    settings: formatRows(stored),
+    presetTopics: TOPIC_KEYS,
+    suggestedTopics: suggestedPresetKeys(stored),
+  });
 }
 
 export async function PUT(request) {
@@ -191,10 +211,11 @@ export async function DELETE(request) {
   const connectionId = requireString(body.data.connectionId, { maxLength: 64 });
   const topicName = requireString(body.data.topicName, { maxLength: 64 });
 
-  // Presets cannot be deleted, only set back to green — deleting one would
-  // just make GET re-create it at green anyway.
-  if (!topicName || !isCustomTopicKey(topicName)) {
-    return badRequest("not_a_custom_topic");
+  // Any saved topic can be deleted — a preset removed this way will reappear
+  // in the suggested list, so the user can add it back if they change their
+  // mind. Custom topics disappear entirely (their label is only stored here).
+  if (!topicName || (!isCustomTopicKey(topicName) && !isValidTopicKey(topicName))) {
+    return badRequest("unknown_topic");
   }
 
   const scope = await resolveScope(user, connectionId);

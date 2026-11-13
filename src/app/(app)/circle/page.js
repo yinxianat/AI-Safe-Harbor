@@ -2,43 +2,50 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/context.js";
 
-const MOOD_STYLES = {
-  calm: { dot: "bg-blue-400", label: "Calm" },
-  happy: { dot: "bg-emerald-400", label: "Happy" },
-  energetic: { dot: "bg-orange-400", label: "Energetic" },
-  low: { dot: "bg-slate-400", label: "Low" },
-  neutral: { dot: "bg-violet-400", label: "Neutral" },
+const MOOD_DOTS = {
+  calm: "bg-blue-400",
+  happy: "bg-emerald-400",
+  energetic: "bg-orange-400",
+  low: "bg-slate-400",
+  neutral: "bg-violet-400",
 };
 
-const TONE_LABELS = {
-  warm_and_gentle: "Warm & gentle",
-  direct_and_clear: "Direct & clear",
-  playful_and_light: "Playful & light",
-  calm_and_neutral: "Calm & neutral",
-  encouraging_and_supportive: "Encouraging",
-  brief_and_to_the_point: "Brief & direct",
-  thoughtful_and_reflective: "Thoughtful",
-  reassuring_and_patient: "Reassuring",
+const TONE_SHORT_KEYS = {
+  warm_and_gentle: "tone_warm_and_gentle_short",
+  direct_and_clear: "tone_direct_and_clear",
+  playful_and_light: "tone_playful_and_light",
+  calm_and_neutral: "tone_calm_and_neutral",
+  encouraging_and_supportive: "tone_encouraging_short",
+  brief_and_to_the_point: "tone_brief_short",
+  thoughtful_and_reflective: "tone_thoughtful_short",
+  reassuring_and_patient: "tone_reassuring_short",
 };
 
-function timeAgo(dateStr) {
-  if (!dateStr) return "";
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+function useTimeAgo() {
+  const { t } = useT();
+  return (dateStr) => {
+    if (!dateStr) return "";
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return t("circle_time_just_now");
+    if (mins < 60) return t("circle_time_minutes", { n: mins });
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return t("circle_time_hours", { n: hrs });
+    return t("circle_time_days", { n: Math.floor(hrs / 24) });
+  };
 }
 
 function PersonCard({ person, onDisconnect }) {
+  const { t } = useT();
+  const timeAgo = useTimeAgo();
   const [showBoundaries, setShowBoundaries] = useState(false);
   const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
-  const name = person.displayName || (person.username ? `@${person.username}` : "Your person");
-  const moodStyle = MOOD_STYLES[person.statusMood] || MOOD_STYLES.neutral;
+  const name = person.displayName || (person.username ? `@${person.username}` : t("circle_fallback_name"));
+  const moodDot = MOOD_DOTS[person.statusMood] || MOOD_DOTS.neutral;
+  const moodLabel = t(`mood_${person.statusMood || "neutral"}`);
   const bs = person.boundarySummary || { red: 0, yellow: 0, green: 0 };
   const boundaries = person.boundaries || [];
 
@@ -54,14 +61,14 @@ function PersonCard({ person, onDisconnect }) {
     <>
       <div
         onClick={() => setShowBoundaries(true)}
-        className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden cursor-pointer active:bg-slate-50 transition-colors"
+        className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm overflow-hidden cursor-pointer active:bg-slate-50 transition-colors"
       >
-        <div className="p-5 space-y-4">
+        <div className="p-3 sm:p-5 space-y-2 sm:space-y-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">{name}</h2>
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 truncate">{name}</h2>
               {person.username && person.displayName && (
-                <p className="text-sm text-slate-500">@{person.username}</p>
+                <p className="text-xs sm:text-sm text-slate-500 truncate">@{person.username}</p>
               )}
             </div>
             <svg className="w-5 h-5 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -70,71 +77,70 @@ function PersonCard({ person, onDisconnect }) {
           </div>
 
           {person.statusText ? (
-            <div className="flex items-start gap-2.5">
-              <span className={`w-2.5 h-2.5 rounded-full ${moodStyle.dot} mt-1.5 shrink-0`} />
-              <div>
-                <p className="text-sm text-slate-700">{person.statusText}</p>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {moodStyle.label} · {timeAgo(person.statusUpdatedAt)}
+            <div className="flex items-start gap-2">
+              <span className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${moodDot} mt-1.5 shrink-0`} />
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-slate-700 line-clamp-2">{person.statusText}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">
+                  {moodLabel} · {timeAgo(person.statusUpdatedAt)}
                 </p>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-slate-400 italic">No status right now</p>
+            <p className="text-xs sm:text-sm text-slate-400 italic">{t("circle_no_status")}</p>
           )}
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500">Prefers:</span>
-              <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                {TONE_LABELS[person.tonePreference] || "Warm & gentle"}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-[10px] sm:text-xs text-slate-500 shrink-0">{t("circle_prefers")}</span>
+              <span className="text-[10px] sm:text-xs font-medium text-emerald-600 bg-emerald-50 px-1.5 sm:px-2 py-0.5 rounded-full truncate">
+                {t(TONE_SHORT_KEYS[person.tonePreference] || "tone_warm_and_gentle_short")}
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 shrink-0">
               {bs.red > 0 && (
-                <span className="flex items-center gap-0.5 text-xs">
-                  <span className="w-2 h-2 rounded-full bg-red-500" />
+                <span className="flex items-center gap-0.5 text-[10px] sm:text-xs">
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500" />
                   <span className="text-red-700 font-medium">{bs.red}</span>
                 </span>
               )}
               {bs.yellow > 0 && (
-                <span className="flex items-center gap-0.5 text-xs">
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <span className="flex items-center gap-0.5 text-[10px] sm:text-xs">
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-400" />
                   <span className="text-amber-700 font-medium">{bs.yellow}</span>
                 </span>
               )}
               {bs.green > 0 && (
-                <span className="flex items-center gap-0.5 text-xs">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="flex items-center gap-0.5 text-[10px] sm:text-xs">
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500" />
                   <span className="text-emerald-700 font-medium">{bs.green}</span>
                 </span>
               )}
             </div>
           </div>
-          <p className="text-[10px] text-slate-400">Tap to see {name}&apos;s boundaries</p>
         </div>
 
         <div className="flex border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
           <Link
             href={`/chat/${person.connectionId}`}
-            className="flex-1 text-center text-sm font-medium text-emerald-600 py-3 hover:bg-emerald-50 transition-colors"
+            className="flex-1 text-center text-xs sm:text-sm font-medium text-emerald-600 py-2 sm:py-3 hover:bg-emerald-50 transition-colors"
           >
-            Message
+            {t("circle_card_message")}
           </Link>
           <div className="w-px bg-gray-100" />
           <Link
             href={`/them?connectionId=${person.connectionId}`}
-            className="flex-1 text-center text-sm font-medium text-slate-600 py-3 hover:bg-slate-50 transition-colors"
+            className="flex-1 text-center text-xs sm:text-sm font-medium text-slate-600 py-2 sm:py-3 hover:bg-slate-50 transition-colors"
           >
-            Profile
+            {t("circle_card_profile")}
           </Link>
           <div className="w-px bg-gray-100" />
           <Link
             href={`/circle/settings?connectionId=${person.connectionId}`}
-            className="flex-1 text-center text-slate-600 py-2.5 hover:bg-slate-50 transition-colors"
+            className="flex-1 text-center text-slate-600 py-1.5 sm:py-2.5 hover:bg-slate-50 transition-colors"
           >
-            <span className="text-xs font-medium block">AI Tuning</span>
-            <span className="text-[9px] text-slate-400">Adjust tone &amp; topics</span>
+            <span className="text-[11px] sm:text-xs font-medium block">{t("circle_card_ai_tuning")}</span>
+            <span className="text-[9px] text-slate-400 hidden sm:block">{t("circle_card_ai_tuning_sub")}</span>
           </Link>
         </div>
       </div>
@@ -143,25 +149,39 @@ function PersonCard({ person, onDisconnect }) {
       {showBoundaries && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setShowBoundaries(false)}>
           <div
-            className="w-full max-w-lg bg-white rounded-t-2xl flex flex-col animate-[slideUp_0.2s_ease-out]"
-            style={{ maxHeight: "85vh" }}
+            className="w-full max-w-lg bg-white rounded-t-2xl flex flex-col animate-[slideUp_0.2s_ease-out] max-h-[85dvh]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
-              <h3 className="text-base font-bold text-slate-900">{name}&apos;s Boundaries</h3>
-              <button onClick={() => setShowBoundaries(false)} className="text-slate-400 text-lg p-1" aria-label="Close">✕</button>
+              <h3 className="text-base font-bold text-slate-900">{t("circle_boundaries_title", { name })}</h3>
+              <button onClick={() => setShowBoundaries(false)} className="text-slate-400 text-lg p-1" aria-label={t("close")}>✕</button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-              <p className="text-xs text-slate-500">These are the topics {name} has set preferences for. The AI will warn you if your message touches a sensitive topic.</p>
+            <div className="px-5 pt-3 pb-1 shrink-0 flex gap-2">
+              <Link
+                href={`/them?connectionId=${person.connectionId}`}
+                className="flex-1 text-center text-sm font-medium bg-emerald-600 text-white py-2.5 rounded-xl"
+              >
+                {t("circle_view_full_profile")}
+              </Link>
+              <Link
+                href={`/chat/${person.connectionId}`}
+                className="flex-1 text-center text-sm font-medium border border-gray-200 text-slate-700 py-2.5 rounded-xl"
+              >
+                {t("circle_card_message")}
+              </Link>
+            </div>
+
+            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
+              <p className="text-xs text-slate-500">{t("circle_boundaries_hint", { name })}</p>
 
               {boundaries.length === 0 ? (
-                <p className="text-sm text-slate-400 italic py-4 text-center">No boundaries set yet</p>
+                <p className="text-sm text-slate-400 italic py-4 text-center">{t("circle_boundaries_empty")}</p>
               ) : (
                 <div className="space-y-3">
                   {boundaries.filter((b) => b.comfortLevel === "red").length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-red-600 uppercase mb-1.5">Avoids</p>
+                      <p className="text-xs font-semibold text-red-600 uppercase mb-1.5">{t("circle_boundaries_avoids")}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {boundaries.filter((b) => b.comfortLevel === "red").map((b) => (
                           <span key={b.topicName} className="text-xs bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded-full">{b.label}</span>
@@ -171,7 +191,7 @@ function PersonCard({ person, onDisconnect }) {
                   )}
                   {boundaries.filter((b) => b.comfortLevel === "yellow").length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-amber-600 uppercase mb-1.5">Gentle topics</p>
+                      <p className="text-xs font-semibold text-amber-600 uppercase mb-1.5">{t("circle_boundaries_gentle")}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {boundaries.filter((b) => b.comfortLevel === "yellow").map((b) => (
                           <span key={b.topicName} className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full">{b.label}</span>
@@ -181,7 +201,7 @@ function PersonCard({ person, onDisconnect }) {
                   )}
                   {boundaries.filter((b) => b.comfortLevel === "green").length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-emerald-600 uppercase mb-1.5">Open to</p>
+                      <p className="text-xs font-semibold text-emerald-600 uppercase mb-1.5">{t("circle_boundaries_open")}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {boundaries.filter((b) => b.comfortLevel === "green").map((b) => (
                           <span key={b.topicName} className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full">{b.label}</span>
@@ -193,37 +213,23 @@ function PersonCard({ person, onDisconnect }) {
               )}
             </div>
 
-            <div className="p-4 border-t border-gray-100 shrink-0 space-y-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              <div className="flex gap-2">
-                <Link
-                  href={`/them?connectionId=${person.connectionId}`}
-                  className="flex-1 text-center text-sm font-medium bg-emerald-600 text-white py-2.5 rounded-xl"
-                >
-                  View full profile
-                </Link>
-                <Link
-                  href={`/chat/${person.connectionId}`}
-                  className="flex-1 text-center text-sm font-medium border border-gray-200 text-slate-700 py-2.5 rounded-xl"
-                >
-                  Message
-                </Link>
-              </div>
+            <div className="p-4 border-t border-gray-100 shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
               {confirmingDisconnect ? (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-2">
-                  <p className="text-xs text-red-700">Disconnect from {name}? This removes all messages and settings for this connection. Cannot be undone.</p>
+                  <p className="text-xs text-red-700">{t("circle_disconnect_confirm", { name })}</p>
                   <div className="flex gap-2">
                     <button
                       onClick={handleDisconnect}
                       disabled={disconnecting}
                       className="flex-1 text-xs font-medium bg-red-600 text-white py-2 rounded-lg disabled:opacity-50"
                     >
-                      {disconnecting ? "Disconnecting..." : "Yes, disconnect"}
+                      {disconnecting ? t("circle_disconnecting") : t("circle_disconnect_yes")}
                     </button>
                     <button
                       onClick={() => setConfirmingDisconnect(false)}
                       className="flex-1 text-xs font-medium bg-white border border-gray-200 text-slate-600 py-2 rounded-lg"
                     >
-                      Cancel
+                      {t("cancel")}
                     </button>
                   </div>
                 </div>
@@ -232,7 +238,7 @@ function PersonCard({ person, onDisconnect }) {
                   onClick={() => setConfirmingDisconnect(true)}
                   className="w-full text-xs text-red-500 font-medium py-2 hover:bg-red-50 rounded-lg"
                 >
-                  Disconnect
+                  {t("circle_disconnect")}
                 </button>
               )}
             </div>
@@ -244,7 +250,8 @@ function PersonCard({ person, onDisconnect }) {
 }
 
 function PersonRow({ person, action }) {
-  const name = person.displayName || (person.username ? `@${person.username}` : person.email || "Someone");
+  const { t } = useT();
+  const name = person.displayName || (person.username ? `@${person.username}` : person.email || t("circle_someone"));
   return (
     <div className="flex items-center justify-between bg-white rounded-xl border border-gray-100 shadow-sm p-4">
       <div className="min-w-0">
@@ -253,7 +260,7 @@ function PersonRow({ person, action }) {
           <p className="text-sm text-slate-500 truncate">@{person.username}</p>
         )}
         {!person.displayName && !person.username && (
-          <p className="text-sm text-slate-400 truncate">No username claimed yet</p>
+          <p className="text-sm text-slate-400 truncate">{t("circle_no_username_yet")}</p>
         )}
       </div>
       {action}
@@ -262,6 +269,7 @@ function PersonRow({ person, action }) {
 }
 
 function UsernameCard({ me, onClaimed }) {
+  const { t } = useT();
   const [value, setValue] = useState("");
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState(null);
@@ -279,13 +287,13 @@ function UsernameCard({ me, onClaimed }) {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.detail || "Could not save that username.");
+        setError(data.detail || t("circle_claim_could_not_save"));
         return;
       }
       setEditing(false);
       onClaimed(data.username);
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("network_error"));
     } finally {
       setSaving(false);
     }
@@ -296,12 +304,12 @@ function UsernameCard({ me, onClaimed }) {
       <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-center justify-between">
         <div>
           <p className="text-sm text-emerald-700">
-            Your handle: <span className="font-semibold">@{me.username}</span>
+            {t("circle_your_username")} <span className="font-semibold">@{me.username}</span>
           </p>
-          <p className="text-xs text-emerald-500 mt-0.5">Share it so people can find you.</p>
+          <p className="text-xs text-emerald-500 mt-0.5">{t("circle_username_share")}</p>
         </div>
         <button onClick={() => { setValue(me.username); setEditing(true); }} className="text-sm text-emerald-600 underline">
-          Change
+          {t("circle_change")}
         </button>
       </div>
     );
@@ -310,10 +318,8 @@ function UsernameCard({ me, onClaimed }) {
   return (
     <form onSubmit={save} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
       <div>
-        <p className="font-semibold text-slate-800">Claim your username</p>
-        <p className="text-sm text-slate-500">
-          This is how people find you — like a phone number you choose.
-        </p>
+        <p className="font-semibold text-slate-800">{t("circle_claim_title")}</p>
+        <p className="text-sm text-slate-500">{t("circle_claim_hint")}</p>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex gap-2">
@@ -322,7 +328,7 @@ function UsernameCard({ me, onClaimed }) {
           <input
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="yourname"
+            placeholder={t("circle_claim_placeholder")}
             className="w-full px-1 py-2 text-sm focus:outline-none"
             maxLength={20}
           />
@@ -332,7 +338,7 @@ function UsernameCard({ me, onClaimed }) {
           disabled={saving}
           className="bg-emerald-600 text-white text-sm font-medium px-4 rounded-lg disabled:opacity-50"
         >
-          {saving ? "Saving…" : "Save"}
+          {saving ? t("saving") : t("save")}
         </button>
       </div>
     </form>
@@ -340,6 +346,7 @@ function UsernameCard({ me, onClaimed }) {
 }
 
 export default function CirclePage() {
+  const { t } = useT();
   const [me, setMe] = useState(null);
   const [circle, setCircle] = useState({ members: [], incoming: [], outgoing: [] });
   const [query, setQuery] = useState("");
@@ -396,7 +403,7 @@ export default function CirclePage() {
       const res = await fn();
       if (res && !res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.detail || data.error || "Something went wrong. Please try again.");
+        setError(data.detail || data.error || t("generic_error"));
         return;
       }
       await loadCircle();
@@ -405,7 +412,7 @@ export default function CirclePage() {
         if (searchRes.ok) setResults((await searchRes.json()).results);
       }
     } catch {
-      setError("Network error. Check your connection and try again.");
+      setError(t("network_error"));
     } finally {
       setBusy(null);
     }
@@ -448,28 +455,26 @@ export default function CirclePage() {
     );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 sm:p-4 text-sm">
           <p>{error}</p>
           <button onClick={() => setError(null)} className="text-xs font-medium underline mt-1">
-            Dismiss
+            {t("dismiss")}
           </button>
         </div>
       )}
 
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Your Circle</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Your people and how you relate to each of them.
-        </p>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{t("your_circle")}</h1>
+        <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">{t("circle_blurb")}</p>
       </div>
 
       <UsernameCard me={me} onClaimed={(username) => setMe((m) => ({ ...m, username }))} />
 
       {/* Members as rich cards */}
       {circle.members.length > 0 && (
-        <div className="space-y-4">
+        <div className="space-y-2 sm:space-y-4">
           {circle.members.map((p) => (
             <PersonCard key={p.connectionId} person={p} onDisconnect={disconnect} />
           ))}
@@ -478,16 +483,14 @@ export default function CirclePage() {
 
       {circle.members.length === 0 && circle.incoming.length === 0 && circle.outgoing.length === 0 && (
         <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-6 text-center space-y-3">
-          <p className="text-base text-emerald-800 font-medium">No one in your circle yet</p>
-          <p className="text-sm text-emerald-600">
-            Search below or invite someone to get started.
-          </p>
+          <p className="text-base text-emerald-800 font-medium">{t("circle_empty_title")}</p>
+          <p className="text-sm text-emerald-600">{t("circle_empty_hint")}</p>
         </div>
       )}
 
       {circle.incoming.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Wants to connect</h2>
+          <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">{t("circle_wants_to_connect")}</h2>
           {circle.incoming.map((p) => (
             <PersonRow
               key={p.connectionId}
@@ -499,14 +502,14 @@ export default function CirclePage() {
                     disabled={busy !== null}
                     className="text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
                   >
-                    Accept
+                    {t("circle_action_accept")}
                   </button>
                   <button
                     onClick={() => respond(p.connectionId, "decline")}
                     disabled={busy !== null}
                     className="text-sm border border-gray-200 text-slate-600 px-3 py-1.5 rounded-lg disabled:opacity-50"
                   >
-                    Decline
+                    {t("circle_action_decline")}
                   </button>
                 </div>
               }
@@ -517,7 +520,7 @@ export default function CirclePage() {
 
       {circle.outgoing.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Waiting on them</h2>
+          <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">{t("circle_waiting_on_them")}</h2>
           {circle.outgoing.map((p) => (
             <PersonRow
               key={p.connectionId}
@@ -528,7 +531,7 @@ export default function CirclePage() {
                   disabled={busy !== null}
                   className="text-sm text-slate-500 underline disabled:opacity-50"
                 >
-                  Cancel
+                  {t("circle_action_cancel")}
                 </button>
               }
             />
@@ -538,18 +541,18 @@ export default function CirclePage() {
 
       {/* Search / Invite */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Find someone</h2>
+        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">{t("circle_find_someone")}</h2>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by @username or name…"
+          placeholder={t("circle_search_placeholder")}
           className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        {searching && <p className="text-sm text-slate-400">Searching…</p>}
+        {searching && <p className="text-sm text-slate-400">{t("circle_searching")}</p>}
         {results && results.length === 0 && !searching && (
           <p className="text-sm text-slate-500">
-            No one found. They may not have claimed a username yet —{" "}
-            <Link href="/invite" className="underline">invite them by email</Link>.
+            {t("circle_no_one_found_invite")}{" "}
+            <Link href="/invite" className="underline">{t("circle_invite_by_email")}</Link>.
           </p>
         )}
         {results?.map((r) => (
@@ -558,16 +561,16 @@ export default function CirclePage() {
             person={r}
             action={
               r.status === "connected" ? (
-                <span className="text-sm text-emerald-600 font-medium">In your circle</span>
+                <span className="text-sm text-emerald-600 font-medium">{t("circle_status_in_circle")}</span>
               ) : r.status === "request_sent" ? (
-                <span className="text-sm text-slate-400">Requested</span>
+                <span className="text-sm text-slate-400">{t("circle_status_requested")}</span>
               ) : r.status === "request_received" ? (
                 <button
                   onClick={() => respond(r.connectionId, "accept")}
                   disabled={busy !== null}
                   className="text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
                 >
-                  Accept
+                  {t("circle_action_accept")}
                 </button>
               ) : (
                 <button
@@ -575,7 +578,7 @@ export default function CirclePage() {
                   disabled={busy !== null}
                   className="text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
                 >
-                  Request
+                  {t("circle_action_request")}
                 </button>
               )
             }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useT } from "@/lib/i18n/context.js";
 
 function ChatBubble({ role, content }) {
   const isUser = role === "user";
@@ -20,6 +21,7 @@ function ChatBubble({ role, content }) {
 }
 
 export default function PracticePadPage() {
+  const { t } = useT();
   const [mode, setMode] = useState("rehearse");
   const [sessions, setSessions] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
@@ -74,7 +76,7 @@ export default function PracticePadPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.detail || data.error || "Could not start the session. Please try again.");
+        setError(data.detail || data.error || t("practice_start_failed"));
         return;
       }
 
@@ -86,7 +88,7 @@ export default function PracticePadPage() {
         ...prev,
       ]);
     } catch {
-      setError("Network error. Check your connection and try again.");
+      setError(t("network_error"));
     } finally {
       setStarting(false);
     }
@@ -111,13 +113,13 @@ export default function PracticePadPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.detail || data.error || "AI is temporarily unavailable. Try again in a moment.");
+        setError(data.detail || data.error || t("practice_ai_unavailable"));
         return;
       }
 
       setTurns(data.turns);
     } catch {
-      setError("Network error. Your message was not sent — check your connection and try again.");
+      setError(t("practice_send_failed"));
     } finally {
       setSending(false);
     }
@@ -128,14 +130,14 @@ export default function PracticePadPage() {
     try {
       const res = await fetch(`/api/practice?id=${sessionId}`);
       if (!res.ok) {
-        setError("Could not load that session.");
+        setError(t("practice_load_session_failed"));
         return;
       }
       const data = await res.json();
       setActiveSession(data.session);
       setTurns(data.session.turns || []);
     } catch {
-      setError("Network error loading the session.");
+      setError(t("practice_load_session_network"));
     }
   }
 
@@ -156,10 +158,10 @@ export default function PracticePadPage() {
               onClick={() => { setActiveSession(null); setTurns([]); setError(null); }}
               className="text-sm text-emerald-600 font-medium"
             >
-              ← Back
+              {t("practice_back")}
             </button>
             <h2 className="text-lg font-bold text-slate-900 mt-1">
-              Practicing: {activeSession.topic}
+              {t("practice_practicing", { topic: activeSession.topic })}
             </h2>
           </div>
         </div>
@@ -168,7 +170,7 @@ export default function PracticePadPage() {
           <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 mt-2 text-sm">
             <p>{error}</p>
             <button onClick={() => setError(null)} className="text-xs font-medium underline mt-1">
-              Dismiss
+              {t("dismiss")}
             </button>
           </div>
         )}
@@ -180,7 +182,7 @@ export default function PracticePadPage() {
           {sending && (
             <div className="flex justify-start">
               <div className="bg-slate-100 rounded-2xl rounded-bl-md px-4 py-2.5 text-sm text-slate-400">
-                Thinking…
+                {t("practice_thinking")}
               </div>
             </div>
           )}
@@ -191,7 +193,7 @@ export default function PracticePadPage() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your practice message…"
+            placeholder={t("practice_input_placeholder")}
             maxLength={2000}
             disabled={sending}
             className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
@@ -201,7 +203,7 @@ export default function PracticePadPage() {
             disabled={sending || !input.trim()}
             className="bg-emerald-600 text-white px-4 rounded-xl text-sm font-medium disabled:opacity-50"
           >
-            Send
+            {t("send")}
           </button>
         </form>
       </div>
@@ -211,10 +213,8 @@ export default function PracticePadPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Practice Pad</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Try things out before sending for real. Private — only you see this.
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900">{t("practice_title")}</h1>
+        <p className="text-sm text-slate-500 mt-1">{t("practice_subtitle")}</p>
       </div>
 
       {/* Mode tabs */}
@@ -225,7 +225,7 @@ export default function PracticePadPage() {
             mode === "rehearse" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
           }`}
         >
-          Rehearse
+          {t("practice_mode_rehearse")}
         </button>
         <button
           onClick={() => setMode("tune")}
@@ -233,7 +233,7 @@ export default function PracticePadPage() {
             mode === "tune" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
           }`}
         >
-          Tune a draft
+          {t("practice_mode_tune")}
         </button>
       </div>
 
@@ -241,7 +241,7 @@ export default function PracticePadPage() {
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
           <p>{error}</p>
           <button onClick={() => setError(null)} className="text-xs font-medium underline mt-1">
-            Dismiss
+            {t("dismiss")}
           </button>
         </div>
       )}
@@ -249,14 +249,12 @@ export default function PracticePadPage() {
       {mode === "rehearse" ? (
         <>
           <form onSubmit={startSession} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
-            <p className="font-semibold text-slate-800">Rehearse a conversation</p>
-            <p className="text-sm text-slate-500">
-              The AI plays your partner. Say something; see how they might react.
-            </p>
+            <p className="font-semibold text-slate-800">{t("practice_rehearse_title")}</p>
+            <p className="text-sm text-slate-500">{t("practice_rehearse_hint")}</p>
             <input
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder='e.g. "Bringing up how I feel about the holiday plans"'
+              placeholder={t("practice_topic_placeholder")}
               maxLength={200}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
@@ -265,14 +263,14 @@ export default function PracticePadPage() {
               disabled={starting || !topic.trim()}
               className="w-full bg-emerald-600 text-white font-medium py-3 rounded-xl disabled:opacity-50"
             >
-              {starting ? "Starting…" : "Start Practicing"}
+              {starting ? t("practice_starting") : t("practice_start")}
             </button>
           </form>
 
           {sessions.length > 0 && (
             <div className="space-y-2">
               <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
-                Past sessions
+                {t("practice_past_sessions")}
               </h2>
               {sessions.map((s) => (
                 <button
@@ -294,11 +292,11 @@ export default function PracticePadPage() {
       )}
 
       <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
-        <p className="text-sm text-emerald-700 font-medium">How it works</p>
+        <p className="text-sm text-emerald-700 font-medium">{t("practice_how_it_works")}</p>
         <ul className="text-sm text-emerald-600 mt-2 space-y-1 list-disc list-inside">
-          <li><strong>Rehearse</strong>: The AI plays your partner so you can try things out</li>
-          <li><strong>Tune a draft</strong>: Paste a draft message or post; the AI rewrites it in the tone you want</li>
-          <li>Both are private — only you see this</li>
+          <li><strong>{t("practice_mode_rehearse")}</strong>: {t("practice_how_rehearse")}</li>
+          <li><strong>{t("practice_mode_tune")}</strong>: {t("practice_how_tune")}</li>
+          <li>{t("practice_how_private")}</li>
         </ul>
       </div>
     </div>
@@ -306,6 +304,7 @@ export default function PracticePadPage() {
 }
 
 function DraftTuner() {
+  const { t } = useT();
   const [connections, setConnections] = useState([]);
   const [connectionId, setConnectionId] = useState("");
   const [draft, setDraft] = useState("");
@@ -343,12 +342,12 @@ function DraftTuner() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.detail || data.error || "Could not tune the draft right now.");
+        setError(data.detail || data.error || t("practice_tune_failed"));
       } else {
         setResult(data);
       }
     } catch {
-      setError("Network error. Check your connection and try again.");
+      setError(t("network_error"));
     }
     setTuning(false);
   }
@@ -364,19 +363,17 @@ function DraftTuner() {
 
   return (
     <form onSubmit={handleTune} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
-      <p className="font-semibold text-slate-800">Tune a draft</p>
-      <p className="text-sm text-slate-500">
-        Write a message or post. The AI will rewrite it using the tone preferences you (and the recipient) have set.
-      </p>
+      <p className="font-semibold text-slate-800">{t("practice_tune_title")}</p>
+      <p className="text-sm text-slate-500">{t("practice_tune_subtitle")}</p>
 
       <div>
-        <label className="text-xs font-medium text-slate-600 block mb-1">Tune for (optional)</label>
+        <label className="text-xs font-medium text-slate-600 block mb-1">{t("practice_tune_for")}</label>
         <select
           value={connectionId}
           onChange={(e) => setConnectionId(e.target.value)}
           className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm"
         >
-          <option value="">General (no specific person)</option>
+          <option value="">{t("practice_tune_general")}</option>
           {connections.map((c) => (
             <option key={c.id} value={c.id}>{c.partnerName}</option>
           ))}
@@ -386,7 +383,7 @@ function DraftTuner() {
       <textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        placeholder="Paste your draft here..."
+        placeholder={t("practice_draft_placeholder")}
         rows={5}
         maxLength={5000}
         className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm resize-y focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -397,7 +394,7 @@ function DraftTuner() {
         disabled={tuning || !draft.trim()}
         className="w-full bg-emerald-600 text-white font-medium py-3 rounded-xl disabled:opacity-50"
       >
-        {tuning ? "Tuning…" : "Tune with AI"}
+        {tuning ? t("practice_tune_submitting") : t("practice_tune_submit")}
       </button>
 
       {error && (
@@ -408,29 +405,27 @@ function DraftTuner() {
 
       {result && result.held && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
-          <p className="font-medium text-amber-800">Message would be held</p>
-          <p className="text-xs text-amber-700 mt-1">
-            This draft touches a topic the recipient prefers not to discuss. Revise and try again, or send a different message.
-          </p>
+          <p className="font-medium text-amber-800">{t("practice_held_title")}</p>
+          <p className="text-xs text-amber-700 mt-1">{t("practice_held_body")}</p>
           {result.flagged && result.flagged.length > 0 && (
-            <p className="text-xs text-amber-700 mt-2">Flagged: {result.flagged.map((f) => f.topic).join(", ")}</p>
+            <p className="text-xs text-amber-700 mt-2">{t("practice_flagged", { topics: result.flagged.map((f) => f.topic).join(", ") })}</p>
           )}
         </div>
       )}
 
       {result && result.tuned && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 space-y-2">
-          <p className="text-xs font-semibold text-emerald-700 uppercase">AI version</p>
+          <p className="text-xs font-semibold text-emerald-700 uppercase">{t("practice_ai_version")}</p>
           <p className="text-sm text-slate-800 whitespace-pre-wrap">{result.tuned}</p>
           {result.flagged && result.flagged.length > 0 && (
-            <p className="text-[11px] text-amber-600">Gently softened: {result.flagged.map((f) => f.topic).join(", ")}</p>
+            <p className="text-[11px] text-amber-600">{t("practice_softened", { topics: result.flagged.map((f) => f.topic).join(", ") })}</p>
           )}
           <button
             type="button"
             onClick={handleCopy}
             className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg"
           >
-            {copied ? "Copied!" : "Copy"}
+            {copied ? t("practice_copied") : t("practice_copy")}
           </button>
         </div>
       )}

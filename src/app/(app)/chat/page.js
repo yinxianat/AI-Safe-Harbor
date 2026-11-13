@@ -3,6 +3,19 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/context.js";
+
+const REL_KEY = {
+  spouse: "rel_partner",
+  partner: "rel_partner",
+  friend: "rel_friend",
+  sibling: "rel_sibling",
+  parent: "rel_parent",
+  child: "rel_child",
+  coworker: "rel_coworker",
+  roommate: "rel_roommate",
+  other: "rel_other",
+};
 
 function initials(name) {
   if (!name) return "?";
@@ -15,6 +28,7 @@ function initials(name) {
 
 export default function ChatIndexPage() {
   const router = useRouter();
+  const { t } = useT();
   const [connections, setConnections] = useState(null);
 
   useEffect(() => {
@@ -53,13 +67,13 @@ export default function ChatIndexPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
           </div>
-          <h1 className="text-xl font-bold text-slate-900">No conversations yet</h1>
-          <p className="text-sm text-slate-500">Add someone to your circle to start chatting.</p>
+          <h1 className="text-xl font-bold text-slate-900">{t("chat_no_conversations_title")}</h1>
+          <p className="text-sm text-slate-500">{t("chat_no_conversations_hint")}</p>
           <Link
             href="/circle"
             className="inline-block bg-emerald-600 text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-emerald-700 transition-colors"
           >
-            Go to Circle
+            {t("chat_go_to_circle")}
           </Link>
         </div>
       </div>
@@ -69,7 +83,7 @@ export default function ChatIndexPage() {
   return (
     <div className="-mx-4 -mt-4 min-h-[calc(100vh-5rem)]" style={{ backgroundColor: "#e8e8ed" }}>
       <div className="px-4 pt-4 pb-2">
-        <h1 className="text-lg font-bold text-slate-900">Conversations</h1>
+        <h1 className="text-lg font-bold text-slate-900">{t("conversations")}</h1>
       </div>
       <div className="px-3 space-y-2 pb-4">
         {connections.map((c) => (
@@ -84,7 +98,7 @@ export default function ChatIndexPage() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-slate-900 truncate">{c.partnerName}</p>
               <p className="text-xs text-slate-500 truncate">
-                {c.relationshipType === "spouse" ? "Partner" : c.relationshipType || "Connection"}
+                {c.relationshipType ? t(REL_KEY[c.relationshipType] || "rel_connection_generic") : t("rel_connection_generic")}
               </p>
             </div>
             <svg className="w-5 h-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getReaction } from "@/lib/reactions.js";
+import { useT } from "@/lib/i18n/context.js";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -15,25 +16,27 @@ function formatTime(dateStr) {
   });
 }
 
-function formatDate(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = now - d;
-  const oneDay = 86400000;
+function makeFormatDate(t) {
+  return (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diff = now - d;
+    const oneDay = 86400000;
 
-  if (diff < oneDay && d.getDate() === now.getDate()) return "Today";
-  if (diff < oneDay * 2) return "Yesterday";
+    if (diff < oneDay && d.getDate() === now.getDate()) return t("chat_day_today");
+    if (diff < oneDay * 2) return t("chat_day_yesterday");
 
-  return d.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
+    return d.toLocaleDateString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+  };
 }
 
 /** Group consecutive messages by calendar day for date separators. */
-function groupByDay(messages) {
+function groupByDay(messages, formatDate) {
   const groups = [];
   let currentDay = null;
 
@@ -60,6 +63,7 @@ function initials(name) {
 // ─── Topic warnings (reused from compose/inbox patterns) ────────────
 
 function TopicWarnings({ hints, text }) {
+  const { t: tr } = useT();
   const detected = useMemo(() => {
     if (!text.trim() || hints.length === 0) return [];
     const lower = text.toLowerCase();
@@ -70,7 +74,7 @@ function TopicWarnings({ hints, text }) {
     return (
       <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5">
         <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-        No boundary topics detected
+        {tr("chat_no_boundary_topics")}
       </div>
     );
   }
@@ -80,18 +84,18 @@ function TopicWarnings({ hints, text }) {
     <div className="space-y-1">
       {detected
         .filter((d) => d.level === "red")
-        .map((t) => (
-          <div key={t.topicName} className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-1.5">
+        .map((topic) => (
+          <div key={topic.topicName} className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-1.5">
             <span className="w-2 h-2 rounded-full bg-red-500 mt-0.5 shrink-0" />
-            <span><strong>{t.label}</strong> — not ready. Will be held.</span>
+            <span>{tr("chat_topic_red", { label: topic.label })}</span>
           </div>
         ))}
       {detected
         .filter((d) => d.level === "yellow")
-        .map((t) => (
-          <div key={t.topicName} className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5">
+        .map((topic) => (
+          <div key={topic.topicName} className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5">
             <span className="w-2 h-2 rounded-full bg-amber-400 mt-0.5 shrink-0" />
-            <span><strong>{t.label}</strong> — gentle. AI will soften.</span>
+            <span>{tr("chat_topic_yellow", { label: topic.label })}</span>
           </div>
         ))}
     </div>
@@ -101,6 +105,7 @@ function TopicWarnings({ hints, text }) {
 // ─── Chat Bubble ────────────────────────────────────────────────────
 
 function ChatBubble({ message, partnerName, myInitials }) {
+  const { t } = useT();
   const [showOriginal, setShowOriginal] = useState(false);
   const isSent = message.direction === "sent";
   const reactionData = message.reaction ? getReaction(message.reaction) : null;
@@ -137,7 +142,7 @@ function ChatBubble({ message, partnerName, myInitials }) {
               onClick={() => setShowOriginal((v) => !v)}
               className="text-[11px] text-emerald-400 hover:text-emerald-600 transition-colors"
             >
-              {showOriginal ? "Hide original" : "Show original"}
+              {showOriginal ? t("chat_hide_original") : t("chat_show_original")}
             </button>
             {showOriginal && (
               <div className="mt-1 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 text-xs text-emerald-800 text-left">
@@ -167,11 +172,11 @@ function ChatBubble({ message, partnerName, myInitials }) {
           <span>{formatTime(message.sentAt)}</span>
           {isSent && (
             message.readAt ? (
-              <span title="Read" className="text-emerald-500" aria-label="Read">✓✓</span>
+              <span className="text-emerald-500" aria-label="read">✓✓</span>
             ) : message.sentAt ? (
-              <span title="Sent" className="text-slate-400" aria-label="Sent">✓</span>
+              <span className="text-slate-400" aria-label="sent">✓</span>
             ) : (
-              <span title="Sending" className="text-slate-300" aria-label="Sending">⏱</span>
+              <span className="text-slate-300" aria-label="sending">⏱</span>
             )
           )}
         </p>
@@ -183,6 +188,7 @@ function ChatBubble({ message, partnerName, myInitials }) {
 // ─── Compose Bar ────────────────────────────────────────────────────
 
 function ComposeBar({ connectionId, onMessageSent }) {
+  const { t } = useT();
   const [text, setText] = useState("");
   const [tuning, setTuning] = useState(false);
   const [sending, setSending] = useState(false);
@@ -226,7 +232,7 @@ function ComposeBar({ connectionId, onMessageSent }) {
         body: JSON.stringify({ connectionId, contentRaw: text }),
       });
       if (!res.ok && res.status >= 500) {
-        setError("Server error. Try again.");
+        setError(t("chat_server_error"));
         setTuning(false);
         return;
       }
@@ -248,7 +254,7 @@ function ComposeBar({ connectionId, onMessageSent }) {
         });
       }
     } catch {
-      setError("Network error. Check your connection.");
+      setError(t("chat_network_error"));
     }
     setTuning(false);
   }
@@ -268,10 +274,10 @@ function ComposeBar({ connectionId, onMessageSent }) {
         setTuneResult(null);
         onMessageSent();
       } else {
-        setError("Could not send. Try again.");
+        setError(t("chat_could_not_send"));
       }
     } catch {
-      setError("Network error.");
+      setError(t("chat_network_error"));
     }
     setSending(false);
   }
@@ -290,12 +296,16 @@ function ComposeBar({ connectionId, onMessageSent }) {
             : "bg-amber-50 border-amber-200 text-amber-700"
         }`}>
           <p className="font-medium">
-            {tuneResult.reason === "red_topic" ? "Message held" : "Saved as draft"}
+            {tuneResult.reason === "red_topic" ? t("chat_message_held") : t("chat_saved_draft")}
           </p>
           <p className="text-xs mt-1">
             {tuneResult.reason === "red_topic"
-              ? `Touches a sensitive topic${tuneResult.topics?.length ? ` (${tuneResult.topics.join(", ")})` : ""}.`
-              : "AI unavailable. Saved as draft."}
+              ? t("chat_touches_sensitive", {
+                  topics: tuneResult.topics?.length
+                    ? t("chat_touches_sensitive_with", { topics: tuneResult.topics.join(", ") })
+                    : "",
+                })
+              : t("chat_ai_unavailable")}
           </p>
           {tuneResult.aiReasons?.length > 0 && (
             <ul className="text-xs mt-2 space-y-1 opacity-80">
@@ -307,10 +317,10 @@ function ComposeBar({ connectionId, onMessageSent }) {
         </div>
         <div className="flex gap-2">
           <button onClick={() => { handleDismissResult(); setText(""); }} className="text-xs font-medium text-emerald-600">
-            Write something else
+            {t("chat_write_else")}
           </button>
           <button onClick={handleDismissResult} className="text-xs text-slate-400">
-            Back to editing
+            {t("chat_back_editing")}
           </button>
         </div>
       </div>
@@ -324,17 +334,17 @@ function ComposeBar({ connectionId, onMessageSent }) {
         {tuneResult.topicVerdict?.status === "clear" && (
           <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-            <span className="font-medium">AI Check Passed</span> — Good to send
+            <span className="font-medium">{t("chat_ai_check_passed")}</span> — {t("chat_good_to_send")}
           </div>
         )}
         {tuneResult.topicVerdict?.status === "caution" && (
           <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5">
             <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
-            <span className="font-medium">Gentle topics noted</span> — AI softened the tone
+            <span className="font-medium">{t("chat_gentle_noted")}</span> — {t("chat_ai_softened")}
           </div>
         )}
         <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
-          <p className="text-xs font-medium text-emerald-400 uppercase mb-1">Tuned version</p>
+          <p className="text-xs font-medium text-emerald-400 uppercase mb-1">{t("chat_tuned_version")}</p>
           <p className="text-sm text-emerald-900">{tuneResult.rephrased}</p>
         </div>
         {error && <p className="text-xs text-red-600">{error}</p>}
@@ -344,13 +354,13 @@ function ComposeBar({ connectionId, onMessageSent }) {
             disabled={sending}
             className="flex-1 bg-emerald-600 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-emerald-700 disabled:opacity-50 transition-colors"
           >
-            {sending ? "Sending..." : "Send"}
+            {sending ? t("sending") : t("send")}
           </button>
           <button
             onClick={handleDismissResult}
             className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition-colors"
           >
-            Edit
+            {t("edit")}
           </button>
         </div>
       </div>
@@ -369,7 +379,7 @@ function ComposeBar({ connectionId, onMessageSent }) {
           ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Write a message..."
+          placeholder={t("chat_write_message")}
           rows={1}
           maxLength={5000}
           className="flex-1 px-3 py-2 rounded-xl border border-gray-200 bg-slate-50 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[40px] max-h-[120px]"
@@ -388,10 +398,10 @@ function ComposeBar({ connectionId, onMessageSent }) {
           {tuning ? (
             <span className="flex items-center gap-1.5">
               <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Tuning
+              {t("chat_tuning")}
             </span>
           ) : (
-            "AI Tune"
+            t("chat_ai_tune")
           )}
         </button>
       </div>
@@ -404,6 +414,7 @@ function ComposeBar({ connectionId, onMessageSent }) {
 export default function ChatThreadPage() {
   const params = useParams();
   const router = useRouter();
+  const { t } = useT();
   const connectionId = params.connectionId;
 
   const [messages, setMessages] = useState([]);
@@ -494,9 +505,10 @@ export default function ChatThreadPage() {
     fetchThread();
   }
 
-  const myName = me?.displayName || (me?.username ? `@${me.username}` : "Me");
+  const myName = me?.displayName || (me?.username ? `@${me.username}` : t("me_fallback_name"));
   const myInit = initials(myName);
-  const partnerName = partner?.name || "Them";
+  const partnerName = partner?.name || t("chat_them_fallback");
+  const formatDate = makeFormatDate(t);
 
   if (loading) {
     return (
@@ -511,9 +523,9 @@ export default function ChatThreadPage() {
   if (error === "forbidden") {
     return (
       <div className="space-y-4 pt-4">
-        <Link href="/circle" className="text-sm text-emerald-600 font-medium">← Back to Circle</Link>
+        <Link href="/circle" className="text-sm text-emerald-600 font-medium">{t("tuning_back_to_circle")}</Link>
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
-          <p>You do not have access to this conversation.</p>
+          <p>{t("chat_forbidden")}</p>
         </div>
       </div>
     );
@@ -522,18 +534,18 @@ export default function ChatThreadPage() {
   if (error) {
     return (
       <div className="space-y-4 pt-4">
-        <Link href="/circle" className="text-sm text-emerald-600 font-medium">← Back to Circle</Link>
+        <Link href="/circle" className="text-sm text-emerald-600 font-medium">{t("tuning_back_to_circle")}</Link>
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
-          <p>{error === "network" ? "Network error. Check your connection." : "Could not load conversation."}</p>
+          <p>{error === "network" ? t("chat_network_error") : t("chat_load_failed")}</p>
           <button onClick={() => { setError(null); setLoading(true); fetchThread().then(() => setLoading(false)); }} className="text-xs font-medium underline mt-1">
-            Retry
+            {t("retry")}
           </button>
         </div>
       </div>
     );
   }
 
-  const dayGroups = groupByDay(messages);
+  const dayGroups = groupByDay(messages, formatDate);
 
   return (
     <div className="flex flex-col h-[calc(100vh-5rem)] -mx-4 -mt-4 overflow-hidden">
@@ -542,7 +554,7 @@ export default function ChatThreadPage() {
         <button
           onClick={() => router.push("/chat")}
           className="text-emerald-600 hover:text-emerald-800 transition-colors shrink-0 p-1"
-          aria-label="Back"
+          aria-label={t("chat_back")}
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -557,7 +569,7 @@ export default function ChatThreadPage() {
         <Link
           href={`/circle/settings?connectionId=${connectionId}`}
           className="p-1.5 rounded-lg hover:bg-emerald-50 transition-colors shrink-0"
-          aria-label="AI Tuning"
+          aria-label={t("tuning_title")}
         >
           <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
@@ -567,7 +579,7 @@ export default function ChatThreadPage() {
           href={`/them?connectionId=${connectionId}`}
           className="text-xs text-emerald-600 font-medium hover:text-emerald-800 shrink-0"
         >
-          Profile
+          {t("chat_profile_link")}
         </Link>
       </div>
 
@@ -580,9 +592,9 @@ export default function ChatThreadPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
-            <p className="text-sm text-slate-500 font-medium">No messages yet</p>
+            <p className="text-sm text-slate-500 font-medium">{t("chat_no_messages_yet")}</p>
             <p className="text-xs text-slate-400 mt-1">
-              Send {partnerName} a message to start the conversation.
+              {t("chat_send_first", { name: partnerName })}
             </p>
           </div>
         )}
@@ -615,12 +627,12 @@ export default function ChatThreadPage() {
         <button
           onClick={scrollToLatest}
           className="absolute right-4 bottom-20 z-20 bg-white border border-gray-200 shadow-lg rounded-full px-3 py-2 flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50"
-          aria-label="Jump to latest message"
+          aria-label={t("chat_latest")}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
           </svg>
-          Latest
+          {t("chat_latest")}
         </button>
       )}
 

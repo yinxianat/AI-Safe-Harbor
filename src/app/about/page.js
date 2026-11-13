@@ -1,10 +1,7 @@
-import Link from "next/link";
+"use client";
 
-export const metadata = {
-  title: "What is Leeway?",
-  description:
-    "Leeway is a private space for two people. Set what you're open to talking about, then say the hard things in a way your person can actually hear.",
-};
+import Link from "next/link";
+import { useT } from "@/lib/i18n/context.js";
 
 function Light({ color, title, children }) {
   const ring = {
@@ -37,188 +34,115 @@ function Step({ n, title, children }) {
 }
 
 export default function AboutPage() {
+  const { t } = useT();
   return (
     <div className="mx-auto w-full max-w-2xl px-5 py-12 sm:py-16">
 
       <header className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-slate-900">Leeway</h1>
-        <p className="mt-2 text-lg text-slate-500">Give each other room.</p>
+        <h1 className="text-4xl font-bold tracking-tight text-slate-900">{t("app_name")}</h1>
+        <p className="mt-2 text-lg text-slate-500">{t("about_tagline")}</p>
         <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-slate-700">
-          A private space for two people. You decide what you&rsquo;re open to talking
-          about. Then you can say the hard things in a way your person can actually
-          hear &mdash; instead of in the words that came out first.
+          {t("about_intro")}
         </p>
       </header>
 
       <section className="mt-14">
-        <h2 className="text-xl font-bold text-slate-900">The problem</h2>
-        <p className="mt-3 text-base leading-relaxed text-slate-700">
-          With the person closest to you, the gap between{" "}
-          <em>what you meant</em> and <em>what landed</em> is where most damage
-          happens. You were tired, so it came out sharp. They were already worn down
-          by that exact topic, so it hit harder than you knew.
-        </p>
-        <p className="mt-3 text-base leading-relaxed text-slate-700">
-          Neither of you did anything wrong. The message just arrived at the wrong
-          moment, in the wrong shape.
-        </p>
+        <h2 className="text-xl font-bold text-slate-900">{t("about_problem_title")}</h2>
+        <p className="mt-3 text-base leading-relaxed text-slate-700">{t("about_problem_1")}</p>
+        <p className="mt-3 text-base leading-relaxed text-slate-700">{t("about_problem_2")}</p>
       </section>
 
       <section className="mt-12">
-        <h2 className="text-xl font-bold text-slate-900">How it works</h2>
+        <h2 className="text-xl font-bold text-slate-900">{t("about_how_title")}</h2>
         <div className="mt-6 space-y-7">
-          <Step n="1" title="Say what you have room for">
-            For each topic &mdash; money, family, work, health and others &mdash; you
-            set how open you are right now. This is about what you{" "}
-            <strong>receive</strong>, and only your partner&rsquo;s settings affect
-            what reaches you.
-          </Step>
-          <Step n="2" title="Write it however it comes out">
-            Type what you actually feel. No editing yourself, no rehearsing. The
-            unfiltered version is only ever shown back to you.
-          </Step>
-          <Step n="3" title="Review, then send">
-            You see your words and a tuned version side by side, matched to how your
-            partner prefers to be spoken to. You choose whether to send. Nothing
-            leaves without you approving it.
-          </Step>
+          <Step n="1" title={t("about_step_1_title")}>{t("about_step_1_body")}</Step>
+          <Step n="2" title={t("about_step_2_title")}>{t("about_step_2_body")}</Step>
+          <Step n="3" title={t("about_step_3_title")}>{t("about_step_3_body")}</Step>
         </div>
       </section>
 
       <section className="mt-12">
-        <h2 className="text-xl font-bold text-slate-900">Your three settings</h2>
-        <p className="mt-2 text-sm text-slate-500">
-          Tap any topic to cycle through them. Change them whenever you like.
-        </p>
+        <h2 className="text-xl font-bold text-slate-900">{t("about_settings_title")}</h2>
+        <p className="mt-2 text-sm text-slate-500">{t("about_settings_hint")}</p>
         <div className="mt-6 space-y-5 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-          <Light color="green" title="Open">
-            Fair game. Messages come through tuned to your preferred tone.
-          </Light>
-          <Light color="yellow" title="Gentle">
-            Still welcome, but handled with care. Leeway softens the edges before it
-            reaches you.
-          </Light>
-          <Light color="red" title="Not ready">
-            Held, not delivered. Your partner is told the topic is sensitive right
-            now &mdash; never what they would have said, and never that you are
-            avoiding them.
-          </Light>
+          <Light color="green" title={t("about_open_title")}>{t("about_open_body")}</Light>
+          <Light color="yellow" title={t("about_gentle_title")}>{t("about_gentle_body")}</Light>
+          <Light color="red" title={t("about_notready_title")}>{t("about_notready_body")}</Light>
         </div>
       </section>
 
       <section className="mt-12">
-        <h2 className="text-xl font-bold text-slate-900">What Leeway will never do</h2>
+        <h2 className="text-xl font-bold text-slate-900">{t("about_never_title")}</h2>
         <div className="mt-5 space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-6">
           <p className="text-sm leading-relaxed text-slate-700">
-            <strong className="text-slate-900">Never send your raw words.</strong>{" "}
-            Your partner only ever sees the version you reviewed and approved. What you
-            originally typed is never shared with them.
+            <strong className="text-slate-900">{t("about_never_raw_bold")}</strong>{" "}
+            {t("about_never_raw_body")}
           </p>
           <p className="text-sm leading-relaxed text-slate-700">
-            <strong className="text-slate-900">
-              Never deliver past a &ldquo;not ready&rdquo;.
-            </strong>{" "}
-            A held message stays held. It is never quietly let through.
+            <strong className="text-slate-900">{t("about_never_past_bold")}</strong>{" "}
+            {t("about_never_past_body")}
           </p>
           <p className="text-sm leading-relaxed text-slate-700">
-            <strong className="text-slate-900">Never send unreviewed.</strong> If
-            the tuning service is unavailable, your message is saved as a draft and
-            nothing is sent. We would rather be late than get this wrong.
+            <strong className="text-slate-900">{t("about_never_unreviewed_bold")}</strong>{" "}
+            {t("about_never_unreviewed_body")}
           </p>
           <p className="text-sm leading-relaxed text-slate-700">
-            <strong className="text-slate-900">Never give advice.</strong> Leeway
-            rephrases what you said. It does not add opinions, counsel you, or take
-            a side.
+            <strong className="text-slate-900">{t("about_never_advice_bold")}</strong>{" "}
+            {t("about_never_advice_body")}
           </p>
         </div>
       </section>
 
       <section className="mt-12">
-        <h2 className="text-xl font-bold text-slate-900">Beyond messaging</h2>
+        <h2 className="text-xl font-bold text-slate-900">{t("about_beyond_title")}</h2>
         <div className="mt-5 space-y-5">
           <div className="flex gap-4">
-            <div className="mt-1 h-8 w-8 shrink-0 rounded-lg bg-violet-100 flex items-center justify-center text-violet-600 text-sm font-bold">
-              K
-            </div>
+            <div className="mt-1 h-8 w-8 shrink-0 rounded-lg bg-violet-100 flex items-center justify-center text-violet-600 text-sm font-bold">K</div>
             <div>
-              <p className="font-semibold text-slate-800">Know Me</p>
-              <p className="mt-0.5 text-sm leading-relaxed text-slate-600">
-                Share bite-sized facts about yourself &mdash; favorites, love languages, pet
-                peeves, stories. Your person can browse them, and the AI uses them to craft
-                rephrasings that feel more like you.
-              </p>
+              <p className="font-semibold text-slate-800">{t("about_knowme_title")}</p>
+              <p className="mt-0.5 text-sm leading-relaxed text-slate-600">{t("about_knowme_body")}</p>
             </div>
           </div>
           <div className="flex gap-4">
-            <div className="mt-1 h-8 w-8 shrink-0 rounded-lg bg-teal-100 flex items-center justify-center text-teal-600 text-sm font-bold">
-              P
-            </div>
+            <div className="mt-1 h-8 w-8 shrink-0 rounded-lg bg-teal-100 flex items-center justify-center text-teal-600 text-sm font-bold">P</div>
             <div>
-              <p className="font-semibold text-slate-800">Practice Pad</p>
-              <p className="mt-0.5 text-sm leading-relaxed text-slate-600">
-                Rehearse a difficult conversation with an AI partner before sending the real
-                message. Get tips on phrasing, try different approaches, build confidence.
-              </p>
+              <p className="font-semibold text-slate-800">{t("about_practice_title")}</p>
+              <p className="mt-0.5 text-sm leading-relaxed text-slate-600">{t("about_practice_body")}</p>
             </div>
           </div>
           <div className="flex gap-4">
-            <div className="mt-1 h-8 w-8 shrink-0 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 text-sm font-bold">
-              C
-            </div>
+            <div className="mt-1 h-8 w-8 shrink-0 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 text-sm font-bold">C</div>
             <div>
-              <p className="font-semibold text-slate-800">Your Circle</p>
-              <p className="mt-0.5 text-sm leading-relaxed text-slate-600">
-                Find your person by their @username, send a request, and connect. Each
-                connection gets its own topic boundaries, so you can be at different levels
-                of openness with different people.
-              </p>
+              <p className="font-semibold text-slate-800">{t("about_circle_title")}</p>
+              <p className="mt-0.5 text-sm leading-relaxed text-slate-600">{t("about_circle_body")}</p>
             </div>
           </div>
         </div>
       </section>
 
       <section className="mt-12">
-        <h2 className="text-xl font-bold text-slate-900">Who it&rsquo;s for</h2>
-        <p className="mt-3 text-base leading-relaxed text-slate-700">
-          Two people who matter to each other and want to keep it that way. Partners,
-          spouses, a parent and a grown child, two close friends going through
-          something heavy. Anyone where getting it wrong is expensive.
-        </p>
-        <p className="mt-3 text-base leading-relaxed text-slate-700">
-          It is not a group chat, not a social network, and not therapy. One
-          connection, two people, nobody else.
-        </p>
+        <h2 className="text-xl font-bold text-slate-900">{t("about_who_title")}</h2>
+        <p className="mt-3 text-base leading-relaxed text-slate-700">{t("about_who_1")}</p>
+        <p className="mt-3 text-base leading-relaxed text-slate-700">{t("about_who_2")}</p>
       </section>
 
       <section className="mt-12">
-        <h2 className="text-xl font-bold text-slate-900">Privacy</h2>
-        <p className="mt-3 text-base leading-relaxed text-slate-700">
-          There are no passwords &mdash; you sign in with a link sent to your email,
-          so there is no password to leak. Your messages are visible only to you and
-          the one person you connect with. Your boundary settings are yours; your
-          partner sees that a topic is sensitive, not a log of how you have ranked
-          them over time.
-        </p>
+        <h2 className="text-xl font-bold text-slate-900">{t("about_privacy_title")}</h2>
+        <p className="mt-3 text-base leading-relaxed text-slate-700">{t("about_privacy_body")}</p>
       </section>
 
       <div className="mt-14 rounded-2xl bg-emerald-600 px-6 py-8 text-center">
-        <p className="text-lg font-semibold text-white">
-          Say the hard thing. Carefully.
-        </p>
-        <p className="mt-1 text-sm text-emerald-100">
-          Takes a minute to set up. No password required.
-        </p>
+        <p className="text-lg font-semibold text-white">{t("about_cta_title")}</p>
+        <p className="mt-1 text-sm text-emerald-100">{t("about_cta_body")}</p>
         <Link
           href="/"
           className="mt-5 inline-block rounded-xl bg-white px-6 py-3 font-medium text-emerald-700 transition-colors hover:bg-emerald-50"
         >
-          Get started
+          {t("about_cta_button")}
         </Link>
       </div>
 
-      <p className="mt-10 text-center text-xs text-slate-400">
-        Leeway &mdash; a private space for two.
-      </p>
+      <p className="mt-10 text-center text-xs text-slate-400">{t("about_footer")}</p>
     </div>
   );
 }

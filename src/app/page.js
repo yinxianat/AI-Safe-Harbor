@@ -8,26 +8,31 @@ import { useT } from "@/lib/i18n/context.js";
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
-const ERROR_MESSAGES = {
-  expired: "That link has expired. Request a new one below.",
-  consumed: "That link has already been used. Request a new one below.",
-  missing_token: "That link was incomplete. Request a new one below.",
-  invalid_token: "That link is not valid. Request a new one below.",
-  wrong_purpose: "That link cannot be used to sign in. Request a new one below.",
-  inviter_not_found: "That invitation is no longer valid. Ask for a new one.",
-  cannot_invite_self: "You cannot connect with yourself.",
+// Map server-provided error codes to translation keys.
+const ERROR_KEYS = {
+  expired: "signin_error_expired",
+  consumed: "signin_error_consumed",
+  missing_token: "signin_error_missing_token",
+  invalid_token: "signin_error_invalid_token",
+  wrong_purpose: "signin_error_wrong_purpose",
+  inviter_not_found: "signin_error_inviter_not_found",
+  cannot_invite_self: "signin_error_cannot_invite_self",
 };
 
 // Isolated because useSearchParams opts a component out of prerendering.
 // Keeping it to this one banner means the rest of the page is still server
 // rendered — otherwise the whole landing page is a spinner until hydration.
 function ErrorBanner() {
+  const { t } = useT();
   const error = useSearchParams().get("error");
   if (!error) return null;
 
+  const key = ERROR_KEYS[error];
+  const message = key ? t(key) : t("generic_error");
+
   return (
     <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-center text-sm text-red-700">
-      {ERROR_MESSAGES[error] || "Something went wrong. Please try again."}
+      {message}
     </div>
   );
 }
@@ -80,13 +85,13 @@ function SignInForm() {
       if (res.status === 429) {
         const data = await res.json().catch(() => ({}));
         const wait = data.retryAfter || 60;
-        setProblem(`Too many requests. Please wait ${wait} seconds before trying again.`);
+        setProblem(t("signin_error_rate_limited", { seconds: wait }));
         setCooldownUntil(Date.now() + wait * 1000);
         return;
       }
 
       if (!res.ok) {
-        setProblem("We could not send the link just now. Please try again in a moment.");
+        setProblem(t("signin_error_could_not_send"));
         return;
       }
 
@@ -98,9 +103,7 @@ function SignInForm() {
       setCooldownUntil(Date.now() + RESEND_COOLDOWN_SECONDS * 1000);
     } catch {
       // The request may still have been delivered, so do not claim it failed.
-      setProblem(
-        "We lost the connection before we could confirm. Check your inbox first — if nothing arrives, try again."
-      );
+      setProblem(t("signin_error_lost_connection"));
     } finally {
       inFlight.current = false;
       setLoading(false);
@@ -131,20 +134,12 @@ function SignInForm() {
     return (
       <div className="space-y-4">
         {undeliverable ? (
-          // Telling someone to check their inbox when the mail system is known
-          // to be down is the single most confusing thing this page can do: it
-          // reads as "your address is wrong" and sends them to look for a
-          // message that does not exist.
           <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-center">
-            <p className="font-medium text-red-800">We couldn&rsquo;t send your sign-in link</p>
+            <p className="font-medium text-red-800">{t("signin_undeliverable_title")}</p>
             <p className="mt-2 text-sm text-red-700">
-              Email delivery is temporarily unavailable. This is a problem on our side —
-              nothing is wrong with <strong>{sentTo}</strong>.
+              {t("signin_undeliverable_detail", { email: sentTo })}
             </p>
-            <p className="mt-3 text-sm text-red-700">
-              Your link was created and is waiting, so please try again shortly. The
-              administrator has been notified automatically.
-            </p>
+            <p className="mt-3 text-sm text-red-700">{t("signin_undeliverable_hint")}</p>
           </div>
         ) : (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-center">
@@ -165,16 +160,16 @@ function SignInForm() {
 
         <div className="text-center text-sm text-slate-500">
           {cooldown > 0 ? (
-            <p>You can send another link in {cooldown}s</p>
+            <p>{t("signin_cooldown", { seconds: cooldown })}</p>
           ) : (
             <p>
-              {undeliverable ? "Ready to " : "Still nothing? Make sure the address above is right, or "}
+              {undeliverable ? `${t("signin_ready_to")} ` : `${t("signin_still_nothing")} `}
               <button
                 onClick={() => send(sentTo)}
                 disabled={loading}
                 className="font-medium text-emerald-600 underline hover:text-emerald-800 disabled:opacity-50"
               >
-                {loading ? t("sending") : undeliverable ? "try again" : t("send_again")}
+                {loading ? t("sending") : undeliverable ? t("signin_try_again") : t("send_again")}
               </button>
             </p>
           )}
@@ -226,7 +221,7 @@ function SignInForm() {
 
         {suggestion && (
           <p className="mt-2 text-sm text-amber-700">
-            Did you mean{" "}
+            {t("signin_did_you_mean")}{" "}
             <button
               type="button"
               onClick={() => {
@@ -244,7 +239,7 @@ function SignInForm() {
               onClick={() => send(validateEmailShape(email).email)}
               className="text-slate-500 underline"
             >
-              No, use what I typed
+              {t("signin_use_what_i_typed")}
             </button>
           </p>
         )}
@@ -298,6 +293,7 @@ function PasswordAuthForm() {
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showForgotHelp, setShowForgotHelp] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -309,7 +305,7 @@ function PasswordAuthForm() {
       return;
     }
     if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError(t("password_min_length"));
       return;
     }
 
@@ -333,7 +329,7 @@ function PasswordAuthForm() {
 
       const data = await res.json().catch(() => ({}));
       if (res.status === 429) {
-        setError(`Too many attempts. Wait ${data.retryAfter || 60}s and try again.`);
+        setError(t("too_many_attempts", { seconds: data.retryAfter || 60 }));
       } else if (data.error === "account_exists") {
         setError(t("account_exists"));
       } else if (data.error === "invalid_credentials") {
@@ -341,10 +337,10 @@ function PasswordAuthForm() {
       } else if (data.detail) {
         setError(data.detail);
       } else {
-        setError("Something went wrong. Please try again.");
+        setError(t("generic_error"));
       }
     } catch {
-      setError("Network error. Check your connection and try again.");
+      setError(t("network_error"));
     } finally {
       setLoading(false);
     }
@@ -394,13 +390,13 @@ function PasswordAuthForm() {
       {mode === "signup" && (
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">
-            Display name (optional)
+            {t("display_name_optional")}
           </label>
           <input
             type="text"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Your name"
+            placeholder={t("your_name")}
             maxLength={50}
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
@@ -416,6 +412,23 @@ function PasswordAuthForm() {
           ? (mode === "signup" ? t("creating_account") : t("logging_in"))
           : (mode === "signup" ? t("create_account") : t("log_in"))}
       </button>
+
+      {mode === "login" && (
+        <div className="text-center text-xs">
+          <button
+            type="button"
+            onClick={() => setShowForgotHelp((v) => !v)}
+            className="text-slate-500 underline hover:text-slate-700"
+          >
+            {t("forgot_password")}
+          </button>
+          {showForgotHelp && (
+            <p className="mt-2 text-slate-500 text-left bg-slate-50 rounded-lg p-3">
+              {t("forgot_password_help")}
+            </p>
+          )}
+        </div>
+      )}
 
       <p className="text-center text-xs text-slate-500">
         {mode === "login" ? t("no_account") : t("have_account")}{" "}
@@ -464,11 +477,11 @@ export default function Home() {
 }
 
 function HomeContent() {
-  const { t, locale } = useT();
+  const { t } = useT();
   return (
     <>
       <div className="mb-8 text-center">
-        <h1 className="mb-2 text-3xl font-bold text-slate-900">Leeway</h1>
+        <h1 className="mb-2 text-3xl font-bold text-slate-900">{t("app_name")}</h1>
         <p className="text-slate-500">{t("tagline")}</p>
         <p className="mt-4 text-sm text-slate-500">{t("sign_in_hint")}</p>
       </div>
@@ -478,10 +491,6 @@ function HomeContent() {
       </Suspense>
 
       <AuthTabs />
-
-      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-        {t("china_notice")}
-      </div>
 
       <p className="mt-6 text-center text-sm text-slate-400">
         <Link href="/about" className="underline hover:text-slate-600">
@@ -496,37 +505,23 @@ function HomeContent() {
         <div className="text-xs text-emerald-700 space-y-1.5">
           <p className="font-medium">{t("install_iphone")}</p>
           <ol className="list-decimal list-inside space-y-0.5 pl-1 text-emerald-600">
-            {locale === "zh-CN" ? (
-              <>
-                <li>点击 Safari 底部左侧的 <strong>☰</strong> 菜单按钮</li>
-                <li>点击 <strong>分享</strong> 按钮 <span className="inline-flex items-center"><svg className="w-4 h-4 inline mx-0.5 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" /></svg></span>（带向上箭头的方形图标）</li>
-                <li>向下滑动，点击 <strong>添加到主屏幕</strong></li>
-                <li>点击右上角的 <strong>添加</strong></li>
-              </>
-            ) : (
-              <>
-                <li>Tap the <strong>☰</strong> menu button at the bottom left of Safari</li>
-                <li>Tap the <strong>Share</strong> button <span className="inline-flex items-center"><svg className="w-4 h-4 inline mx-0.5 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" /></svg></span> (square with arrow pointing up)</li>
-                <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
-                <li>Tap <strong>Add</strong> in the top right</li>
-              </>
-            )}
+            <li>{t("install_iphone_step_1")}</li>
+            <li>
+              {t("install_iphone_step_2")}{" "}
+              <span className="inline-flex items-center">
+                <svg className="w-4 h-4 inline mx-0.5 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" />
+                </svg>
+              </span>
+            </li>
+            <li>{t("install_iphone_step_3")}</li>
+            <li>{t("install_iphone_step_4")}</li>
           </ol>
           <p className="font-medium pt-1">{t("install_android")}</p>
           <ol className="list-decimal list-inside space-y-0.5 pl-1 text-emerald-600">
-            {locale === "zh-CN" ? (
-              <>
-                <li>点击右上角的 <strong>&#8942;</strong> 菜单（三个点）</li>
-                <li>点击 <strong>添加到主屏幕</strong></li>
-                <li>点击 <strong>添加</strong></li>
-              </>
-            ) : (
-              <>
-                <li>Tap the <strong>&#8942;</strong> menu (three dots) at the top right</li>
-                <li>Tap <strong>Add to Home screen</strong></li>
-                <li>Tap <strong>Add</strong></li>
-              </>
-            )}
+            <li>{t("install_android_step_1")}</li>
+            <li>{t("install_android_step_2")}</li>
+            <li>{t("install_android_step_3")}</li>
           </ol>
         </div>
       </div>

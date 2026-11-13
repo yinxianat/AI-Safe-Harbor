@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useT } from "@/lib/i18n/context.js";
 
 function TopicWarnings({ hints, text }) {
+  const { t } = useT();
   const detected = useMemo(() => {
     if (!text.trim() || hints.length === 0) return [];
     const lower = text.toLowerCase();
@@ -15,7 +17,7 @@ function TopicWarnings({ hints, text }) {
     return (
       <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
         <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-        No boundary topics detected — looks good to send
+        {t("compose_no_topics_detected")}
       </div>
     );
   }
@@ -27,16 +29,16 @@ function TopicWarnings({ hints, text }) {
 
   return (
     <div className="space-y-2">
-      {red.map((t) => (
-        <div key={t.topicName} className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+      {red.map((topic) => (
+        <div key={topic.topicName} className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
           <span className="w-2 h-2 rounded-full bg-red-500 mt-0.5 shrink-0" />
-          <span><strong>{t.label}</strong> — your person is not ready for this topic. This message will be held.</span>
+          <span>{t("compose_topic_red", { label: topic.label })}</span>
         </div>
       ))}
-      {yellow.map((t) => (
-        <div key={t.topicName} className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+      {yellow.map((topic) => (
+        <div key={topic.topicName} className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
           <span className="w-2 h-2 rounded-full bg-amber-400 mt-0.5 shrink-0" />
-          <span><strong>{t.label}</strong> — marked gentle. AI will soften your tone on this topic.</span>
+          <span>{t("compose_topic_yellow", { label: topic.label })}</span>
         </div>
       ))}
     </div>
@@ -44,6 +46,7 @@ function TopicWarnings({ hints, text }) {
 }
 
 export default function ComposePage() {
+  const { t } = useT();
   const [rawMessage, setRawMessage] = useState("");
   const [rephrased, setRephrased] = useState(null);
   const [messageId, setMessageId] = useState(null);
@@ -69,10 +72,10 @@ export default function ComposePage() {
             setSelectedConnection(data.connections[0].id);
           }
         } else {
-          setError("Could not load your connections. Please refresh the page.");
+          setError(t("compose_connections_load_fail"));
         }
       } catch {
-        if (!cancelled) setError("Network error. Check your connection and refresh.");
+        if (!cancelled) setError(t("compose_connections_network_fail"));
       }
     })();
     return () => { cancelled = true; };
@@ -118,7 +121,7 @@ export default function ComposePage() {
       });
 
       if (!res.ok && res.status >= 500) {
-        setError("Server error while tuning your message. Please try again.");
+        setError(t("compose_server_error_tuning"));
         return;
       }
 
@@ -132,7 +135,7 @@ export default function ComposePage() {
         setTopicVerdict(data.topicVerdict || null);
       }
     } catch {
-      setError("Network error. Check your connection and try again.");
+      setError(t("network_error"));
     } finally {
       setLoading(false);
     }
@@ -157,10 +160,10 @@ export default function ComposePage() {
         setMessageId(null);
       } else {
         const data = await res.json().catch(() => ({}));
-        setError(data.detail || "Could not send the message. Please try again.");
+        setError(data.detail || t("compose_send_failed"));
       }
     } catch {
-      setError("Network error. Check your connection and try again.");
+      setError(t("network_error"));
     } finally {
       setLoading(false);
     }
@@ -176,16 +179,16 @@ export default function ComposePage() {
   if (sent) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Compose</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{t("compose_title")}</h1>
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl p-6 text-center">
-          <p className="font-medium text-lg mb-1">Message Sent</p>
-          <p className="text-sm">Your message has been delivered safely.</p>
+          <p className="font-medium text-lg mb-1">{t("compose_sent_title")}</p>
+          <p className="text-sm">{t("compose_sent_body")}</p>
         </div>
         <button
           onClick={handleReset}
           className="w-full bg-emerald-600 text-white font-medium py-3 rounded-xl hover:bg-emerald-700 transition-colors"
         >
-          Send another message
+          {t("compose_send_another")}
         </button>
       </div>
     );
@@ -193,13 +196,13 @@ export default function ComposePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-slate-900">Compose</h1>
+      <h1 className="text-2xl font-bold text-slate-900">{t("compose_title")}</h1>
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
           <p>{error}</p>
           <button onClick={() => setError(null)} className="text-xs font-medium underline mt-1">
-            Dismiss
+            {t("dismiss")}
           </button>
         </div>
       )}
@@ -218,22 +221,22 @@ export default function ComposePage() {
 
       {connections.length === 0 && (
         <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl p-4 text-sm">
-          <p className="font-medium">No one in your circle yet</p>
-          <p className="mt-1">Add someone to your circle first so you can send them a message.</p>
-          <a href="/circle" className="mt-2 inline-block font-medium underline">Go to Circle</a>
+          <p className="font-medium">{t("compose_no_connections_title")}</p>
+          <p className="mt-1">{t("compose_no_connections_body")}</p>
+          <a href="/circle" className="mt-2 inline-block font-medium underline">{t("chat_go_to_circle")}</a>
         </div>
       )}
 
       {connections.length === 1 && connections[0]?.partnerName && (
         <p className="text-sm text-slate-500">
-          Writing to <span className="font-medium text-slate-700">{connections[0].partnerName}</span>
+          {t("compose_writing_to")} <span className="font-medium text-slate-700">{connections[0].partnerName}</span>
         </p>
       )}
 
       <textarea
         value={rawMessage}
         onChange={(e) => setRawMessage(e.target.value)}
-        placeholder="Write what you want to say..."
+        placeholder={t("compose_message_placeholder")}
         rows={5}
         className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-base resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
       />
@@ -246,7 +249,7 @@ export default function ComposePage() {
           disabled={loading || !rawMessage.trim() || !selectedConnection}
           className="w-full bg-emerald-600 text-white font-medium py-3 rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? "Tuning..." : "Tune Message"}
+          {loading ? t("compose_tuning") : t("compose_tune")}
         </button>
       )}
 
@@ -258,11 +261,11 @@ export default function ComposePage() {
         }`}>
           {held.heldReason === "red_topic" && (
             <>
-              <p className="font-medium">Message held</p>
+              <p className="font-medium">{t("compose_message_held")}</p>
               <p className="text-sm mt-1">
-                This touches a topic your partner marked as sensitive
-                {held.topics?.length > 0 && ` (${held.topics.join(", ")})`}.
-                They are not ready to discuss this right now.
+                {t("compose_held_sensitive", {
+                  topics: held.topics?.length ? t("compose_held_topics_wrap", { topics: held.topics.join(", ") }) : "",
+                })}
               </p>
               {held.aiReasons?.length > 0 && (
                 <ul className="text-xs mt-2 space-y-1">
@@ -278,10 +281,8 @@ export default function ComposePage() {
           )}
           {held.heldReason === "ai_failed" && (
             <>
-              <p className="font-medium">Saved as draft</p>
-              <p className="text-sm mt-1">
-                AI rephrasing is temporarily unavailable. Your message has been saved — you can retry later.
-              </p>
+              <p className="font-medium">{t("compose_ai_unavailable_title")}</p>
+              <p className="text-sm mt-1">{t("compose_ai_unavailable_body")}</p>
             </>
           )}
           <div className="flex gap-3 mt-3">
@@ -289,14 +290,14 @@ export default function ComposePage() {
               onClick={() => { handleReset(); setRawMessage(""); }}
               className="text-sm font-medium underline"
             >
-              Write new message
+              {t("compose_write_new")}
             </button>
             {held.heldReason === "ai_failed" && (
               <button
                 onClick={handleTune}
                 className="text-sm font-medium underline"
               >
-                Retry
+                {t("retry")}
               </button>
             )}
           </div>
@@ -310,8 +311,8 @@ export default function ComposePage() {
               <svg className="w-5 h-5 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
-              <span className="font-medium">AI Check Passed</span>
-              <span className="text-emerald-600">— No boundary topics detected. Good to send.</span>
+              <span className="font-medium">{t("chat_ai_check_passed")}</span>
+              <span className="text-emerald-600">{t("compose_check_passed_detail")}</span>
             </div>
           )}
           {topicVerdict?.status === "caution" && (
@@ -320,24 +321,24 @@ export default function ComposePage() {
                 <svg className="w-5 h-5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                <span className="font-medium">AI noticed some gentle topics</span>
+                <span className="font-medium">{t("compose_gentle_noticed")}</span>
               </div>
               <ul className="text-xs text-amber-600 mt-2 space-y-1 ml-7">
                 {topicVerdict.details?.map((d, i) => (
                   <li key={i}>{d.topic}: {d.reason}</li>
                 ))}
               </ul>
-              <p className="text-xs text-amber-600 mt-2 ml-7">The AI has softened the tone for these. You can still send.</p>
+              <p className="text-xs text-amber-600 mt-2 ml-7">{t("compose_gentle_softened")}</p>
             </div>
           )}
 
           <div className="grid grid-cols-1 gap-3">
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-xs font-medium text-gray-400 uppercase mb-2">Your words</p>
+              <p className="text-xs font-medium text-gray-400 uppercase mb-2">{t("compose_your_words")}</p>
               <p className="text-gray-700">{rawMessage}</p>
             </div>
             <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-4">
-              <p className="text-xs font-medium text-emerald-400 uppercase mb-2">Tuned version</p>
+              <p className="text-xs font-medium text-emerald-400 uppercase mb-2">{t("compose_tuned_version")}</p>
               <p className="text-emerald-900">{rephrased}</p>
             </div>
           </div>
@@ -348,13 +349,13 @@ export default function ComposePage() {
               disabled={loading}
               className="flex-1 bg-emerald-600 text-white font-medium py-3 rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50"
             >
-              {loading ? "Sending..." : "Send Tuned"}
+              {loading ? t("compose_sending") : t("compose_send_tuned")}
             </button>
             <button
               onClick={handleReset}
               className="px-4 py-3 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
             >
-              Edit
+              {t("compose_edit")}
             </button>
           </div>
         </div>
