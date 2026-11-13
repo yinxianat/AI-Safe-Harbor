@@ -14,6 +14,7 @@ export async function GET(request) {
   const connectionId = searchParams.get("connectionId");
 
   let tonePreference = user.tonePreference;
+  let tonePrompt = "";
 
   if (connectionId) {
     const connection = await findAccessibleConnection(user.id, connectionId);
@@ -24,11 +25,15 @@ export async function GET(request) {
     const pref = await prisma.connectionPreference.findUnique({
       where: { connectionId_userId: { connectionId, userId: user.id } },
     });
-    if (pref) tonePreference = pref.tonePreference;
+    if (pref) {
+      tonePreference = pref.tonePreference;
+      tonePrompt = pref.tonePrompt || "";
+    }
   }
 
   return Response.json({
     tonePreference,
+    tonePrompt,
     validTones: VALID_TONES,
   });
 }
@@ -49,6 +54,10 @@ export async function PUT(request) {
     return badRequest("invalid_tone");
   }
 
+  const tonePrompt = typeof body.data.tonePrompt === "string"
+    ? body.data.tonePrompt.replace(/[\r\n]+/g, " ").trim().slice(0, 200)
+    : null;
+
   if (connectionId) {
     const connection = await findAccessibleConnection(user.id, connectionId);
     if (!connection) {
@@ -57,11 +66,11 @@ export async function PUT(request) {
 
     const pref = await prisma.connectionPreference.upsert({
       where: { connectionId_userId: { connectionId, userId: user.id } },
-      update: { tonePreference },
-      create: { connectionId, userId: user.id, tonePreference },
+      update: { tonePreference, ...(tonePrompt !== null ? { tonePrompt: tonePrompt || null } : {}) },
+      create: { connectionId, userId: user.id, tonePreference, tonePrompt: tonePrompt || null },
     });
 
-    return Response.json({ tonePreference: pref.tonePreference, connectionId });
+    return Response.json({ tonePreference: pref.tonePreference, tonePrompt: pref.tonePrompt || "", connectionId });
   }
 
   const updated = await prisma.user.update({

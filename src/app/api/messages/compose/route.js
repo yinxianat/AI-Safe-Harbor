@@ -45,6 +45,13 @@ export async function POST(request) {
     }),
   ]);
 
+  const topicNotes = receiverSettings
+    .filter((s) => s.note && s.comfortLevel !== "green")
+    .map((s) => ({
+      topic: s.sanitizedLabel || getTopicLabel(s.topicName) || s.topicName,
+      note: s.note,
+    }));
+
   const boundaryCheck = checkTopicBoundaries(contentRaw, receiverSettings);
 
   if (boundaryCheck.unenforceable?.length > 0) {
@@ -94,7 +101,11 @@ export async function POST(request) {
     analyzeTopics(contentRaw, nonGreenTopics).catch(() => ({ verdict: "skip", flaggedTopics: [] })),
     rephraseMessage(contentRaw, {
       tonePreference: receiverConnPref?.tonePreference || receiver?.tonePreference,
+      tonePrompt: receiverConnPref?.tonePrompt,
+      relationshipType: connection.relationshipType,
       yellowTopics,
+      topicNotes,
+      locale: receiver?.locale,
     }),
   ]);
 

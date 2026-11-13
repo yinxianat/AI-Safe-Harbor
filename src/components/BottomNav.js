@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import { useT } from "@/lib/i18n/context.js";
 
 const NAV_ITEMS = [
-  { href: "/circle", label: "Circle", icon: "circle" },
-  { href: "/chat", label: "Chat", icon: "chat" },
-  { href: "/me", label: "Me", icon: "me" },
+  { href: "/circle", labelKey: "nav_circle", icon: "circle" },
+  { href: "/chat", labelKey: "nav_chat", icon: "chat" },
+  { href: "/me", labelKey: "nav_me", icon: "me" },
 ];
 
 function NavIcon({ icon, active }) {
@@ -42,6 +43,7 @@ function NavIcon({ icon, active }) {
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { t } = useT();
   const [unread, setUnread] = useState(0);
 
   useEffect(() => {
@@ -81,7 +83,7 @@ export default function BottomNav() {
                   </span>
                 )}
               </div>
-              <span className="text-xs mt-1 font-medium">{item.label}</span>
+              <span className="text-xs mt-1 font-medium">{t(item.labelKey)}</span>
             </Link>
           );
         })}

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { validateEmailShape, suggestCorrection } from "@/lib/email-hints.js";
+import { useT } from "@/lib/i18n/context.js";
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
@@ -49,6 +50,7 @@ function useCountdown(until) {
 }
 
 function SignInForm() {
+  const { t } = useT();
   const [email, setEmail] = useState("");
   const [sentTo, setSentTo] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -146,16 +148,12 @@ function SignInForm() {
           </div>
         ) : (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-center">
-            <p className="font-medium text-emerald-800">Check your email</p>
+            <p className="font-medium text-emerald-800">{t("check_email_title")}</p>
             <p className="mt-1 text-sm text-emerald-700">
-              We sent a sign-in link to <strong>{sentTo}</strong>
+              {t("sent_to")} <strong>{sentTo}</strong>
             </p>
-            <p className="mt-3 text-sm text-emerald-700">
-              It usually arrives within a minute. The link works for 15 minutes.
-            </p>
-            <p className="mt-2 text-xs text-emerald-600">
-              Not there yet? Check your spam or promotions folder.
-            </p>
+            <p className="mt-3 text-sm text-emerald-700">{t("link_valid")}</p>
+            <p className="mt-2 text-xs text-emerald-600">{t("spam_hint")}</p>
           </div>
         )}
 
@@ -176,7 +174,7 @@ function SignInForm() {
                 disabled={loading}
                 className="font-medium text-emerald-600 underline hover:text-emerald-800 disabled:opacity-50"
               >
-                {loading ? "sending…" : undeliverable ? "try again" : "send it again"}
+                {loading ? t("sending") : undeliverable ? "try again" : t("send_again")}
               </button>
             </p>
           )}
@@ -190,7 +188,7 @@ function SignInForm() {
             }}
             className="mt-3 text-slate-400 underline hover:text-slate-600"
           >
-            Use a different email
+            {t("use_other")}
           </button>
         </div>
       </div>
@@ -207,7 +205,7 @@ function SignInForm() {
 
       <div>
         <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
-          Email
+          {t("email_label")}
         </label>
         <input
           id="email"
@@ -218,7 +216,7 @@ function SignInForm() {
             setProblem(null);
             setSuggestion(null);
           }}
-          placeholder="you@example.com"
+          placeholder={t("email_placeholder")}
           autoComplete="email"
           autoCapitalize="off"
           autoCorrect="off"
@@ -257,9 +255,30 @@ function SignInForm() {
         disabled={loading}
         className="w-full rounded-xl bg-emerald-600 py-3 font-medium text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {loading ? "Sending…" : "Email me a sign-in link"}
+        {loading ? t("sending") : t("send_link")}
       </button>
     </form>
+  );
+}
+
+function LanguagePicker() {
+  const { locale, setLocale, languages } = useT();
+  return (
+    <div className="flex items-center justify-center gap-1 mb-4">
+      {languages.map((l) => (
+        <button
+          key={l.code}
+          onClick={() => setLocale(l.code)}
+          className={`text-xs px-2.5 py-1 rounded-full border ${
+            locale === l.code
+              ? "bg-emerald-600 text-white border-emerald-600"
+              : "bg-white text-slate-500 border-gray-200"
+          }`}
+        >
+          {l.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -267,48 +286,80 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <h1 className="mb-2 text-3xl font-bold text-slate-900">Leeway</h1>
-          <p className="text-slate-500">Give each other room.</p>
-          <p className="mt-4 text-sm text-slate-500">
-            We&rsquo;ll email you a sign-in link. No password needed.
-          </p>
-        </div>
-
-        <Suspense fallback={null}>
-          <ErrorBanner />
-        </Suspense>
-
-        <SignInForm />
-
-        <p className="mt-8 text-center text-sm text-slate-400">
-          <Link href="/about" className="underline hover:text-slate-600">
-            What is Leeway?
-          </Link>
-        </p>
-
-        {/* Add to Home Screen */}
-        <div className="mt-6 rounded-xl border border-emerald-100 bg-emerald-50 p-4 space-y-2">
-          <p className="text-sm font-semibold text-emerald-800 text-center">
-            Install Leeway on your phone
-          </p>
-          <div className="text-xs text-emerald-700 space-y-1.5">
-            <p className="font-medium">iPhone (Safari):</p>
-            <ol className="list-decimal list-inside space-y-0.5 pl-1 text-emerald-600">
-              <li>Tap the <strong>☰</strong> menu button at the bottom left of Safari</li>
-              <li>Tap the <strong>Share</strong> button <span className="inline-flex items-center"><svg className="w-4 h-4 inline mx-0.5 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" /></svg></span> (square with arrow pointing up)</li>
-              <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
-              <li>Tap <strong>Add</strong> in the top right</li>
-            </ol>
-            <p className="font-medium pt-1">Android (Chrome):</p>
-            <ol className="list-decimal list-inside space-y-0.5 pl-1 text-emerald-600">
-              <li>Tap the <strong>&#8942;</strong> menu (three dots) at the top right</li>
-              <li>Tap <strong>Add to Home screen</strong></li>
-              <li>Tap <strong>Add</strong></li>
-            </ol>
-          </div>
-        </div>
+        <LanguagePicker />
+        <HomeContent />
       </div>
     </div>
+  );
+}
+
+function HomeContent() {
+  const { t, locale } = useT();
+  return (
+    <>
+      <div className="mb-8 text-center">
+        <h1 className="mb-2 text-3xl font-bold text-slate-900">Leeway</h1>
+        <p className="text-slate-500">{t("tagline")}</p>
+        <p className="mt-4 text-sm text-slate-500">{t("sign_in_hint")}</p>
+      </div>
+
+      <Suspense fallback={null}>
+        <ErrorBanner />
+      </Suspense>
+
+      <SignInForm />
+
+      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        {t("china_notice")}
+      </div>
+
+      <p className="mt-6 text-center text-sm text-slate-400">
+        <Link href="/about" className="underline hover:text-slate-600">
+          {t("what_is")}
+        </Link>
+      </p>
+
+      <div className="mt-6 rounded-xl border border-emerald-100 bg-emerald-50 p-4 space-y-2">
+        <p className="text-sm font-semibold text-emerald-800 text-center">
+          {t("install_title")}
+        </p>
+        <div className="text-xs text-emerald-700 space-y-1.5">
+          <p className="font-medium">{t("install_iphone")}</p>
+          <ol className="list-decimal list-inside space-y-0.5 pl-1 text-emerald-600">
+            {locale === "zh-CN" ? (
+              <>
+                <li>点击 Safari 底部左侧的 <strong>☰</strong> 菜单按钮</li>
+                <li>点击 <strong>分享</strong> 按钮 <span className="inline-flex items-center"><svg className="w-4 h-4 inline mx-0.5 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" /></svg></span>（带向上箭头的方形图标）</li>
+                <li>向下滑动，点击 <strong>添加到主屏幕</strong></li>
+                <li>点击右上角的 <strong>添加</strong></li>
+              </>
+            ) : (
+              <>
+                <li>Tap the <strong>☰</strong> menu button at the bottom left of Safari</li>
+                <li>Tap the <strong>Share</strong> button <span className="inline-flex items-center"><svg className="w-4 h-4 inline mx-0.5 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" /></svg></span> (square with arrow pointing up)</li>
+                <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
+                <li>Tap <strong>Add</strong> in the top right</li>
+              </>
+            )}
+          </ol>
+          <p className="font-medium pt-1">{t("install_android")}</p>
+          <ol className="list-decimal list-inside space-y-0.5 pl-1 text-emerald-600">
+            {locale === "zh-CN" ? (
+              <>
+                <li>点击右上角的 <strong>&#8942;</strong> 菜单（三个点）</li>
+                <li>点击 <strong>添加到主屏幕</strong></li>
+                <li>点击 <strong>添加</strong></li>
+              </>
+            ) : (
+              <>
+                <li>Tap the <strong>&#8942;</strong> menu (three dots) at the top right</li>
+                <li>Tap <strong>Add to Home screen</strong></li>
+                <li>Tap <strong>Add</strong></li>
+              </>
+            )}
+          </ol>
+        </div>
+      </div>
+    </>
   );
 }

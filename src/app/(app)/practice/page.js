@@ -20,6 +20,7 @@ function ChatBubble({ role, content }) {
 }
 
 export default function PracticePadPage() {
+  const [mode, setMode] = useState("rehearse");
   const [sessions, setSessions] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
   const [turns, setTurns] = useState([]);
@@ -208,13 +209,32 @@ export default function PracticePadPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Practice Pad</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Rehearse tough conversations with an AI partner before sending for real.
-          It is private — only you can see your practice sessions.
+          Try things out before sending for real. Private — only you see this.
         </p>
+      </div>
+
+      {/* Mode tabs */}
+      <div className="flex bg-slate-100 rounded-xl p-1">
+        <button
+          onClick={() => setMode("rehearse")}
+          className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors ${
+            mode === "rehearse" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+          }`}
+        >
+          Rehearse
+        </button>
+        <button
+          onClick={() => setMode("tune")}
+          className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors ${
+            mode === "tune" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+          }`}
+        >
+          Tune a draft
+        </button>
       </div>
 
       {error && (
@@ -226,56 +246,194 @@ export default function PracticePadPage() {
         </div>
       )}
 
-      <form onSubmit={startSession} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
-        <p className="font-semibold text-slate-800">Start a new session</p>
-        <p className="text-sm text-slate-500">
-          What do you want to practice talking about?
-        </p>
-        <input
-          value={topic}
-          onChange={(e) => setTopic(e.target.value)}
-          placeholder='e.g. "Bringing up how I feel about the holiday plans"'
-          maxLength={200}
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        />
-        <button
-          type="submit"
-          disabled={starting || !topic.trim()}
-          className="w-full bg-emerald-600 text-white font-medium py-3 rounded-xl disabled:opacity-50"
-        >
-          {starting ? "Starting…" : "Start Practicing"}
-        </button>
-      </form>
-
-      {sessions.length > 0 && (
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
-            Past sessions
-          </h2>
-          {sessions.map((s) => (
+      {mode === "rehearse" ? (
+        <>
+          <form onSubmit={startSession} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
+            <p className="font-semibold text-slate-800">Rehearse a conversation</p>
+            <p className="text-sm text-slate-500">
+              The AI plays your partner. Say something; see how they might react.
+            </p>
+            <input
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder='e.g. "Bringing up how I feel about the holiday plans"'
+              maxLength={200}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
             <button
-              key={s.id}
-              onClick={() => openSession(s.id)}
-              className="w-full text-left bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow"
+              type="submit"
+              disabled={starting || !topic.trim()}
+              className="w-full bg-emerald-600 text-white font-medium py-3 rounded-xl disabled:opacity-50"
             >
-              <p className="font-medium text-slate-800">{s.topic}</p>
-              <p className="text-xs text-slate-400 mt-1">
-                {new Date(s.createdAt).toLocaleDateString()}
-              </p>
+              {starting ? "Starting…" : "Start Practicing"}
             </button>
-          ))}
-        </div>
+          </form>
+
+          {sessions.length > 0 && (
+            <div className="space-y-2">
+              <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                Past sessions
+              </h2>
+              {sessions.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => openSession(s.id)}
+                  className="w-full text-left bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow"
+                >
+                  <p className="font-medium text-slate-800">{s.topic}</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {new Date(s.createdAt).toLocaleDateString()}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <DraftTuner />
       )}
 
       <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
         <p className="text-sm text-emerald-700 font-medium">How it works</p>
         <ul className="text-sm text-emerald-600 mt-2 space-y-1 list-disc list-inside">
-          <li>The AI plays your partner, responding naturally</li>
-          <li>If you say something that might hurt, it gently points it out</li>
-          <li>Practice as many times as you need — it is private</li>
-          <li>When you feel ready, go to Compose to send for real</li>
+          <li><strong>Rehearse</strong>: The AI plays your partner so you can try things out</li>
+          <li><strong>Tune a draft</strong>: Paste a draft message or post; the AI rewrites it in the tone you want</li>
+          <li>Both are private — only you see this</li>
         </ul>
       </div>
     </div>
+  );
+}
+
+function DraftTuner() {
+  const [connections, setConnections] = useState([]);
+  const [connectionId, setConnectionId] = useState("");
+  const [draft, setDraft] = useState("");
+  const [tuning, setTuning] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/connections");
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setConnections(data.connections || []);
+        }
+      } catch { /* non-critical */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  async function handleTune(e) {
+    e.preventDefault();
+    if (!draft.trim()) return;
+    setTuning(true);
+    setError(null);
+    setResult(null);
+    setCopied(false);
+    try {
+      const res = await fetch("/api/practice/tune", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft, connectionId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.detail || data.error || "Could not tune the draft right now.");
+      } else {
+        setResult(data);
+      }
+    } catch {
+      setError("Network error. Check your connection and try again.");
+    }
+    setTuning(false);
+  }
+
+  async function handleCopy() {
+    if (!result?.tuned) return;
+    try {
+      await navigator.clipboard.writeText(result.tuned);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard may be unavailable */ }
+  }
+
+  return (
+    <form onSubmit={handleTune} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
+      <p className="font-semibold text-slate-800">Tune a draft</p>
+      <p className="text-sm text-slate-500">
+        Write a message or post. The AI will rewrite it using the tone preferences you (and the recipient) have set.
+      </p>
+
+      <div>
+        <label className="text-xs font-medium text-slate-600 block mb-1">Tune for (optional)</label>
+        <select
+          value={connectionId}
+          onChange={(e) => setConnectionId(e.target.value)}
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm"
+        >
+          <option value="">General (no specific person)</option>
+          {connections.map((c) => (
+            <option key={c.id} value={c.id}>{c.partnerName}</option>
+          ))}
+        </select>
+      </div>
+
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder="Paste your draft here..."
+        rows={5}
+        maxLength={5000}
+        className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm resize-y focus:outline-none focus:ring-2 focus:ring-emerald-500"
+      />
+
+      <button
+        type="submit"
+        disabled={tuning || !draft.trim()}
+        className="w-full bg-emerald-600 text-white font-medium py-3 rounded-xl disabled:opacity-50"
+      >
+        {tuning ? "Tuning…" : "Tune with AI"}
+      </button>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
+          {error}
+        </div>
+      )}
+
+      {result && result.held && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+          <p className="font-medium text-amber-800">Message would be held</p>
+          <p className="text-xs text-amber-700 mt-1">
+            This draft touches a topic the recipient prefers not to discuss. Revise and try again, or send a different message.
+          </p>
+          {result.flagged && result.flagged.length > 0 && (
+            <p className="text-xs text-amber-700 mt-2">Flagged: {result.flagged.map((f) => f.topic).join(", ")}</p>
+          )}
+        </div>
+      )}
+
+      {result && result.tuned && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 space-y-2">
+          <p className="text-xs font-semibold text-emerald-700 uppercase">AI version</p>
+          <p className="text-sm text-slate-800 whitespace-pre-wrap">{result.tuned}</p>
+          {result.flagged && result.flagged.length > 0 && (
+            <p className="text-[11px] text-amber-600">Gently softened: {result.flagged.map((f) => f.topic).join(", ")}</p>
+          )}
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg"
+          >
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
+      )}
+    </form>
   );
 }

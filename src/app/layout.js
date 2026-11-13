@@ -1,5 +1,6 @@
 import { Geist } from "next/font/google";
 import "./globals.css";
+import { I18nProvider } from "@/lib/i18n/context.js";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,7 +30,7 @@ export default function RootLayout({ children }) {
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </head>
       <body className="min-h-full flex flex-col bg-slate-50 text-slate-800 overflow-x-hidden">
-        {children}
+        <I18nProvider>{children}</I18nProvider>
       </body>
     </html>
   );

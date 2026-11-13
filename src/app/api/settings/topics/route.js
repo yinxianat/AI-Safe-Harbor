@@ -43,6 +43,7 @@ function formatRows(stored) {
     topicName: key,
     label: getTopicLabel(key),
     comfortLevel: byTopic[key]?.comfortLevel || "green",
+    note: byTopic[key]?.note || "",
     isCustom: false,
     id: byTopic[key]?.id || null,
   }));
@@ -53,6 +54,7 @@ function formatRows(stored) {
       topicName: s.topicName,
       label: s.sanitizedLabel || s.topicName,
       comfortLevel: s.comfortLevel,
+      note: s.note || "",
       isCustom: true,
       id: s.id,
     }));
@@ -91,6 +93,7 @@ export async function PUT(request) {
   const customLabel = requireString(body.data.customLabel, { maxLength: 64 });
   let topicName = requireString(body.data.topicName, { maxLength: 64 });
   const { comfortLevel } = body.data;
+  const noteRaw = typeof body.data.note === "string" ? body.data.note.slice(0, 200) : null;
 
   if (!comfortLevel || !VALID_COMFORT_LEVELS.includes(comfortLevel)) {
     return badRequest("invalid_comfort_level");
@@ -144,9 +147,15 @@ export async function PUT(request) {
     ? { connectionId_userId_topicName: { connectionId: scope.connection.id, userId: user.id, topicName } }
     : { userId_topicName: { userId: user.id, topicName } };
 
+  // Notes only apply to per-connection TopicSetting rows; TopicDefault has no
+  // note column because defaults are pre-connection and can't target a person.
+  const noteUpdate = scope.connection && noteRaw !== null
+    ? { note: noteRaw.trim() || null }
+    : {};
+
   const setting = await scope.model.upsert({
     where: uniqueWhere,
-    update: { comfortLevel, ...(sanitizedLabel ? { sanitizedLabel, isCustom } : {}) },
+    update: { comfortLevel, ...(sanitizedLabel ? { sanitizedLabel, isCustom } : {}), ...noteUpdate },
     create: {
       ...(scope.connection ? { connectionId: scope.connection.id } : {}),
       userId: user.id,
@@ -154,6 +163,7 @@ export async function PUT(request) {
       comfortLevel,
       isCustom,
       sanitizedLabel,
+      ...noteUpdate,
     },
   });
 
@@ -162,6 +172,7 @@ export async function PUT(request) {
     topicName: setting.topicName,
     label: setting.sanitizedLabel || getTopicLabel(setting.topicName),
     comfortLevel: setting.comfortLevel,
+    note: setting.note || "",
     isCustom: setting.isCustom,
   });
 }

@@ -16,6 +16,7 @@ export async function GET(request) {
     displayName: user.displayName,
     timezone: user.timezone,
     sessionDays: user.sessionDays || 30,
+    locale: user.locale || "en",
   });
 }
 
@@ -47,6 +48,11 @@ export async function PATCH(request) {
     if ([7, 14, 30, 90].includes(days)) updates.sessionDays = days;
   }
 
+  if (body.data.locale !== undefined) {
+    const loc = String(body.data.locale);
+    if (["en", "zh-CN"].includes(loc)) updates.locale = loc;
+  }
+
   if (Object.keys(updates).length === 0) {
     return badRequest("nothing_to_update");
   }
@@ -63,5 +69,6 @@ export async function PATCH(request) {
     displayName: updated.displayName,
     timezone: updated.timezone,
     sessionDays: updated.sessionDays || 30,
+    locale: updated.locale || "en",
   });
 }

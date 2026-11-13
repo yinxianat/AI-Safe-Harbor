@@ -37,6 +37,7 @@ export async function GET(request) {
       userId: partner.id,
       username: partner.username,
       displayName: partner.displayName || null,
+      relationshipType: c.relationshipType || "spouse",
       tonePreference: partner.tonePreference || "warm_and_gentle",
       statusText: partner.statusText || null,
       statusMood: partner.statusMood || null,
