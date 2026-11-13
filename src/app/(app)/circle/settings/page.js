@@ -169,10 +169,12 @@ export default function GuardianSettingsPage() {
 
       {/* Tone */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Rephrase their messages as</h2>
+        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Tone I want to receive from {partnerName}</h2>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-xs text-slate-500 mb-3">
-            {partnerName}&apos;s messages will be rephrased in this tone before you see them.
+            When {partnerName} sends you a message, the AI will rewrite it in this tone before you read it.
+            For example, if you choose &quot;Warm &amp; gentle&quot;, a terse message like &quot;we need to talk&quot; becomes
+            &quot;Hey, can we chat when you have a moment?&quot;
           </p>
           <select
             value={tone}

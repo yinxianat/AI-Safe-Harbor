@@ -150,16 +150,31 @@ export default function MePage() {
     return () => { cancelled = true; };
   }, []);
 
+  async function runAction(label, fn) {
+    try {
+      const res = await fn();
+      if (res && res.ok === false) {
+        const body = await res.json().catch(() => ({}));
+        setError(body.detail || body.error || `Could not ${label}. Please try again.`);
+        return null;
+      }
+      return res;
+    } catch {
+      setError(`Network error while trying to ${label}. Check your connection.`);
+      return null;
+    }
+  }
+
   async function handleSaveStatus() {
     setStatusSaving(true);
-    try {
-      await fetch("/api/status", {
+    const res = await runAction("save status", () =>
+      fetch("/api/status", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ statusText, statusMood }),
-      });
-      setStatusDirty(false);
-    } catch { /* ignore */ }
+      })
+    );
+    if (res) setStatusDirty(false);
     setStatusSaving(false);
   }
 
@@ -167,52 +182,52 @@ export default function MePage() {
     e.preventDefault();
     if (!newPost.trim()) return;
     setPostSaving(true);
-    try {
-      const res = await fetch("/api/wall", {
+    const res = await runAction("post", () =>
+      fetch("/api/wall", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: newPost, visibleTo: newPostVisibility }),
-      });
-      if (res.ok) {
-        const post = await res.json();
-        setWallPosts((prev) => [post, ...prev]);
-        setNewPost("");
-        setNewPostVisibility([]);
-      }
-    } catch { /* ignore */ }
+      })
+    );
+    if (res && res.ok) {
+      const post = await res.json();
+      setWallPosts((prev) => [post, ...prev]);
+      setNewPost("");
+      setNewPostVisibility([]);
+    }
     setPostSaving(false);
   }
 
   async function handleUpdatePostVisibility(postId, visibleTo) {
-    try {
-      const res = await fetch("/api/wall", {
+    const res = await runAction("update visibility", () =>
+      fetch("/api/wall", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ postId, visibleTo }),
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setWallPosts((prev) => prev.map((p) => (p.id === postId ? updated : p)));
-      }
-    } catch { /* ignore */ }
+      })
+    );
+    if (res && res.ok) {
+      const updated = await res.json();
+      setWallPosts((prev) => prev.map((p) => (p.id === postId ? updated : p)));
+    }
   }
 
   async function handleDeletePost(postId) {
-    try {
-      const res = await fetch("/api/wall", {
+    const res = await runAction("delete post", () =>
+      fetch("/api/wall", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ postId }),
-      });
-      if (res.ok) setWallPosts((prev) => prev.filter((p) => p.id !== postId));
-    } catch { /* ignore */ }
+      })
+    );
+    if (res && res.ok) setWallPosts((prev) => prev.filter((p) => p.id !== postId));
   }
 
   async function handleAddEntry(e) {
     e.preventDefault();
     if (!newPrompt.trim() || !newAnswer.trim()) return;
-    try {
-      const res = await fetch("/api/knowme", {
+    const res = await runAction("add entry", () =>
+      fetch("/api/knowme", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -221,70 +236,72 @@ export default function MePage() {
           answer: newAnswer,
           visibleTo: newEntryVisibility,
         }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setKnowMeEntries((prev) => [...prev, data.entry]);
-        setNewPrompt("");
-        setNewAnswer("");
-        setNewEntryVisibility([]);
-        setAdding(false);
-      }
-    } catch { /* ignore */ }
+      })
+    );
+    if (res && res.ok) {
+      const data = await res.json();
+      setKnowMeEntries((prev) => [...prev, data.entry]);
+      setNewPrompt("");
+      setNewAnswer("");
+      setNewEntryVisibility([]);
+      setAdding(false);
+    }
   }
 
   async function handleEditEntry(id, answer) {
-    try {
-      const res = await fetch("/api/knowme", {
+    const res = await runAction("save edit", () =>
+      fetch("/api/knowme", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, answer }),
-      });
-      if (res.ok) setKnowMeEntries((prev) => prev.map((e) => (e.id === id ? { ...e, answer } : e)));
-    } catch { /* ignore */ }
+      })
+    );
+    if (res && res.ok) setKnowMeEntries((prev) => prev.map((e) => (e.id === id ? { ...e, answer } : e)));
   }
 
   async function handleUpdateEntryVisibility(id, visibleTo) {
-    try {
-      const res = await fetch("/api/knowme", {
+    const res = await runAction("update visibility", () =>
+      fetch("/api/knowme", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, visibleTo }),
-      });
-      if (res.ok) {
-        setKnowMeEntries((prev) =>
-          prev.map((e) => (e.id === id ? { ...e, visibleTo } : e))
-        );
-      }
-    } catch { /* ignore */ }
+      })
+    );
+    if (res && res.ok) {
+      setKnowMeEntries((prev) =>
+        prev.map((e) => (e.id === id ? { ...e, visibleTo } : e))
+      );
+    }
   }
 
   async function handleDeleteEntry(id) {
-    try {
-      const res = await fetch("/api/knowme", {
+    const res = await runAction("delete entry", () =>
+      fetch("/api/knowme", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
-      });
-      if (res.ok) setKnowMeEntries((prev) => prev.filter((e) => e.id !== id));
-    } catch { /* ignore */ }
+      })
+    );
+    if (res && res.ok) setKnowMeEntries((prev) => prev.filter((e) => e.id !== id));
   }
 
   async function handleSaveName() {
     setNameSaving(true);
-    try {
-      const res = await fetch("/api/auth/me", {
+    const res = await runAction("save name", () =>
+      fetch("/api/auth/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ displayName: nameInput.trim() }),
-      });
-      if (res.ok) { setProfile(await res.json()); setEditingName(false); }
-    } catch { /* ignore */ }
+      })
+    );
+    if (res && res.ok) { setProfile(await res.json()); setEditingName(false); }
     setNameSaving(false);
   }
 
   async function handleSignOut() {
-    await fetch("/api/auth/signout", { method: "POST" });
+    try {
+      await fetch("/api/auth/signout", { method: "POST" });
+    } catch { /* sign-out local-only anyway */ }
     router.push("/");
   }
 
@@ -512,6 +529,9 @@ export default function MePage() {
         )}
       </div>
 
+      {/* --- Delete Account --- */}
+      <DeleteAccountCard />
+
       {/* --- Session Duration --- */}
       <div className="bg-white rounded-lg border border-gray-100 p-3 space-y-2">
         <p className="text-xs font-semibold text-slate-500 uppercase">Session Duration</p>
@@ -659,6 +679,80 @@ function KnowMeCard({ entry, connections, onEdit, onDelete, onUpdateVisibility }
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function DeleteAccountCard() {
+  const router = useRouter();
+  const [opened, setOpened] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function handleDelete() {
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/delete-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: "DELETE" }),
+      });
+      if (res.ok) {
+        router.push("/");
+        return;
+      }
+      const body = await res.json().catch(() => ({}));
+      setError(body.detail || body.error || "Could not delete your account.");
+    } catch {
+      setError("Network error. Please try again.");
+    }
+    setDeleting(false);
+  }
+
+  if (!opened) {
+    return (
+      <div className="bg-white rounded-lg border border-gray-100 p-3">
+        <button
+          onClick={() => setOpened(true)}
+          className="text-xs text-red-500 font-medium"
+        >
+          Delete my account
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+      <p className="text-xs font-semibold text-red-700 uppercase">Delete Account</p>
+      <p className="text-[11px] text-red-700">
+        This will permanently delete your profile, messages, posts, Know Me entries, and disconnect
+        you from everyone in your circle. This cannot be undone. Type <strong>DELETE</strong> to confirm.
+      </p>
+      <input
+        value={confirmText}
+        onChange={(e) => setConfirmText(e.target.value)}
+        placeholder="Type DELETE"
+        className="w-full px-2 py-1.5 rounded border border-red-300 text-sm"
+      />
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          onClick={handleDelete}
+          disabled={confirmText !== "DELETE" || deleting}
+          className="flex-1 text-xs font-medium bg-red-600 text-white py-2 rounded-lg disabled:opacity-50"
+        >
+          {deleting ? "Deleting..." : "Delete forever"}
+        </button>
+        <button
+          onClick={() => { setOpened(false); setConfirmText(""); setError(null); }}
+          className="flex-1 text-xs font-medium bg-white border border-gray-200 text-slate-600 py-2 rounded-lg"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }

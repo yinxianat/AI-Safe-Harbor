@@ -33,12 +33,22 @@ function timeAgo(dateStr) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function PersonCard({ person }) {
+function PersonCard({ person, onDisconnect }) {
   const [showBoundaries, setShowBoundaries] = useState(false);
+  const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
   const name = person.displayName || (person.username ? `@${person.username}` : "Your person");
   const moodStyle = MOOD_STYLES[person.statusMood] || MOOD_STYLES.neutral;
   const bs = person.boundarySummary || { red: 0, yellow: 0, green: 0 };
   const boundaries = person.boundaries || [];
+
+  async function handleDisconnect() {
+    setDisconnecting(true);
+    await onDisconnect(person.connectionId);
+    setDisconnecting(false);
+    setConfirmingDisconnect(false);
+    setShowBoundaries(false);
+  }
 
   return (
     <>
@@ -133,65 +143,98 @@ function PersonCard({ person }) {
       {showBoundaries && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setShowBoundaries(false)}>
           <div
-            className="w-full max-w-lg bg-white rounded-t-2xl p-5 pb-8 space-y-4 animate-[slideUp_0.2s_ease-out]"
+            className="w-full max-w-lg bg-white rounded-t-2xl flex flex-col animate-[slideUp_0.2s_ease-out]"
+            style={{ maxHeight: "85vh" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
               <h3 className="text-base font-bold text-slate-900">{name}&apos;s Boundaries</h3>
-              <button onClick={() => setShowBoundaries(false)} className="text-slate-400 text-lg p-1">✕</button>
+              <button onClick={() => setShowBoundaries(false)} className="text-slate-400 text-lg p-1" aria-label="Close">✕</button>
             </div>
-            <p className="text-xs text-slate-500">These are the topics {name} has set preferences for. The AI will warn you if your message touches a sensitive topic.</p>
 
-            {boundaries.length === 0 ? (
-              <p className="text-sm text-slate-400 italic py-4 text-center">No boundaries set yet</p>
-            ) : (
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {boundaries.filter((b) => b.comfortLevel === "red").length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-red-600 uppercase mb-1">Avoids</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {boundaries.filter((b) => b.comfortLevel === "red").map((b) => (
-                        <span key={b.topicName} className="text-xs bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded-full">{b.label}</span>
-                      ))}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              <p className="text-xs text-slate-500">These are the topics {name} has set preferences for. The AI will warn you if your message touches a sensitive topic.</p>
+
+              {boundaries.length === 0 ? (
+                <p className="text-sm text-slate-400 italic py-4 text-center">No boundaries set yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {boundaries.filter((b) => b.comfortLevel === "red").length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-red-600 uppercase mb-1.5">Avoids</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {boundaries.filter((b) => b.comfortLevel === "red").map((b) => (
+                          <span key={b.topicName} className="text-xs bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded-full">{b.label}</span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-                {boundaries.filter((b) => b.comfortLevel === "yellow").length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-amber-600 uppercase mb-1">Gentle topics</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {boundaries.filter((b) => b.comfortLevel === "yellow").map((b) => (
-                        <span key={b.topicName} className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full">{b.label}</span>
-                      ))}
+                  )}
+                  {boundaries.filter((b) => b.comfortLevel === "yellow").length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-amber-600 uppercase mb-1.5">Gentle topics</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {boundaries.filter((b) => b.comfortLevel === "yellow").map((b) => (
+                          <span key={b.topicName} className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full">{b.label}</span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-                {boundaries.filter((b) => b.comfortLevel === "green").length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-emerald-600 uppercase mb-1">Open to</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {boundaries.filter((b) => b.comfortLevel === "green").map((b) => (
-                        <span key={b.topicName} className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full">{b.label}</span>
-                      ))}
+                  )}
+                  {boundaries.filter((b) => b.comfortLevel === "green").length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-emerald-600 uppercase mb-1.5">Open to</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {boundaries.filter((b) => b.comfortLevel === "green").map((b) => (
+                          <span key={b.topicName} className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full">{b.label}</span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-gray-100 shrink-0 space-y-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <div className="flex gap-2">
+                <Link
+                  href={`/them?connectionId=${person.connectionId}`}
+                  className="flex-1 text-center text-sm font-medium bg-emerald-600 text-white py-2.5 rounded-xl"
+                >
+                  View full profile
+                </Link>
+                <Link
+                  href={`/chat/${person.connectionId}`}
+                  className="flex-1 text-center text-sm font-medium border border-gray-200 text-slate-700 py-2.5 rounded-xl"
+                >
+                  Message
+                </Link>
               </div>
-            )}
-
-            <div className="flex gap-2 pt-2">
-              <Link
-                href={`/them?connectionId=${person.connectionId}`}
-                className="flex-1 text-center text-sm font-medium bg-emerald-600 text-white py-2.5 rounded-xl"
-              >
-                View full profile
-              </Link>
-              <Link
-                href={`/chat/${person.connectionId}`}
-                className="flex-1 text-center text-sm font-medium border border-gray-200 text-slate-700 py-2.5 rounded-xl"
-              >
-                Message
-              </Link>
+              {confirmingDisconnect ? (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-2">
+                  <p className="text-xs text-red-700">Disconnect from {name}? This removes all messages and settings for this connection. Cannot be undone.</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleDisconnect}
+                      disabled={disconnecting}
+                      className="flex-1 text-xs font-medium bg-red-600 text-white py-2 rounded-lg disabled:opacity-50"
+                    >
+                      {disconnecting ? "Disconnecting..." : "Yes, disconnect"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmingDisconnect(false)}
+                      className="flex-1 text-xs font-medium bg-white border border-gray-200 text-slate-600 py-2 rounded-lg"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmingDisconnect(true)}
+                  className="w-full text-xs text-red-500 font-medium py-2 hover:bg-red-50 rounded-lg"
+                >
+                  Disconnect
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -395,6 +438,15 @@ export default function CirclePage() {
       })
     );
 
+  const disconnect = (connectionId) =>
+    act(`disconnect-${connectionId}`, () =>
+      fetch("/api/circle/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connectionId }),
+      })
+    );
+
   return (
     <div className="space-y-6">
       {error && (
@@ -419,7 +471,7 @@ export default function CirclePage() {
       {circle.members.length > 0 && (
         <div className="space-y-4">
           {circle.members.map((p) => (
-            <PersonCard key={p.connectionId} person={p} />
+            <PersonCard key={p.connectionId} person={p} onDisconnect={disconnect} />
           ))}
         </div>
       )}
