@@ -188,7 +188,7 @@ export default function AdminPage() {
     return (
       <Gate title="Not available">
         <p>This account does not have administrator access.</p>
-        <Link href="/dashboard" className="mt-4 inline-block text-emerald-600 underline">Back to Leeway</Link>
+        <Link href="/circle" className="mt-4 inline-block text-emerald-600 underline">Back to Leeway</Link>
       </Gate>
     );
   }

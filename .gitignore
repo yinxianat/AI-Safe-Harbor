@@ -91,6 +91,10 @@ src/generated/
 /.windsurf/
 /.cursor/
 .claude/skills/
+# Agent worktrees are full repo checkouts (hundreds of MB each) and must never
+# be committed. They are also excluded in jest.config.js, since their test
+# copies otherwise get discovered alongside the real ones.
+.claude/worktrees/
 skills-lock.json
 
 # ---------------------------------------------------------------------------

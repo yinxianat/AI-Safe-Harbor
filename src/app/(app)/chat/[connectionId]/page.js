@@ -52,7 +52,7 @@ function groupByDay(messages, formatDate) {
   return groups;
 }
 
-// ─── Topic warnings (reused from compose/inbox patterns) ────────────
+// ─── Topic warnings ─────────────────────────────────────────────────
 
 function TopicWarnings({ hints, text }) {
   const { t: tr } = useT();
