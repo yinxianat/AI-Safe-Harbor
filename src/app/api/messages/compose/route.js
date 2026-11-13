@@ -164,20 +164,27 @@ export async function POST(request) {
 
   // Fail closed: no rephrasing means no delivery, only a retrievable draft.
   if (aiResult.error) {
+    // A refusal is recorded under its own reason. Filing it as "ai_failed"
+    // made a provider that answered look like one that was unreachable, hid
+    // every refusal from the monitoring counters, and offered the sender a
+    // retry that was guaranteed to come back refused.
+    const heldReason = aiResult.error === "content_refused" ? "content_refused" : "ai_failed";
+
     const draft = await prisma.message.create({
       data: {
         senderId: user.id,
         connectionId,
         contentRaw,
         topicTags: boundaryCheck.topics || [],
-        heldReason: "ai_failed",
+        heldReason,
+        aiProvider: aiResult.provider || null,
         status: "draft",
       },
     });
 
     return Response.json({
       held: true,
-      heldReason: "ai_failed",
+      heldReason,
       draftId: draft.id,
       error: aiResult.error,
     });

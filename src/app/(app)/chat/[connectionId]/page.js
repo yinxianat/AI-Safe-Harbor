@@ -119,7 +119,7 @@ function ChatBubble({ message, partnerName, partnerAvatar, myName, myAvatar }) {
         <div
           className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed break-words ${
             isSent
-              ? "bg-emerald-500 text-white rounded-br-md"
+              ? "bg-emerald-600 text-white rounded-br-md"
               : "bg-white border border-gray-200 text-slate-800 rounded-bl-md"
           }`}
         >

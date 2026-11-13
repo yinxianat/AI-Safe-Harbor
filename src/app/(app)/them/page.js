@@ -6,14 +6,6 @@ import Link from "next/link";
 import { useT } from "@/lib/i18n/context.js";
 import Avatar from "@/components/Avatar.js";
 
-const MOOD_DOTS = {
-  calm: "bg-blue-400",
-  happy: "bg-emerald-400",
-  energetic: "bg-orange-400",
-  low: "bg-slate-400",
-  neutral: "bg-violet-400",
-};
-
 export default function ThemPage() {
   const { t } = useT();
   const searchParams = useSearchParams();
@@ -123,7 +115,7 @@ export default function ThemPage() {
             )}
             {partner.statusText && (
               <div className="flex items-center gap-1.5 mt-1">
-                <span className={`w-2 h-2 rounded-full ${MOOD_DOTS[partner.statusMood] || MOOD_DOTS.neutral} shrink-0`} />
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                 <p className="text-xs text-slate-500 truncate">{partner.statusText}</p>
               </div>
             )}

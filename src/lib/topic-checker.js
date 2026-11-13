@@ -1,5 +1,52 @@
 import { getTopic, customTopicKeywords } from "./topics.js";
 
+/**
+ * Keyword matchers, compiled once per keyword and cached.
+ *
+ * Matching was a plain `message.includes(keyword)`, which matches inside
+ * words. "however" contains "owe" and "multiple" contains "tip", so with
+ * Money marked red, "I would love to come, however I have to work late" was
+ * blocked as a forbidden-topic message. The sender was told their message hit
+ * a boundary; the receiver never saw it.
+ *
+ * The anchor is a word boundary at the START plus a limited inflectional
+ * suffix at the end. Both halves are needed:
+ *   - requiring only a leading boundary still matches "mom" inside "moment"
+ *   - requiring a boundary at BOTH ends loses "invest" → "investment" and
+ *     "bill" → "bills", and under-matching a red topic is the worse failure
+ *     because it delivers a message the receiver forbade.
+ */
+const SUFFIX = "(?:s|es|ed|d|ing|er|ers|ment|ments|ful|ly|al|'s|\u2019s)?\\b";
+const matcherCache = new Map();
+
+function keywordMatcher(keyword) {
+  let matcher = matcherCache.get(keyword);
+  if (matcher) return matcher;
+
+  const escaped = keyword
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    // A phrase keyword should still match across a line break or double space.
+    .replace(/\s+/g, "\\s+");
+
+  // \b before a keyword that opens with a non-word character would never
+  // match, so the anchor is only applied when the first character is a word
+  // character. No current keyword starts with punctuation, but a custom topic
+  // label can.
+  const leading = /^\w/.test(keyword) ? "\\b" : "";
+
+  matcher = new RegExp(leading + escaped + SUFFIX, "i");
+  matcherCache.set(keyword, matcher);
+  return matcher;
+}
+
+/** Whether `message` mentions `keyword` as a word rather than inside one. */
+export function matchesKeyword(message, keyword) {
+  if (typeof message !== "string" || typeof keyword !== "string" || !keyword) {
+    return false;
+  }
+  return keywordMatcher(keyword).test(message);
+}
+
 const EMPTY_RESULT = {
   allowed: true,
   topics: [],
@@ -63,7 +110,7 @@ export function checkTopicBoundaries(messageText, receiverTopicSettings) {
       continue;
     }
 
-    const matched = keywords.some((keyword) => lowerMessage.includes(keyword));
+    const matched = keywords.some((keyword) => matchesKeyword(lowerMessage, keyword));
     if (!matched) continue;
 
     const topicKey = topic?.key ?? key;

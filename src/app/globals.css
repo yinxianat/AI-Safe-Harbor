@@ -274,3 +274,74 @@ button, a[role="button"] {
 :root[data-theme="serene"] .border-gray-200,
 :root[data-theme="serene"] .border-slate-100,
 :root[data-theme="serene"] .border-slate-200 { border-color: var(--border) !important; }
+
+/**
+ * Accent remap for Sunrise and Serene.
+ *
+ * The light and dark themes are both built around emerald, so the branded
+ * `bg-emerald-600` button reads as the accent in those two. Sunrise is warm
+ * orange and Serene is cool blue, and a green button on either one looks like
+ * it belongs to a different app — so the branded emerald utilities are
+ * redirected at the theme's own accent here rather than being rewritten in
+ * every component.
+ *
+ * Deliberately NOT remapped: emerald-400 and emerald-500. Those carry the
+ * green/yellow/red comfort scale and the sent/held status dots, where green
+ * means "fine" rather than "this app's color" — tinting them orange in
+ * Sunrise would turn a reassuring signal into a warning.
+ */
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) {
+  --accent-border-soft: color-mix(in srgb, var(--accent) 22%, transparent);
+  --accent-border: color-mix(in srgb, var(--accent) 38%, transparent);
+}
+
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .bg-emerald-600 {
+  background-color: var(--accent) !important;
+}
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .hover\:bg-emerald-700:hover {
+  background-color: var(--accent-hover) !important;
+}
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .bg-emerald-50,
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .bg-emerald-50\/60,
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .bg-emerald-100,
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .hover\:bg-emerald-50:hover,
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .hover\:bg-emerald-100:hover,
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .active\:bg-emerald-50:active {
+  background-color: var(--accent-soft) !important;
+}
+
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .text-emerald-600,
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .hover\:text-emerald-600:hover {
+  color: var(--accent) !important;
+}
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .text-emerald-700,
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .text-emerald-800,
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .text-emerald-900,
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .hover\:text-emerald-800:hover {
+  color: var(--accent-soft-text) !important;
+}
+
+/* All-sides border first; the single-side rules below have to win. */
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .border-emerald-100 {
+  border-color: var(--accent-border-soft) !important;
+}
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .border-emerald-200,
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .border-emerald-300 {
+  border-color: var(--accent-border) !important;
+}
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .border-emerald-600 {
+  border-color: var(--accent) !important;
+}
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .border-t-emerald-600 {
+  border-top-color: var(--accent) !important;
+}
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .border-l-emerald-500 {
+  border-left-color: var(--accent) !important;
+}
+
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .focus\:ring-emerald-500:focus {
+  --tw-ring-color: var(--accent-ring) !important;
+}
+:is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .focus\:border-emerald-400:focus {
+  border-color: var(--accent-ring) !important;
+}

@@ -69,12 +69,18 @@ export const TOPICS = [
   {
     key: "intimacy",
     label: "Intimacy",
+    // Trimmed: "touch" fired on "get in touch" and "touch base",
+    // "connection" on "our internet connection" — in an app whose own core
+    // noun is a connection — "physical" on "physical therapy" and "spark" on
+    // "spark plugs". The keyword pass hard-blocks a red topic before the AI
+    // ever sees the message, so an over-broad word here is not a harmless
+    // extra check: it silently stops ordinary messages.
     keywords: [
       "intimacy", "intimate", "affection", "romance", "romantic",
-      "physical", "desire", "attraction", "bedroom", "closeness",
-      "cuddle", "cuddling", "kiss", "kissing", "touch", "touching",
+      "physical intimacy", "desire", "attraction", "bedroom", "closeness",
+      "cuddle", "cuddling", "kiss", "kissing", "touch me", "touching",
       "passion", "chemistry", "love life", "turned on", "sexy",
-      "flirt", "flirting", "date night", "spark", "connection",
+      "flirt", "flirting", "date night", "make love", "foreplay",
     ],
   },
   {
@@ -139,6 +145,101 @@ export const TOPICS = [
       "self-care", "boundaries", "therapy", "coaching",
       "new skill", "reading", "volunteer", "habit", "routine",
       "working on myself", "trying to be better",
+    ],
+  },
+  /*
+   * The topics below were added after the first ten. Each one is a subject
+   * people in a close relationship commonly want handled carefully, and each
+   * is phrased as a subject rather than a stance — a boundary is the
+   * receiver's own protection, so "Politics & beliefs" is a topic someone can
+   * put off-limits, never a position the app takes.
+   *
+   * Keywords are kept specific. The matcher anchors on word boundaries, but a
+   * keyword that is also a common everyday word still produces blocks the
+   * sender will not understand, so generic terms are left out deliberately.
+   */
+  {
+    key: "body_and_appearance",
+    label: "Body & Appearance",
+    keywords: [
+      "my body", "your body", "appearance", "weight",
+      "gained weight", "lost weight", "fat", "thin", "skinny",
+      "diet", "dieting", "calories", "clothes size", "dress size",
+      "mirror", "wrinkle", "wrinkles", "aging", "grey hair", "gray hair",
+      "bald", "balding", "acne", "skin", "hair loss",
+      "how I look", "how you look", "ugly", "put on weight",
+    ],
+  },
+  {
+    key: "grief_and_loss",
+    label: "Grief & Loss",
+    keywords: [
+      "grief", "grieving", "mourning", "bereaved", "bereavement",
+      "funeral", "memorial", "burial", "cremation", "casket",
+      "passed away", "passing", "death", "died", "dying", "deceased",
+      "loss", "lost him", "lost her", "lost them",
+      "anniversary of", "miscarriage", "stillbirth",
+      "terminal", "hospice", "palliative", "widow", "widower",
+      "urn", "grave", "cemetery",
+    ],
+  },
+  {
+    key: "politics_and_beliefs",
+    label: "Politics & Beliefs",
+    keywords: [
+      "politics", "political", "election", "vote", "voting", "voted",
+      "president", "government", "senator", "congress", "parliament",
+      "democrat", "republican", "liberal", "conservative",
+      "religion", "religious", "church", "mosque", "synagogue", "temple",
+      "faith", "god", "prayer", "praying", "scripture", "atheist",
+      "protest", "immigration", "abortion", "gun control",
+    ],
+  },
+  {
+    key: "home_and_chores",
+    label: "Home & Chores",
+    keywords: [
+      "chores", "chore", "dishes", "laundry", "vacuum", "vacuuming",
+      "cleaning", "clean up", "tidy", "tidying", "mess", "messy",
+      "trash", "garbage", "bins", "recycling",
+      "dirty", "clutter", "cluttered", "housework", "household",
+      "my turn", "your turn", "fair share", "do my part", "do your part",
+      "left it out", "pick up after",
+    ],
+  },
+  {
+    key: "substances_and_habits",
+    label: "Alcohol & Habits",
+    keywords: [
+      "drinking", "drank", "drunk", "alcohol", "beer", "wine", "whiskey",
+      "hungover", "hangover", "sober", "sobriety", "relapse", "relapsed",
+      "rehab", "recovery", "sponsor", "aa meeting",
+      "smoking", "cigarette", "cigarettes", "vape", "vaping",
+      "weed", "cannabis", "gambling", "gamble", "betting",
+      "addiction", "addicted", "quit drinking", "cut back",
+    ],
+  },
+  {
+    key: "time_and_attention",
+    label: "Time & Attention",
+    keywords: [
+      "always late", "running late", "kept me waiting", "waited for you",
+      "on your phone", "on the phone", "screen time", "scrolling",
+      "ignoring me", "ignored me", "not listening", "never listen",
+      "quality time", "time together", "no time for",
+      "busy with work", "too busy", "cancelled on me", "canceled on me",
+      "last minute", "forgot our", "forgot about",
+    ],
+  },
+  {
+    key: "past_relationships",
+    label: "Past Relationships",
+    keywords: [
+      "my ex", "your ex", "ex-wife", "ex-husband", "ex-girlfriend",
+      "ex-boyfriend", "ex-partner", "divorce", "divorced", "separation",
+      "previous relationship", "last relationship", "old flame",
+      "jealous", "jealousy", "cheated", "cheating", "affair",
+      "unfaithful", "infidelity", "trust issues", "broke up",
     ],
   },
 ];

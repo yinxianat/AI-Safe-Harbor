@@ -4,17 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context.js";
+import { toneLabelKey } from "@/lib/tones.js";
 
-const TONE_KEYS = {
-  warm_and_gentle: "tone_warm_and_gentle",
-  direct_and_clear: "tone_direct_and_clear",
-  playful_and_light: "tone_playful_and_light",
-  calm_and_neutral: "tone_calm_and_neutral",
-  encouraging_and_supportive: "tone_encouraging_and_supportive",
-  brief_and_to_the_point: "tone_brief_and_to_the_point",
-  thoughtful_and_reflective: "tone_thoughtful_and_reflective",
-  reassuring_and_patient: "tone_reassuring_and_patient",
-};
 
 const RELATIONSHIP_KEYS = {
   spouse: "rel_spouse",
@@ -395,7 +386,7 @@ export default function AITuningPage() {
             className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm"
           >
             {validTones.map((val) => (
-              <option key={val} value={val}>{t(TONE_KEYS[val] || "tone_warm_and_gentle")}</option>
+              <option key={val} value={val}>{t(toneLabelKey(val))}</option>
             ))}
           </select>
           <div className="pt-2 border-t border-gray-100 space-y-1.5">

@@ -45,8 +45,15 @@ export async function PUT(request) {
   const data = {
     statusText: text || null,
     statusMood: mood,
-    statusUpdatedAt: new Date(),
   };
+
+  // Changing who may read the status is not a new status. Stamping it anyway
+  // told every contact the author had just written something, so the audience
+  // screen's visibility toggles would have shouted at people who saw nothing
+  // new.
+  if ((text || null) !== (user.statusText || null)) {
+    data.statusUpdatedAt = new Date();
+  }
 
   // An unknown connection id in the list would silently hide the status from
   // everyone, so filter against the user's own active connections.

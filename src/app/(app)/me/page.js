@@ -8,8 +8,6 @@ import { useTheme } from "@/lib/theme/context.js";
 import Avatar, { fileToAvatarDataUrl } from "@/components/Avatar.js";
 import { VisibilityPicker } from "@/components/VisibilityPicker.js";
 
-const MOOD_OPTIONS = ["calm", "happy", "energetic", "low", "neutral"];
-
 export default function MePage() {
   const router = useRouter();
   const { t } = useT();
@@ -19,7 +17,6 @@ export default function MePage() {
   const [error, setError] = useState(null);
 
   const [statusText, setStatusText] = useState("");
-  const [statusMood, setStatusMood] = useState("neutral");
   const [statusVisibility, setStatusVisibility] = useState([]);
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusDirty, setStatusDirty] = useState(false);
@@ -55,7 +52,6 @@ export default function MePage() {
         if (statusRes.ok) {
           const s = await statusRes.json();
           setStatusText(s.statusText || "");
-          setStatusMood(s.statusMood || "neutral");
           setStatusVisibility(s.statusVisibleTo || []);
         }
         if (knowMeRes.ok) setKnowMeCount(((await knowMeRes.json()).entries || []).length);
@@ -76,7 +72,7 @@ export default function MePage() {
       const res = await fetch("/api/status", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ statusText, statusMood, statusVisibleTo: statusVisibility }),
+        body: JSON.stringify({ statusText, statusMood: null, statusVisibleTo: statusVisibility }),
       });
       if (res.ok) setStatusDirty(false);
       else setError(t("me_action_fail", { action: t("me_action_save_status") }));
@@ -185,29 +181,17 @@ export default function MePage() {
           spellCheck
           className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        <div className="flex gap-1 flex-wrap">
-          {MOOD_OPTIONS.map((m) => (
-            <button
-              key={m}
-              onClick={() => { setStatusMood(m); setStatusDirty(true); }}
-              className={`text-xs px-2.5 py-1.5 rounded-full transition-colors min-h-[32px] ${
-                statusMood === m
-                  ? "bg-emerald-600 text-white"
-                  : "bg-gray-100 text-slate-500"
-              }`}
-            >
-              {t(`mood_${m}`)}
-            </button>
-          ))}
-        </div>
         {connections.length > 0 && (
-          <div className="pt-1 border-t border-gray-100">
+          <div className="pt-1 border-t border-gray-100 space-y-2">
             <VisibilityPicker
               connections={connections}
               selected={statusVisibility}
               onChange={(v) => { setStatusVisibility(v); setStatusDirty(true); }}
               hint={t("me_status_visibility_hint")}
             />
+            <Link href="/me/audience" className="inline-block text-xs font-medium text-emerald-600">
+              {t("me_status_preview_link")}
+            </Link>
           </div>
         )}
         {statusDirty && (
@@ -223,6 +207,11 @@ export default function MePage() {
 
       {/* --- Links out to the self-description pages --- */}
       <div className="space-y-2">
+        <SectionLink
+          href="/me/audience"
+          title={t("me_open_audience")}
+          hint={t("me_open_audience_hint", { count: connections.length })}
+        />
         <SectionLink
           href="/story"
           title={t("me_open_story")}

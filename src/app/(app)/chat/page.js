@@ -91,6 +91,10 @@ export default function ChatIndexPage() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-slate-900 truncate">{c.partnerName}</p>
               <p className="text-xs text-slate-500 truncate">
+                {/* Their own name stays on screen under a relabel, so the row
+                    still identifies who the conversation is actually with. */}
+                {c.nickname && c.partnerRealName ? c.partnerRealName : null}
+                {c.nickname && c.partnerRealName ? " · " : null}
                 {c.relationshipType ? t(REL_KEY[c.relationshipType] || "rel_connection_generic") : t("rel_connection_generic")}
               </p>
             </div>
