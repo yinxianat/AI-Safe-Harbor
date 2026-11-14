@@ -113,6 +113,11 @@ model ConnectionPreference {
   // Personal label the user sets for this contact. Survives the other
   // person changing their display name, like naming a phone contact.
   nickname       String?
+  // When true, the AI softens heated emotional load (anger, frustration,
+  // distress) in messages the SENDER sends to this contact, before this
+  // reader sees them. Per-connection, like every other preference here:
+  // the same reader can want softening from one contact and not another.
+  softenEmotions Boolean   @default(false)
 
   @@unique([connectionId, userId])
 }

@@ -5,19 +5,8 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context.js";
 import { toneLabelKey } from "@/lib/tones.js";
+import { relationshipLabelKey, RELATIONSHIP_KEYS } from "@/lib/relationships.js";
 
-
-const RELATIONSHIP_KEYS = {
-  spouse: "rel_spouse",
-  partner: "rel_partner",
-  friend: "rel_friend",
-  sibling: "rel_sibling",
-  parent: "rel_parent",
-  child: "rel_child",
-  coworker: "rel_coworker",
-  roommate: "rel_roommate",
-  other: "rel_other",
-};
 
 const COMFORT_STYLES = {
   green: { labelKey: "comfort_open", bg: "bg-emerald-500" },
@@ -132,6 +121,23 @@ function TopicRow({ setting, onToggle, onSaveNote, onRemove }) {
   );
 }
 
+/**
+ * Save feedback for one control.
+ *
+ * Shown inline rather than as a page-level toast: these settings are saved
+ * the moment the select changes, and a confirmation somewhere else on the
+ * page does not tell the user WHICH of the two selects it refers to.
+ */
+function SaveState({ saving, saved }) {
+  const { t } = useT();
+  if (!saving && !saved) return null;
+  return (
+    <p className={`text-[11px] font-medium ${saving ? "text-slate-400" : "text-emerald-600"}`}>
+      {saving ? t("saving") : `✓ ${t("tuning_saved_applies_next")}`}
+    </p>
+  );
+}
+
 export default function AITuningPage() {
   const { t } = useT();
   const searchParams = useSearchParams();
@@ -142,10 +148,16 @@ export default function AITuningPage() {
   const [tone, setTone] = useState("warm_and_gentle");
   const [tonePrompt, setTonePrompt] = useState("");
   const [tonePromptDirty, setTonePromptDirty] = useState(false);
+  const [softenEmotions, setSoftenEmotions] = useState(false);
+  // Which field is mid-save, and which one just saved, so the confirmation
+  // appears next to the control the user actually touched.
+  const [savingField, setSavingField] = useState(null);
+  const [savedField, setSavedField] = useState(null);
+  const [saveError, setSaveError] = useState(null);
   const [tonePromptSaving, setTonePromptSaving] = useState(false);
   const [validTones, setValidTones] = useState([]);
   const [relationship, setRelationship] = useState("spouse");
-  const [validRelationships, setValidRelationships] = useState(Object.keys(RELATIONSHIP_KEYS));
+  const [validRelationships, setValidRelationships] = useState(RELATIONSHIP_KEYS);
   const [topicSettings, setTopicSettings] = useState([]);
   const [suggestedTopics, setSuggestedTopics] = useState([]);
   const [customLabel, setCustomLabel] = useState("");
@@ -186,6 +198,7 @@ export default function AITuningPage() {
           const data = await toneRes.json();
           setTone(data.tonePreference);
           setTonePrompt(data.tonePrompt || "");
+          setSoftenEmotions(Boolean(data.softenEmotions));
           setValidTones(data.validTones || []);
         }
         if (topicsData) setTopicSettings(topicsData);
@@ -213,21 +226,71 @@ export default function AITuningPage() {
     return () => { cancelled = true; };
   }, [connectionId, fetchTopics]);
 
+  /**
+   * Both selects saved silently: no confirmation on success and, worse, no
+   * sign at all on failure — the dropdown kept the new value while the server
+   * still held the old one, so a lost save was indistinguishable from a
+   * setting the AI was ignoring. Each now reports its own outcome and rolls
+   * the select back if the write did not land.
+   */
+  async function saveSetting({ key, url, body, previous, revert }) {
+    setSavedField(null);
+    setSaveError(null);
+    setSavingField(key);
+    try {
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        revert(previous);
+        setSaveError(t("tuning_save_failed"));
+      } else {
+        setSavedField(key);
+      }
+    } catch {
+      revert(previous);
+      setSaveError(t("network_error"));
+    }
+    setSavingField(null);
+  }
+
   async function handleRelationshipChange(newRel) {
+    const previous = relationship;
     setRelationship(newRel);
-    await fetch("/api/circle/relationship", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ connectionId, relationshipType: newRel }),
+    await saveSetting({
+      key: "relationship",
+      url: "/api/circle/relationship",
+      body: { connectionId, relationshipType: newRel },
+      previous,
+      revert: setRelationship,
     });
   }
 
   async function handleToneChange(newTone) {
+    const previous = tone;
     setTone(newTone);
-    await fetch("/api/settings/tone", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tonePreference: newTone, connectionId }),
+    await saveSetting({
+      key: "tone",
+      url: "/api/settings/tone",
+      body: { tonePreference: newTone, connectionId },
+      previous,
+      revert: setTone,
+    });
+  }
+
+  async function handleSoftenEmotionsChange(next) {
+    const previous = softenEmotions;
+    setSoftenEmotions(next);
+    await saveSetting({
+      key: "softenEmotions",
+      url: "/api/settings/tone",
+      // tonePreference is included because the PUT handler requires it; the
+      // tone itself does not change when this toggle is flipped.
+      body: { tonePreference: tone, softenEmotions: next, connectionId },
+      previous,
+      revert: setSoftenEmotions,
     });
   }
 
@@ -358,6 +421,32 @@ export default function AITuningPage() {
         <p className="text-sm text-slate-500 mt-1">{t("tuning_blurb", { name: displayName })}</p>
       </div>
 
+      {/* What is in effect right now, in one line. The two selects below are
+          the inputs; this is the result, which is what the user was looking
+          for when they asked whether their choice had applied. */}
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 sm:p-4">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700/70">
+          {t("tuning_in_effect")}
+        </p>
+        <p className="mt-1 text-sm text-emerald-900">
+          {t("tuning_in_effect_line", {
+            name: displayName,
+            relationship: t(relationshipLabelKey(relationship)),
+            tone: t(toneLabelKey(tone)),
+          })}
+        </p>
+        {softenEmotions && (
+          <p className="mt-1 text-sm text-emerald-900">{t("tuning_in_effect_soften", { name: displayName })}</p>
+        )}
+        <p className="mt-1 text-[11px] text-emerald-700">{t("tuning_in_effect_hint")}</p>
+      </div>
+
+      {saveError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {saveError}
+        </div>
+      )}
+
       {/* Relationship */}
       <div className="space-y-2">
         <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">{t("tuning_relationship_section")}</h2>
@@ -369,9 +458,10 @@ export default function AITuningPage() {
             className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm"
           >
             {validRelationships.map((r) => (
-              <option key={r} value={r}>{t(RELATIONSHIP_KEYS[r] || "rel_other")}</option>
+              <option key={r} value={r}>{t(relationshipLabelKey(r))}</option>
             ))}
           </select>
+          <SaveState saving={savingField === "relationship"} saved={savedField === "relationship"} />
         </div>
       </div>
 
@@ -389,6 +479,38 @@ export default function AITuningPage() {
               <option key={val} value={val}>{t(toneLabelKey(val))}</option>
             ))}
           </select>
+          <SaveState saving={savingField === "tone"} saved={savedField === "tone"} />
+          <p className="text-[11px] text-slate-500">
+            {t("tuning_tone_example", { tone: t(toneLabelKey(tone)) })}
+          </p>
+
+          {/* Emotional softening is per-connection and off by default. It is
+              presented alongside the tone because both describe how the AI
+              should rewrite incoming messages. The explanation names the
+              behaviour in one line — without it, the label alone looks like
+              "ignore how I feel", which is the opposite of what this does. */}
+          <div className="pt-2 border-t border-gray-100 space-y-1.5">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={softenEmotions}
+                onChange={(e) => handleSoftenEmotionsChange(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600"
+              />
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-medium text-slate-700">
+                  {t("tuning_soften_label")}
+                </span>
+                <span className="block text-[11px] text-slate-500">
+                  {t("tuning_soften_hint", { name: displayName })}
+                </span>
+              </span>
+            </label>
+            <SaveState
+              saving={savingField === "softenEmotions"}
+              saved={savedField === "softenEmotions"}
+            />
+          </div>
           <div className="pt-2 border-t border-gray-100 space-y-1.5">
             <p className="text-xs font-medium text-slate-600">{t("tuning_extra_instructions")}</p>
             <textarea

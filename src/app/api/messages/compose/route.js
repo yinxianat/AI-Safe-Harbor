@@ -5,6 +5,11 @@ import prisma from "@/lib/db.js";
 import { checkTopicBoundaries } from "@/lib/topic-checker.js";
 import { rephraseMessage, analyzeTopics } from "@/lib/ai/index.js";
 import { getTopicLabel } from "@/lib/topics.js";
+import {
+  loadReceiverContext,
+  buildRephraseSettings,
+  appliedSummary,
+} from "@/lib/receiver-settings.js";
 import { logCritical } from "@/lib/logger.js";
 
 const MAX_MESSAGE_LENGTH = 5000;
@@ -37,20 +42,8 @@ export async function POST(request) {
 
   const receiverId = getPartnerId(connection, user.id);
 
-  const [receiver, receiverSettings, receiverConnPref] = await Promise.all([
-    prisma.user.findUnique({ where: { id: receiverId } }),
-    prisma.topicSetting.findMany({ where: { connectionId, userId: receiverId } }),
-    prisma.connectionPreference.findUnique({
-      where: { connectionId_userId: { connectionId, userId: receiverId } },
-    }),
-  ]);
-
-  const topicNotes = receiverSettings
-    .filter((s) => s.note && s.comfortLevel !== "green")
-    .map((s) => ({
-      topic: s.sanitizedLabel || getTopicLabel(s.topicName) || s.topicName,
-      note: s.note,
-    }));
+  const { receiver, topicSettings: receiverSettings, connPref: receiverConnPref } =
+    await loadReceiverContext(connectionId, receiverId);
 
   const boundaryCheck = checkTopicBoundaries(contentRaw, receiverSettings);
 
@@ -87,6 +80,16 @@ export async function POST(request) {
 
   const yellowTopics = boundaryCheck.yellowTopics || [];
 
+  // Built once, from the same helper retry uses, so both paths apply the same
+  // relationship, per-connection tone, notes and extra instructions.
+  const rephraseSettings = buildRephraseSettings({
+    connection,
+    receiver,
+    connPref: receiverConnPref,
+    topicSettings: receiverSettings,
+    boundaryCheck,
+  });
+
   // AI contextual topic analysis — catches indirect references that keyword
   // matching misses (e.g. "how much does it make" for money), and reads the
   // receiver's per-topic notes so narrowed rules like "family = in-laws only"
@@ -103,14 +106,7 @@ export async function POST(request) {
   // Run AI topic analysis and rephrasing in parallel to avoid double latency.
   const [aiTopicCheck, aiResult] = await Promise.all([
     analyzeTopics(contentRaw, nonGreenTopics).catch(() => ({ verdict: "skip", flaggedTopics: [] })),
-    rephraseMessage(contentRaw, {
-      tonePreference: receiverConnPref?.tonePreference || receiver?.tonePreference,
-      tonePrompt: receiverConnPref?.tonePrompt,
-      relationshipType: connection.relationshipType,
-      yellowTopics,
-      topicNotes,
-      locale: receiver?.locale,
-    }),
+    rephraseMessage(contentRaw, rephraseSettings),
   ]);
 
   // AI caught a red topic that keywords missed — hold the message.
@@ -216,5 +212,9 @@ export async function POST(request) {
     needsSoftening: boundaryCheck.needsSoftening,
     yellowTopics,
     topicVerdict,
+    // What shaped this rewrite, so the preview can name it. Choosing a
+    // relationship and a tone and then seeing an unlabelled result is
+    // indistinguishable from the settings being ignored.
+    applied: appliedSummary(rephraseSettings),
   });
 }

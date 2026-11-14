@@ -20,6 +20,12 @@ export const TOPICS = [
       "stressed", "burnout", "exhausted", "insomnia", "sleep",
       "panic attack", "counselor", "psychiatrist", "prescription",
       "check-up", "test results", "condition", "chronic",
+      // Chinese (Simplified and Traditional where they differ).
+      "健康", "医生", "醫生", "医院", "醫院", "生病", "病了", "吃药",
+      "吃藥", "药", "藥", "治疗", "治療", "心理", "焦虑", "焦慮",
+      "抑郁", "抑鬱", "失眠", "体检", "體檢", "手术", "手術", "疼",
+      "痛", "累", "疲劳", "疲勞", "症状", "症狀", "诊断", "診斷",
+      "复诊", "複診",
     ],
   },
   {
@@ -32,6 +38,11 @@ export const TOPICS = [
       "layoff", "laid off", "overtime", "commute", "client",
       "performance review", "coworkers", "hired", "hiring",
       "remote work", "work from home", "shift", "business",
+      // Chinese (Simplified and Traditional where they differ).
+      "工作", "上班", "加班", "老板", "老闆", "同事", "公司", "职场",
+      "職場", "会议", "會議", "升职", "升職", "辞职", "辭職", "被裁",
+      "裁员", "裁員", "面试", "面試", "项目", "項目", "截止", "绩效",
+      "績效", "出差", "离职", "離職", "工资", "工資",
     ],
   },
   {
@@ -50,6 +61,13 @@ export const TOPICS = [
       "subscription", "refund", "tip", "wage", "wages",
       "tuition", "down payment", "interest rate", "balance",
       "account", "transaction", "transfer",
+      // Chinese (Simplified and Traditional where they differ).
+      "钱", "錢", "花钱", "花錢", "预算", "預算", "债", "債",
+      "欠", "贷款", "貸款", "房贷", "房貸", "存款", "账单", "帳單",
+      "账户", "帳戶", "财务", "財務", "房租", "租金", "工资", "工資",
+      "薪水", "收入", "支出", "消费", "消費", "贵", "貴", "便宜",
+      "买房", "買房", "付款", "报销", "報銷", "税", "稅", "理财",
+      "理財", "投资", "投資", "保险", "保險", "学费", "學費",
     ],
   },
   {
@@ -64,6 +82,11 @@ export const TOPICS = [
       "stepfather", "stepmom", "stepdad", "half-sister", "half-brother",
       "family reunion", "inheritance", "my parents", "your parents",
       "his family", "her family", "their family", "the family",
+      // Chinese (Simplified and Traditional where they differ).
+      "家", "家人", "家庭", "妈", "媽", "妈妈", "媽媽", "爸",
+      "爸爸", "父母", "兄弟", "姐妹", "哥", "弟", "姐", "妹",
+      "公婆", "婆婆", "岳母", "岳父", "亲戚", "親戚", "娘家", "婚礼",
+      "婚禮", "过年", "過年",
     ],
   },
   {
@@ -81,6 +104,10 @@ export const TOPICS = [
       "cuddle", "cuddling", "kiss", "kissing", "touch me", "touching",
       "passion", "chemistry", "love life", "turned on", "sexy",
       "flirt", "flirting", "date night", "make love", "foreplay",
+      // Chinese (Simplified and Traditional where they differ).
+      "亲密", "親密", "亲热", "親熱", "浪漫", "拥抱", "擁抱", "抱抱",
+      "接吻", "亲亲", "親親", "做爱", "做愛", "性生活", "情欲", "情慾",
+      "约会", "約會", "调情", "調情", "撒娇", "撒嬌", "暧昧", "曖昧",
     ],
   },
   {
@@ -94,6 +121,10 @@ export const TOPICS = [
       "engagement", "engaged", "proposal", "pregnant", "expecting",
       "career change", "dream", "ambition", "someday", "eventually",
       "start a family", "buy a house", "move to",
+      // Chinese (Simplified and Traditional where they differ).
+      "将来", "將來", "未来", "未來", "以后", "以後", "计划", "計劃",
+      "打算", "结婚", "結婚", "买房", "買房", "搬家", "移民", "要孩子",
+      "生孩子", "养老", "養老", "退休", "五年后", "五年後",
     ],
   },
   {
@@ -108,6 +139,10 @@ export const TOPICS = [
       "angry at me", "what you said", "what i said", "that argument",
       "still upset", "brought it up", "let it go", "get over it",
       "we never resolved",
+      // Chinese (Simplified and Traditional where they differ).
+      "吵架", "争吵", "爭吵", "上次", "那次", "以前说过", "以前說過", "旧事",
+      "舊事", "翻旧账", "翻舊帳", "道歉", "原谅", "原諒", "误会", "誤會",
+      "伤害", "傷害", "记仇", "記仇", "冷战", "冷戰",
     ],
   },
   {
@@ -120,6 +155,9 @@ export const TOPICS = [
       "concert", "event", "festival", "get together", "night out",
       "girls night", "guys night", "my friends", "your friends",
       "plans tonight", "plans this weekend", "road trip", "fly out",
+      // Chinese (Simplified and Traditional where they differ).
+      "朋友", "聚会", "聚會", "应酬", "應酬", "出去玩", "喝酒局", "饭局",
+      "飯局", "社交", "同学", "同學", "群", "约人", "約人",
     ],
   },
   {
@@ -133,6 +171,11 @@ export const TOPICS = [
       "grounded", "punishment", "rules for", "chores",
       "tantrum", "nanny", "pediatrician", "playground",
       "soccer practice", "piano lesson", "pick up from school",
+      // Chinese (Simplified and Traditional where they differ).
+      "孩子", "小孩", "儿子", "兒子", "女儿", "女兒", "宝宝", "寶寶",
+      "带娃", "帶娃", "育儿", "育兒", "上学", "上學", "学校", "學校",
+      "老师", "老師", "作业", "作業", "补习", "補習", "教育", "管孩子",
+      "家长会", "家長會",
     ],
   },
   {
@@ -145,6 +188,11 @@ export const TOPICS = [
       "self-care", "boundaries", "therapy", "coaching",
       "new skill", "reading", "volunteer", "habit", "routine",
       "working on myself", "trying to be better",
+      // Chinese (Simplified and Traditional where they differ).
+      "自我", "成长", "成長", "健身", "运动", "運動", "减肥", "減肥",
+      "体重", "體重", "饮食", "飲食", "学习", "學習", "课程", "課程",
+      "冥想", "正念", "日记", "日記", "习惯", "習慣", "爱好", "愛好",
+      "自律", "进步", "進步",
     ],
   },
   /*
@@ -168,6 +216,11 @@ export const TOPICS = [
       "mirror", "wrinkle", "wrinkles", "aging", "grey hair", "gray hair",
       "bald", "balding", "acne", "skin", "hair loss",
       "how I look", "how you look", "ugly", "put on weight",
+      // Chinese (Simplified and Traditional where they differ).
+      "身材", "外貌", "长相", "長相", "胖", "瘦", "体重", "體重",
+      "减肥", "減肥", "卡路里", "皱纹", "皺紋", "皱", "變老", "变老",
+      "衰老", "白头发", "白頭髮", "秃", "禿", "痘", "皮肤", "皮膚",
+      "脱发", "脫髮", "丑", "醜", "穿衣", "尺码", "尺碼",
     ],
   },
   {
@@ -181,6 +234,11 @@ export const TOPICS = [
       "anniversary of", "miscarriage", "stillbirth",
       "terminal", "hospice", "palliative", "widow", "widower",
       "urn", "grave", "cemetery",
+      // Chinese (Simplified and Traditional where they differ).
+      "去世", "过世", "過世", "走了", "离世", "離世", "葬礼", "葬禮",
+      "丧", "喪", "追悼", "墓", "坟", "墳", "骨灰", "哀悼",
+      "悲伤", "悲傷", "思念", "忌日", "周年", "流产", "流產", "临终",
+      "臨終", "绝症", "絕症", "安宁疗护", "安寧療護",
     ],
   },
   {
@@ -193,6 +251,11 @@ export const TOPICS = [
       "religion", "religious", "church", "mosque", "synagogue", "temple",
       "faith", "god", "prayer", "praying", "scripture", "atheist",
       "protest", "immigration", "abortion", "gun control",
+      // Chinese (Simplified and Traditional where they differ).
+      "政治", "选举", "選舉", "投票", "政府", "总统", "總統", "党",
+      "黨", "宗教", "信仰", "教会", "教會", "上帝", "神", "佛",
+      "拜佛", "祈祷", "祈禱", "念经", "念經", "无神论", "無神論", "抗议",
+      "抗議", "移民政策",
     ],
   },
   {
@@ -205,6 +268,12 @@ export const TOPICS = [
       "dirty", "clutter", "cluttered", "housework", "household",
       "my turn", "your turn", "fair share", "do my part", "do your part",
       "left it out", "pick up after",
+      // Chinese (Simplified and Traditional where they differ).
+      "家务", "家務", "做饭", "做飯", "洗碗", "洗衣", "扫地", "掃地",
+      "水池", "水槽", "碗没洗", "碗沒洗",
+      "拖地", "打扫", "打掃", "收拾", "垃圾", "倒垃圾", "乱", "亂",
+      "脏", "臟", "髒", "整理", "该你了", "該你了", "我的份", "轮到",
+      "輪到",
     ],
   },
   {
@@ -217,6 +286,11 @@ export const TOPICS = [
       "smoking", "cigarette", "cigarettes", "vape", "vaping",
       "weed", "cannabis", "gambling", "gamble", "betting",
       "addiction", "addicted", "quit drinking", "cut back",
+      // Chinese (Simplified and Traditional where they differ).
+      "喝酒", "酒", "醉", "宿醉", "戒酒", "戒烟", "戒菸", "抽烟",
+      "抽菸", "烟", "菸", "香烟", "香菸", "电子烟", "電子菸", "赌",
+      "賭", "赌博", "賭博", "上瘾", "上癮", "成瘾", "成癮", "戒断",
+      "戒斷", "复发", "復發", "康复", "康復", "毒",
     ],
   },
   {
@@ -229,6 +303,11 @@ export const TOPICS = [
       "quality time", "time together", "no time for",
       "busy with work", "too busy", "cancelled on me", "canceled on me",
       "last minute", "forgot our", "forgot about",
+      // Chinese (Simplified and Traditional where they differ).
+      "迟到", "遲到", "等你", "让我等", "讓我等", "玩手机", "玩手機", "看手机",
+      "看手機", "刷手机", "刷手機", "不听", "不聽", "没在听", "沒在聽", "忽视",
+      "忽視", "不理我", "陪我", "陪伴", "没时间", "沒時間", "太忙", "临时取消",
+      "臨時取消", "忘了",
     ],
   },
   {
@@ -240,6 +319,10 @@ export const TOPICS = [
       "previous relationship", "last relationship", "old flame",
       "jealous", "jealousy", "cheated", "cheating", "affair",
       "unfaithful", "infidelity", "trust issues", "broke up",
+      // Chinese (Simplified and Traditional where they differ).
+      "前任", "前男友", "前女友", "前夫", "前妻", "离婚", "離婚", "分手",
+      "出轨", "出軌", "外遇", "劈腿", "吃醋", "嫉妒", "不忠", "信任",
+      "旧情", "舊情", "以前的对象", "以前的對象",
     ],
   },
 ];

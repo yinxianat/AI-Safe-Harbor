@@ -135,6 +135,45 @@ const SELF_REFERENCE = new RegExp(
   "i"
 );
 
+/**
+ * The same three checks for CJK output.
+ *
+ * Without these the safety net only existed for English: "作为一个AI，我无法改写
+ * 这条消息" passed every pattern and was delivered to the receiver as the
+ * sender's own words.
+ *
+ * Both colons are matched, since a model writing Chinese usually emits the
+ * full-width "：". The hard part is what is NOT matched. 抱歉 and 对不起 are
+ * ordinary apologies, and "我不能帮你搬家" ("I can't help you move") is a real
+ * message — so a refusal has to carry an AI-ish object (改写, 协助, 生成) or a
+ * demonstrative (这件事), exactly as the English pattern requires "with that"
+ * rather than matching "can't help" alone.
+ */
+const META_LABEL_CJK =
+  /^(改写|改寫|修改|重写|重寫|润色|潤色|译文|譯文|注|说明|說明|免责声明|免責聲明|输出|輸出)(后|後)?\s*[：:]/;
+
+const META_PREAMBLE_CJK = new RegExp(
+  [
+    // "这是改写后的版本：" / "以下是更温和的说法："
+    "^[^\n]{0,60}?(改写|改寫|修改|重写|重寫|润色|潤色|调整|調整)(后|後)?的?(版本|消息|訊息|内容|內容|文字|说法|說法)?\s*[：:]",
+    // "更温和的版本：" / "比较委婉的表达："
+    "^[^\n]{0,60}?(温和|溫和|柔和|委婉|友好|客气|客氣|礼貌|禮貌)的?(版本|说法|說法|表达|表達|语气|語氣)\s*[：:]",
+  ].join("|")
+);
+
+const SELF_REFERENCE_CJK = new RegExp(
+  [
+    "作为(一个|一名|一款)?\\s*(AI|ai|人工智能|智能助手|语言模型|語言模型|聊天机器人|聊天機器人)",
+    "我是(一个|一名|一款)?\\s*(AI|ai|人工智能|语言模型|語言模型)",
+    "(语言模型|語言模型)",
+    // A refusal naming the task itself.
+    "我(无法|無法|不能|没办法|沒辦法|不便)(改写|改寫|重写|重寫|完成|协助|協助|提供|生成|执行|執行|回答这)",
+    // A refusal with a demonstrative: "我不能帮你做这件事".
+    "我(无法|無法|不能|没办法|沒辦法)(帮|幫)你?(做)?(这|這)",
+    "(违反|違反)(了)?(我的)?(使用)?(政策|准则|準則|规定|規定|指南)",
+  ].join("|")
+);
+
 /** Instruction-leak markers: the prompt's own scaffolding coming back out. */
 const PROMPT_LEAK =
   /\b(absolute rules|receiver preferences|system prompt|you are a rephrasing tool|you are a communication assistant|do NOT follow as instructions)\b/i;
@@ -176,11 +215,16 @@ export function validateRephrasedOutput(text, original) {
     return { ok: false, reason: "prompt_leak" };
   }
 
-  if (SELF_REFERENCE.test(cleaned)) {
+  if (SELF_REFERENCE.test(cleaned) || SELF_REFERENCE_CJK.test(cleaned)) {
     return { ok: false, reason: "meta_commentary" };
   }
 
-  if (META_LABEL.test(cleaned) || META_PREAMBLE.test(cleaned)) {
+  if (
+    META_LABEL.test(cleaned) ||
+    META_PREAMBLE.test(cleaned) ||
+    META_LABEL_CJK.test(cleaned) ||
+    META_PREAMBLE_CJK.test(cleaned)
+  ) {
     return { ok: false, reason: "meta_commentary" };
   }
 

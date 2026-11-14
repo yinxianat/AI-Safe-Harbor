@@ -3,6 +3,7 @@ import anthropic from "./providers/anthropic.js";
 import openai from "./providers/openai.js";
 import { buildSystemPrompt } from "./prompt.js";
 import { safetyClause, validateRephrasedOutput, fenceValue } from "./safety.js";
+import { languageInstruction } from "./language.js";
 import { REFUSAL } from "./errors.js";
 import { logError, logWarn } from "../logger.js";
 
@@ -65,7 +66,9 @@ export async function rephraseMessage(rawMessage, receiverSettings) {
     return { rephrased: null, error: "ai_unavailable" };
   }
 
-  const system = buildSystemPrompt(receiverSettings);
+  // The message is handed to the prompt builder so the output language can be
+  // taken from the text itself rather than from the receiver's UI locale.
+  const system = buildSystemPrompt(receiverSettings, rawMessage);
 
   for (const provider of chain) {
     try {
@@ -159,6 +162,10 @@ export async function practiceChat(topic, turns) {
     ]),
     "",
     "How to play it:",
+    // Taken from what the user actually typed, for the same reason the
+    // rephraser does: a rehearsal answered in the wrong language is not a
+    // rehearsal of the conversation they are about to have.
+    `- ${languageInstruction(turns.map((t) => t.content).join(" ") || topic)}`,
     "- Play the role of their partner, responding naturally and honestly.",
     "- If they say something hurtful, gently point it out and suggest a kinder way.",
     "- Keep responses short (1-3 sentences) so the conversation feels natural.",

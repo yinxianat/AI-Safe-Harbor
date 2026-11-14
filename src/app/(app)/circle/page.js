@@ -6,25 +6,18 @@ import { useT } from "@/lib/i18n/context.js";
 import Avatar from "@/components/Avatar.js";
 import VoiceInput from "@/components/VoiceInput.js";
 import { toneShortLabelKey } from "@/lib/tones.js";
+import { useTimeAgo } from "@/lib/time-ago.js";
 
-function useTimeAgo() {
-  const { t } = useT();
-  return (dateStr) => {
-    if (!dateStr) return "";
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return t("circle_time_just_now");
-    if (mins < 60) return t("circle_time_minutes", { n: mins });
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return t("circle_time_hours", { n: hrs });
-    return t("circle_time_days", { n: Math.floor(hrs / 24) });
-  };
-}
-
-function PersonCard({ person, onDisconnect, onNicknameChange }) {
+function PersonCard({ person, onDisconnect, onNicknameChange, startOpen = false, onClosed }) {
   const { t } = useT();
   const timeAgo = useTimeAgo();
-  const [showBoundaries, setShowBoundaries] = useState(false);
+  // When the caller already rendered this person (from the people strip),
+  // the full card is unnecessary noise above the boundary sheet — the strip
+  // is already on screen. Hide the card body in that mode and show only the
+  // sheet, so opening from the strip feels like opening a profile rather
+  // than re-rendering a card already shown.
+  const hideCardBody = startOpen;
+  const [showBoundaries, setShowBoundaries] = useState(startOpen);
   const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [editingNickname, setEditingNickname] = useState(false);
@@ -63,6 +56,7 @@ function PersonCard({ person, onDisconnect, onNicknameChange }) {
 
   return (
     <>
+      {!hideCardBody && (
       <div
         onClick={() => setShowBoundaries(true)}
         className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm overflow-hidden cursor-pointer active:bg-slate-50 transition-colors"
@@ -208,17 +202,18 @@ function PersonCard({ person, onDisconnect, onNicknameChange }) {
           </Link>
         </div>
       </div>
+      )}
 
       {/* Boundary popup */}
       {showBoundaries && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setShowBoundaries(false)}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => { setShowBoundaries(false); onClosed?.(); }}>
           <div
             className="w-full max-w-lg bg-white rounded-t-2xl flex flex-col animate-[slideUp_0.2s_ease-out] max-h-[85dvh]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
               <h3 className="text-base font-bold text-slate-900">{t("circle_boundaries_title", { name })}</h3>
-              <button onClick={() => setShowBoundaries(false)} className="text-slate-400 text-lg p-1" aria-label={t("close")}>✕</button>
+              <button onClick={() => { setShowBoundaries(false); onClosed?.(); }} className="text-slate-400 text-lg p-1" aria-label={t("close")}>✕</button>
             </div>
 
             <div className="px-5 pt-3 pb-1 shrink-0 flex gap-2">
@@ -447,6 +442,168 @@ function UsernameCard({ me, onClaimed }) {
   );
 }
 
+/**
+ * Horizontal strip of people, Instagram-story style but static — one
+ * avatar per contact, with the name underneath. Tapping one asks the page
+ * to open that person's boundary sheet, which is where the rich card
+ * actions (relabel, disconnect, see boundaries) live.
+ *
+ * Kept visually compact and scrollable because the point of this page is
+ * now the feed below. A wall of per-person cards pushed every recent
+ * update below the fold, which is the opposite of what the product asks
+ * for.
+ */
+function PeopleStrip({ members, onOpenPerson }) {
+  const { t } = useT();
+  return (
+    <div>
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+        {t("circle_people_section")}
+      </p>
+      <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+        {members.map((p) => {
+          const name =
+            p.nickname
+            || p.displayName
+            || (p.username ? `@${p.username}` : t("circle_fallback_name"));
+          return (
+            <button
+              key={p.connectionId}
+              onClick={() => onOpenPerson(p.connectionId)}
+              className="shrink-0 w-16 text-center group"
+              aria-label={t("chat_open_profile", { name })}
+            >
+              <div className="relative inline-block">
+                <Avatar src={p.avatarUrl} name={name} size="md" tone="solid" />
+                {p.statusText && (
+                  <span
+                    className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white"
+                    aria-hidden="true"
+                  />
+                )}
+              </div>
+              <p className="mt-1 text-[11px] text-slate-700 group-hover:text-emerald-700 truncate">
+                {name}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The feed itself — merged status updates and wall posts from every active
+ * contact, newest first. Reads from /api/feed, which does the audience
+ * filtering server side so a post hidden from this reader on the author's
+ * end stays hidden here.
+ */
+function FeedCard() {
+  const { t } = useT();
+  const timeAgo = useTimeAgo();
+  const [items, setItems] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/feed");
+        if (cancelled) return;
+        if (!res.ok) {
+          setError(true);
+          setItems([]);
+          return;
+        }
+        const data = await res.json();
+        setItems(data.items || []);
+      } catch {
+        if (!cancelled) {
+          setError(true);
+          setItems([]);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (items === null) {
+    return (
+      <div className="flex justify-center py-6">
+        <div className="w-6 h-6 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="bg-white border border-gray-100 rounded-xl p-4 text-center space-y-1">
+        <p className="text-sm font-medium text-slate-700">{t("circle_feed_empty_title")}</p>
+        <p className="text-xs text-slate-500">
+          {error ? t("circle_feed_load_failed") : t("circle_feed_empty_hint")}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+        {t("circle_feed_section")}
+      </p>
+      {items.map((item) => (
+        <FeedItem key={item.id} item={item} timeAgo={timeAgo} />
+      ))}
+    </div>
+  );
+}
+
+function FeedItem({ item, timeAgo }) {
+  const { t } = useT();
+  const kindLabel = item.kind === "status"
+    ? t("circle_feed_kind_status")
+    : t("circle_feed_kind_post");
+
+  return (
+    <article className="bg-white border border-gray-100 rounded-xl p-3 sm:p-4">
+      <div className="flex items-start gap-3">
+        <Link
+          href={`/them?connectionId=${item.connectionId}`}
+          className="shrink-0 rounded-full"
+          aria-label={t("chat_open_profile", { name: item.author.name || "" })}
+        >
+          <Avatar
+            src={item.author.avatarUrl}
+            name={item.author.name || "?"}
+            size="sm"
+            tone="slate"
+          />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <Link
+              href={`/them?connectionId=${item.connectionId}`}
+              className="text-sm font-semibold text-slate-900 hover:text-emerald-700 truncate"
+            >
+              {item.author.name || t("circle_fallback_name")}
+            </Link>
+            <span className="text-[10px] text-slate-400 uppercase tracking-wide">
+              {kindLabel}
+            </span>
+            <span className="text-[11px] text-slate-400 ml-auto">
+              {timeAgo(item.createdAt)}
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-slate-800 whitespace-pre-wrap leading-relaxed break-words">
+            {item.text}
+          </p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function CirclePage() {
   const { t } = useT();
   const [me, setMe] = useState(null);
@@ -456,6 +613,10 @@ export default function CirclePage() {
   const [searching, setSearching] = useState(false);
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState(null);
+  // When the user taps a person in the strip, this holds their connectionId
+  // and the sheet-style PersonCard is mounted below. Null = nobody open.
+  const [focusedConnectionId, setFocusedConnectionId] = useState(null);
+  const focusedPerson = circle.members.find((m) => m.connectionId === focusedConnectionId) || null;
 
   const fetchCircle = useCallback(async () => {
     const res = await fetch("/api/circle");
@@ -574,25 +735,35 @@ export default function CirclePage() {
 
       <UsernameCard me={me} onClaimed={(username) => setMe((m) => ({ ...m, username }))} />
 
-      {/* Members as rich cards */}
+      {/* People strip + feed. Rich per-person cards still exist — they open
+          from the people strip — because the primary mode on this page is now
+          the feed, not the card wall. The feed is the Facebook-style "what
+          have your folks been up to" view the product asked for. */}
       {circle.members.length > 0 && (
-        <div className="space-y-2 sm:space-y-4">
-          {circle.members.map((p) => (
-            <PersonCard
-              key={p.connectionId}
-              person={p}
-              onDisconnect={disconnect}
-              onNicknameChange={(connId, nick) => {
-                setCircle((prev) => ({
-                  ...prev,
-                  members: prev.members.map((m) =>
-                    m.connectionId === connId ? { ...m, nickname: nick } : m
-                  ),
-                }));
-              }}
-            />
-          ))}
-        </div>
+        <>
+          <PeopleStrip
+            members={circle.members}
+            onOpenPerson={setFocusedConnectionId}
+          />
+          <FeedCard />
+        </>
+      )}
+
+      {focusedPerson && (
+        <PersonCard
+          person={focusedPerson}
+          onDisconnect={disconnect}
+          onNicknameChange={(connId, nick) => {
+            setCircle((prev) => ({
+              ...prev,
+              members: prev.members.map((m) =>
+                m.connectionId === connId ? { ...m, nickname: nick } : m
+              ),
+            }));
+          }}
+          startOpen
+          onClosed={() => setFocusedConnectionId(null)}
+        />
       )}
 
       {circle.members.length === 0 && circle.incoming.length === 0 && circle.outgoing.length === 0 && (

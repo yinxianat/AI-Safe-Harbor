@@ -4,6 +4,11 @@ import prisma from "@/lib/db.js";
 import { checkTopicBoundaries } from "@/lib/topic-checker.js";
 import { rephraseMessage, analyzeTopics } from "@/lib/ai/index.js";
 import { getTopicLabel } from "@/lib/topics.js";
+import {
+  loadReceiverContext,
+  buildRephraseSettings,
+  appliedSummary,
+} from "@/lib/receiver-settings.js";
 
 export async function POST(request) {
   const user = await getSessionUser(request);
@@ -39,10 +44,8 @@ export async function POST(request) {
 
   const receiverId = connection.userAId === user.id ? connection.userBId : connection.userAId;
 
-  const [receiver, receiverSettings] = await Promise.all([
-    prisma.user.findUnique({ where: { id: receiverId } }),
-    prisma.topicSetting.findMany({ where: { connectionId: message.connectionId, userId: receiverId } }),
-  ]);
+  const { receiver, topicSettings: receiverSettings, connPref: receiverConnPref } =
+    await loadReceiverContext(message.connectionId, receiverId);
 
   const boundaryCheck = checkTopicBoundaries(message.contentRaw, receiverSettings);
 
@@ -90,10 +93,18 @@ export async function POST(request) {
     }
   }
 
-  const aiResult = await rephraseMessage(message.contentRaw, {
-    tonePreference: receiver?.tonePreference,
-    yellowTopics: boundaryCheck.yellowTopics || [],
+  // Previously this passed only the account-wide tone and the gentle topics,
+  // so a retried message ignored the relationship, the receiver's extra
+  // instructions and their per-connection tone. Same builder as compose now.
+  const rephraseSettings = buildRephraseSettings({
+    connection,
+    receiver,
+    connPref: receiverConnPref,
+    topicSettings: receiverSettings,
+    boundaryCheck,
   });
+
+  const aiResult = await rephraseMessage(message.contentRaw, rephraseSettings);
 
   if (aiResult.error) {
     const heldReason = aiResult.error === "content_refused" ? "content_refused" : "ai_failed";
@@ -133,5 +144,6 @@ export async function POST(request) {
     messageId,
     raw: message.contentRaw,
     rephrased: aiResult.rephrased,
+    applied: appliedSummary(rephraseSettings),
   });
 }
