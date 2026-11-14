@@ -290,9 +290,24 @@ button, a[role="button"] {
  * means "fine" rather than "this app's color" — tinting them orange in
  * Sunrise would turn a reassuring signal into a warning.
  */
+/**
+ * The accent-border tokens degrade gracefully on a browser without
+ * color-mix (Baseline newly available since late 2023; Safari <16.2,
+ * Chrome <111, Firefox <113). The var() form falls back to the solid
+ * accent color, which is a tiny bit heavier but still on-palette, so
+ * an older browser sees a legible outline rather than an invalid
+ * property that paints transparent.
+ */
 :is(:root[data-theme="sunrise"], :root[data-theme="serene"]) {
-  --accent-border-soft: color-mix(in srgb, var(--accent) 22%, transparent);
-  --accent-border: color-mix(in srgb, var(--accent) 38%, transparent);
+  --accent-border-soft: var(--accent);
+  --accent-border: var(--accent);
+}
+
+@supports (color: color-mix(in srgb, red, blue)) {
+  :is(:root[data-theme="sunrise"], :root[data-theme="serene"]) {
+    --accent-border-soft: color-mix(in srgb, var(--accent) 22%, transparent);
+    --accent-border: color-mix(in srgb, var(--accent) 38%, transparent);
+  }
 }
 
 :is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .bg-emerald-600 {
@@ -344,4 +359,18 @@ button, a[role="button"] {
 }
 :is(:root[data-theme="sunrise"], :root[data-theme="serene"]) .focus\:border-emerald-400:focus {
   border-color: var(--accent-ring) !important;
+}
+
+/**
+ * Hide the scrollbar on an element that is still scrollable. Used on the
+ * admin tab strip, where a visible scrollbar below the tabs would read as
+ * an ugly second border. Covers both Blink/WebKit (::-webkit-scrollbar)
+ * and Firefox (scrollbar-width) so the admin page looks the same on all
+ * three engines.
+ */
+.scrollbar-hide {
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
