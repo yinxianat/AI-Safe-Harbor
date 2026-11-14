@@ -365,82 +365,6 @@ function PersonRow({ person, action }) {
   );
 }
 
-function UsernameCard({ me, onClaimed }) {
-  const { t } = useT();
-  const [value, setValue] = useState("");
-  const [editing, setEditing] = useState(false);
-  const [error, setError] = useState(null);
-  const [saving, setSaving] = useState(false);
-
-  async function save(e) {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/settings/username", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: value }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.detail || t("circle_claim_could_not_save"));
-        return;
-      }
-      setEditing(false);
-      onClaimed(data.username);
-    } catch {
-      setError(t("network_error"));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (me?.username && !editing) {
-    return (
-      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-center justify-between">
-        <div>
-          <p className="text-sm text-emerald-700">
-            {t("circle_your_username")} <span className="font-semibold">@{me.username}</span>
-          </p>
-          <p className="text-xs text-emerald-500 mt-0.5">{t("circle_username_share")}</p>
-        </div>
-        <button onClick={() => { setValue(me.username); setEditing(true); }} className="text-sm text-emerald-600 underline">
-          {t("circle_change")}
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <form onSubmit={save} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
-      <div>
-        <p className="font-semibold text-slate-800">{t("circle_claim_title")}</p>
-        <p className="text-sm text-slate-500">{t("circle_claim_hint")}</p>
-      </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <div className="flex gap-2">
-        <div className="flex-1 flex items-center rounded-lg border border-gray-200 bg-white px-3">
-          <span className="text-slate-400">@</span>
-          <input
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder={t("circle_claim_placeholder")}
-            className="w-full px-1 py-2 text-sm focus:outline-none"
-            maxLength={20}
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={saving}
-          className="bg-emerald-600 text-white text-sm font-medium px-4 rounded-lg disabled:opacity-50"
-        >
-          {saving ? t("saving") : t("save")}
-        </button>
-      </div>
-    </form>
-  );
-}
 
 /**
  * Horizontal strip of people, Instagram-story style but static — one
@@ -604,6 +528,316 @@ function FeedItem({ item, timeAgo }) {
   );
 }
 
+/**
+ * "Me" header card for the folks page, in the style LinkedIn uses: a short
+ * identity block, the state of what the user has written about themselves,
+ * and a direct way to add more if they haven't written anything yet.
+ *
+ * It replaces the plain username-claim strip that lived here before. The
+ * username claim still appears when they haven't picked one — it is just
+ * folded into the card so there is one "about me" surface, not two.
+ */
+function MeCard({ me, onUsernameClaimed }) {
+  const { t } = useT();
+  const [summary, setSummary] = useState(null);
+  const [claiming, setClaiming] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/me/summary");
+        if (cancelled || !res.ok) return;
+        setSummary(await res.json());
+      } catch { /* leave null; card still renders */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const displayName =
+    me?.displayName
+    || (me?.username ? `@${me.username}` : t("me_fallback_name"));
+  const hasUsername = Boolean(me?.username);
+  const storyCount = summary?.story?.count ?? 0;
+  const knowMeCount = summary?.knowMe?.count ?? 0;
+  const storyLatest = summary?.story?.latest?.text || null;
+  const knowMeLatest = summary?.knowMe?.latest;
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl sm:rounded-2xl shadow-sm overflow-hidden">
+      {/* Identity row. Avatar links to the Me page (editing your own name,
+          photo and status lives there), so the gesture is the same one the
+          chat cards use for other people. */}
+      <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4">
+        <Link
+          href="/me"
+          className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-emerald-200 transition-shadow"
+          aria-label={t("circle_me_open_me")}
+        >
+          <Avatar
+            src={me?.avatarUrl}
+            name={displayName}
+            size="lg"
+            tone={me?.avatarUrl ? "slate" : "emerald"}
+          />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <p className="text-base sm:text-lg font-bold text-slate-900 truncate">
+            {displayName}
+          </p>
+          {hasUsername ? (
+            <p className="text-xs sm:text-sm text-slate-500 truncate">
+              @{me.username}
+              <span className="text-slate-400"> · {t("circle_username_share")}</span>
+            </p>
+          ) : (
+            <p className="text-xs sm:text-sm text-slate-500">
+              {t("circle_me_no_username_hint")}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Claim flow, inline. Only shown when the user has no username yet,
+          because once they've claimed one it goes above as the secondary
+          line. Keeping the previous dedicated card would mean two surfaces
+          arguing about where "about me" lives. */}
+      {!hasUsername && (
+        <UsernameClaimStrip
+          onClaimed={(username) => onUsernameClaimed(username)}
+          busy={claiming}
+          setBusy={setClaiming}
+        />
+      )}
+
+      {/* About-me and Know-me quick views. They are the two self-description
+          surfaces the app has, and this card is where those surfaces live
+          alongside the identity. */}
+      <div className="border-t border-gray-100 divide-y divide-gray-100">
+        <SelfSection
+          href="/story"
+          label={t("me_open_story")}
+          count={storyCount}
+          countLabel={t("circle_me_notes_count", { count: storyCount })}
+          emptyHint={t("circle_me_notes_empty_hint")}
+          emptyAction={t("circle_me_add_first_note")}
+          preview={storyLatest}
+        />
+        <SelfSection
+          href="/knowme"
+          label={t("me_open_knowme")}
+          count={knowMeCount}
+          countLabel={t("circle_me_knowme_count", { count: knowMeCount })}
+          emptyHint={t("circle_me_knowme_empty_hint")}
+          emptyAction={t("circle_me_add_first_knowme")}
+          preview={knowMeLatest
+            ? `${knowMeLatest.prompt} — ${knowMeLatest.answer}`
+            : null}
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One row inside MeCard. Carries two states: either there is something
+ * written (show the count and the preview) or there isn't (show a prompt
+ * to start, because that is what someone opening this page actually
+ * needs to see first).
+ */
+function SelfSection({ href, label, count, countLabel, emptyHint, emptyAction, preview }) {
+  const empty = count === 0 || !preview;
+  return (
+    <Link
+      href={href}
+      className="flex items-start gap-3 px-3 sm:px-4 py-2.5 sm:py-3 hover:bg-slate-50 active:bg-slate-50 transition-colors"
+    >
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <div className="flex items-baseline justify-between gap-2 flex-wrap">
+          <p className="text-sm font-semibold text-slate-800">{label}</p>
+          <p className="text-[11px] text-slate-500 shrink-0">{countLabel}</p>
+        </div>
+        {empty ? (
+          <>
+            <p className="text-[11px] text-slate-500">{emptyHint}</p>
+            <p className="text-[11px] font-medium text-emerald-600">{emptyAction} →</p>
+          </>
+        ) : (
+          <p className="text-[11px] text-slate-600 line-clamp-2">{preview}</p>
+        )}
+      </div>
+      <svg className="w-4 h-4 text-slate-300 shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+      </svg>
+    </Link>
+  );
+}
+
+/**
+ * Compact username claim form, lives inside MeCard when the user has not
+ * picked one yet. Logic matches the old UsernameCard; the UI is smaller
+ * because a claim strip sitting under an identity row should not look like
+ * its own section.
+ */
+function UsernameClaimStrip({ onClaimed, busy, setBusy }) {
+  const { t } = useT();
+  const [value, setValue] = useState("");
+  const [error, setError] = useState(null);
+
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/settings/username", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: value }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.detail || t("circle_claim_could_not_save"));
+        return;
+      }
+      onClaimed(data.username);
+      setValue("");
+    } catch {
+      setError(t("network_error"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={save}
+      className="border-t border-gray-100 bg-emerald-50/50 px-3 sm:px-4 py-2.5 space-y-1.5"
+    >
+      <p className="text-[11px] text-emerald-700">{t("circle_claim_hint")}</p>
+      {error && <p className="text-[11px] text-red-600">{error}</p>}
+      <div className="flex gap-2">
+        <div className="flex-1 flex items-center rounded-lg border border-gray-200 bg-white px-3">
+          <span className="text-slate-400">@</span>
+          <input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={t("circle_claim_placeholder")}
+            className="w-full px-1 py-1.5 text-sm focus:outline-none"
+            maxLength={20}
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={busy || value.trim().length < 2}
+          className="bg-emerald-600 text-white text-xs font-medium px-3 rounded-lg disabled:opacity-50"
+        >
+          {busy ? t("saving") : t("circle_claim_action")}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * Find-someone card, moved up above the people strip. Facebook-style: a
+ * single search field at the top of the page with live results.
+ *
+ * Collapsible rather than always showing results: on the folks page the
+ * primary content is the feed below, so the search card is a bar until the
+ * user focuses it or types.
+ */
+function FindSomeoneCard({
+  query,
+  setQuery,
+  results,
+  searching,
+  busy,
+  onRequest,
+  onRespond,
+}) {
+  const { t } = useT();
+  const hasQuery = query.trim().length >= 2;
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-3 sm:p-4 space-y-2">
+      <label className="relative block">
+        <span className="sr-only">{t("circle_find_someone")}</span>
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+        </svg>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("circle_find_someone_placeholder")}
+          className="w-full pl-10 pr-12 py-2.5 rounded-xl border border-gray-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
+        />
+        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+          <VoiceInput
+            onTranscript={(spoken) => setQuery(spoken.trim())}
+            className="p-1.5"
+          />
+        </div>
+      </label>
+
+      {!hasQuery && (
+        <p className="text-[11px] text-slate-500">
+          {t("circle_find_someone_hint")}{" "}
+          <Link href="/invite" className="font-medium text-emerald-600 hover:underline">
+            {t("circle_invite_by_email")}
+          </Link>.
+        </p>
+      )}
+
+      {hasQuery && searching && (
+        <p className="text-xs text-slate-400">{t("circle_searching")}</p>
+      )}
+
+      {hasQuery && results && results.length === 0 && !searching && (
+        <p className="text-xs text-slate-500">
+          {t("circle_no_one_found_invite")}{" "}
+          <Link href="/invite" className="underline font-medium">
+            {t("circle_invite_by_email")}
+          </Link>.
+        </p>
+      )}
+
+      {hasQuery && results?.length > 0 && (
+        <div className="space-y-1.5 pt-1">
+          {results.map((r) => (
+            <PersonRow
+              key={r.id}
+              person={r}
+              action={
+                r.status === "connected" ? (
+                  <span className="text-xs text-emerald-600 font-medium">{t("circle_status_in_circle")}</span>
+                ) : r.status === "request_sent" ? (
+                  <span className="text-xs text-slate-400">{t("circle_status_requested")}</span>
+                ) : r.status === "request_received" ? (
+                  <button
+                    onClick={() => onRespond(r.connectionId, "accept")}
+                    disabled={busy !== null}
+                    className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
+                  >
+                    {t("circle_action_accept")}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onRequest(r.id)}
+                    disabled={busy !== null}
+                    className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
+                  >
+                    {t("circle_action_request")}
+                  </button>
+                )
+              }
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CirclePage() {
   const { t } = useT();
   const [me, setMe] = useState(null);
@@ -733,7 +967,26 @@ export default function CirclePage() {
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">{t("circle_blurb")}</p>
       </div>
 
-      <UsernameCard me={me} onClaimed={(username) => setMe((m) => ({ ...m, username }))} />
+      {/* "You" block, LinkedIn-style: who you are and what you've written
+          about yourself, so this page opens with your own profile at the top
+          before showing you other people's updates. */}
+      <MeCard
+        me={me}
+        onUsernameClaimed={(username) => setMe((m) => ({ ...m, username }))}
+      />
+
+      {/* Find someone is above the people strip now, which is where a
+          Facebook-style feed would also put search. Kept visually quiet so it
+          does not steal from the feed below. */}
+      <FindSomeoneCard
+        query={query}
+        setQuery={setQuery}
+        results={results}
+        searching={searching}
+        busy={busy}
+        onRequest={sendRequest}
+        onRespond={respond}
+      />
 
       {/* People strip + feed. Rich per-person cards still exist — they open
           from the people strip — because the primary mode on this page is now
@@ -824,60 +1077,6 @@ export default function CirclePage() {
         </div>
       )}
 
-      {/* Search / Invite */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">{t("circle_find_someone")}</h2>
-        <div className="relative">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("circle_search_placeholder")}
-            className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-white text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2">
-            <VoiceInput
-              onTranscript={(spoken) => setQuery(spoken.trim())}
-              className="p-2"
-            />
-          </div>
-        </div>
-        {searching && <p className="text-sm text-slate-400">{t("circle_searching")}</p>}
-        {results && results.length === 0 && !searching && (
-          <p className="text-sm text-slate-500">
-            {t("circle_no_one_found_invite")}{" "}
-            <Link href="/invite" className="underline">{t("circle_invite_by_email")}</Link>.
-          </p>
-        )}
-        {results?.map((r) => (
-          <PersonRow
-            key={r.id}
-            person={r}
-            action={
-              r.status === "connected" ? (
-                <span className="text-sm text-emerald-600 font-medium">{t("circle_status_in_circle")}</span>
-              ) : r.status === "request_sent" ? (
-                <span className="text-sm text-slate-400">{t("circle_status_requested")}</span>
-              ) : r.status === "request_received" ? (
-                <button
-                  onClick={() => respond(r.connectionId, "accept")}
-                  disabled={busy !== null}
-                  className="text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
-                >
-                  {t("circle_action_accept")}
-                </button>
-              ) : (
-                <button
-                  onClick={() => sendRequest(r.id)}
-                  disabled={busy !== null}
-                  className="text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
-                >
-                  {t("circle_action_request")}
-                </button>
-              )
-            }
-          />
-        ))}
-      </div>
     </div>
   );
 }
