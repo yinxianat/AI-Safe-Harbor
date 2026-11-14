@@ -1,9 +1,15 @@
 import { getSessionUser } from "@/lib/auth.js";
 import { parseJsonBody, badRequest, requireString } from "@/lib/http.js";
 import prisma from "@/lib/db.js";
+import { detectsCrisis } from "@/lib/crisis.js";
 import { checkTopicBoundaries } from "@/lib/topic-checker.js";
 import { rephraseMessage, analyzeTopics } from "@/lib/ai/index.js";
 import { getTopicLabel } from "@/lib/topics.js";
+import {
+  loadReceiverContext,
+  buildRephraseSettings,
+  appliedSummary,
+} from "@/lib/receiver-settings.js";
 
 export async function POST(request) {
   const user = await getSessionUser(request);
@@ -29,6 +35,8 @@ export async function POST(request) {
     return Response.json({ error: "message_not_found" }, { status: 404 });
   }
 
+  const crisis = detectsCrisis(message.contentRaw);
+
   const connection = await prisma.connection.findUnique({
     where: { id: message.connectionId },
   });
@@ -39,10 +47,8 @@ export async function POST(request) {
 
   const receiverId = connection.userAId === user.id ? connection.userBId : connection.userAId;
 
-  const [receiver, receiverSettings] = await Promise.all([
-    prisma.user.findUnique({ where: { id: receiverId } }),
-    prisma.topicSetting.findMany({ where: { connectionId: message.connectionId, userId: receiverId } }),
-  ]);
+  const { receiver, topicSettings: receiverSettings, connPref: receiverConnPref } =
+    await loadReceiverContext(message.connectionId, receiverId);
 
   const boundaryCheck = checkTopicBoundaries(message.contentRaw, receiverSettings);
 
@@ -56,44 +62,70 @@ export async function POST(request) {
       held: true,
       heldReason: boundaryCheck.heldReason,
       topics: boundaryCheck.redTopics,
+      crisis,
     });
   }
 
-  // Red-with-note: defer to the AI with the note so a narrowing clause like
-  // "in-laws only" isn't ignored. Mirrors the compose route; fails closed
-  // when the AI can't adjudicate.
-  if (boundaryCheck.needsAIReview) {
-    const nonGreenTopics = receiverSettings
-      .filter((s) => s.comfortLevel === "red" || s.comfortLevel === "yellow")
-      .map((s) => ({
-        key: s.topicName,
-        label: s.sanitizedLabel || getTopicLabel(s.topicName),
-        level: s.comfortLevel,
-        note: s.note || null,
-      }));
+  // Always run the AI classifier on retry, not only when the keyword
+  // layer flagged a red-with-note topic. The previous code skipped the
+  // classifier entirely for any retry whose keyword pass was clean, so
+  // an indirect reference the keywords missed ("how much do you bring
+  // in" for Money) could sneak through on the retry path even though
+  // compose would have caught it. The governance audit flagged this
+  // as a High.
+  const nonGreenTopics = receiverSettings
+    .filter((s) => s.comfortLevel === "red" || s.comfortLevel === "yellow")
+    .map((s) => ({
+      key: s.topicName,
+      label: s.sanitizedLabel || getTopicLabel(s.topicName),
+      level: s.comfortLevel,
+      note: s.note || null,
+    }));
 
-    const aiTopicCheck = await analyzeTopics(message.contentRaw, nonGreenTopics)
-      .catch(() => ({ verdict: "skip", flaggedTopics: [] }));
+  const aiTopicCheck = nonGreenTopics.length === 0
+    ? { verdict: "clear", flaggedTopics: [] }
+    : await analyzeTopics(message.contentRaw, nonGreenTopics)
+        .catch(() => ({ verdict: "skip", flaggedTopics: [] }));
 
-    if (aiTopicCheck.verdict === "blocked"
-        || (aiTopicCheck.verdict !== "clear" && aiTopicCheck.verdict !== "caution")) {
-      const topics = aiTopicCheck.verdict === "blocked"
-        ? aiTopicCheck.flaggedTopics.filter((f) => f.level === "red").map((f) => f.topic)
-        : boundaryCheck.redTopicsWithNote || [];
-
-      await prisma.message.update({
-        where: { id: messageId },
-        data: { status: "held", heldReason: "red_topic", topicTags: topics },
-      });
-
-      return Response.json({ held: true, heldReason: "red_topic", topics });
-    }
+  if (aiTopicCheck.verdict === "blocked") {
+    const topics = aiTopicCheck.flaggedTopics
+      .filter((f) => f.level === "red")
+      .map((f) => f.key);
+    await prisma.message.update({
+      where: { id: messageId },
+      data: { status: "held", heldReason: "red_topic", topicTags: topics },
+    });
+    return Response.json({ held: true, heldReason: "red_topic", topics, crisis });
   }
 
-  const aiResult = await rephraseMessage(message.contentRaw, {
-    tonePreference: receiver?.tonePreference,
-    yellowTopics: boundaryCheck.yellowTopics || [],
+  // Keyword hit a red-with-note topic AND the AI couldn't adjudicate it.
+  // Fail closed: hold as red_topic because we can't confirm the note's
+  // exception applies.
+  if (
+    boundaryCheck.needsAIReview
+    && aiTopicCheck.verdict !== "clear"
+    && aiTopicCheck.verdict !== "caution"
+  ) {
+    const topics = boundaryCheck.redTopicsWithNote || [];
+    await prisma.message.update({
+      where: { id: messageId },
+      data: { status: "held", heldReason: "red_topic", topicTags: topics },
+    });
+    return Response.json({ held: true, heldReason: "red_topic", topics, crisis });
+  }
+
+  // Previously this passed only the account-wide tone and the gentle topics,
+  // so a retried message ignored the relationship, the receiver's extra
+  // instructions and their per-connection tone. Same builder as compose now.
+  const rephraseSettings = buildRephraseSettings({
+    connection,
+    receiver,
+    connPref: receiverConnPref,
+    topicSettings: receiverSettings,
+    boundaryCheck,
   });
+
+  const aiResult = await rephraseMessage(message.contentRaw, rephraseSettings);
 
   if (aiResult.error) {
     const heldReason = aiResult.error === "content_refused" ? "content_refused" : "ai_failed";
@@ -112,6 +144,7 @@ export async function POST(request) {
       held: true,
       heldReason,
       error: aiResult.error,
+      crisis,
     });
   }
 
@@ -133,5 +166,7 @@ export async function POST(request) {
     messageId,
     raw: message.contentRaw,
     rephrased: aiResult.rephrased,
+    applied: appliedSummary(rephraseSettings),
+    crisis,
   });
 }

@@ -28,6 +28,21 @@ function keywordMatcher(keyword) {
     // A phrase keyword should still match across a line break or double space.
     .replace(/\s+/g, "\\s+");
 
+  // Scripts without word separators are matched as plain substrings.
+  //
+  // JS \b is defined on [A-Za-z0-9_], and Han, Kana, Thai and Hangul
+  // characters are none of those — so a boundary-anchored pattern can never
+  // match them, and every Chinese keyword was silently dead: a red boundary
+  // looked configured and never fired once. Substring matching is also the
+  // correct rule for these scripts, which are written without spaces, so
+  // there is no boundary to anchor on in the first place.
+  const hasLatin = /[A-Za-z]/.test(keyword);
+  if (!hasLatin) {
+    matcher = new RegExp(escaped, "i");
+    matcherCache.set(keyword, matcher);
+    return matcher;
+  }
+
   // \b before a keyword that opens with a non-word character would never
   // match, so the anchor is only applied when the first character is a word
   // character. No current keyword starts with punctuation, but a custom topic

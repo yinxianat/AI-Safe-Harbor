@@ -5,7 +5,13 @@ import prisma from "@/lib/db.js";
 import { checkTopicBoundaries } from "@/lib/topic-checker.js";
 import { rephraseMessage, analyzeTopics } from "@/lib/ai/index.js";
 import { getTopicLabel } from "@/lib/topics.js";
+import {
+  loadReceiverContext,
+  buildRephraseSettings,
+  appliedSummary,
+} from "@/lib/receiver-settings.js";
 import { logCritical } from "@/lib/logger.js";
+import { detectsCrisis } from "@/lib/crisis.js";
 
 const MAX_MESSAGE_LENGTH = 5000;
 
@@ -30,6 +36,13 @@ export async function POST(request) {
     return badRequest("invalid_contentRaw");
   }
 
+  // Crisis markers are checked on EVERY compose, regardless of what
+  // the AI or the boundary layer decides. The /messages route handles
+  // the sender a support-resource card on any held or draft outcome
+  // when this flag is true, so a message held by a Health boundary
+  // doesn't send the sender away with no next step.
+  const crisis = detectsCrisis(contentRaw);
+
   const connection = await findAccessibleConnection(user.id, connectionId);
   if (!connection) {
     return Response.json({ error: "forbidden" }, { status: 403 });
@@ -37,20 +50,8 @@ export async function POST(request) {
 
   const receiverId = getPartnerId(connection, user.id);
 
-  const [receiver, receiverSettings, receiverConnPref] = await Promise.all([
-    prisma.user.findUnique({ where: { id: receiverId } }),
-    prisma.topicSetting.findMany({ where: { connectionId, userId: receiverId } }),
-    prisma.connectionPreference.findUnique({
-      where: { connectionId_userId: { connectionId, userId: receiverId } },
-    }),
-  ]);
-
-  const topicNotes = receiverSettings
-    .filter((s) => s.note && s.comfortLevel !== "green")
-    .map((s) => ({
-      topic: s.sanitizedLabel || getTopicLabel(s.topicName) || s.topicName,
-      note: s.note,
-    }));
+  const { receiver, topicSettings: receiverSettings, connPref: receiverConnPref } =
+    await loadReceiverContext(connectionId, receiverId);
 
   const boundaryCheck = checkTopicBoundaries(contentRaw, receiverSettings);
 
@@ -82,10 +83,21 @@ export async function POST(request) {
       heldReason: boundaryCheck.heldReason,
       topics: boundaryCheck.redTopics,
       draftId: held.id,
+      crisis,
     });
   }
 
   const yellowTopics = boundaryCheck.yellowTopics || [];
+
+  // Built once, from the same helper retry uses, so both paths apply the same
+  // relationship, per-connection tone, notes and extra instructions.
+  const rephraseSettings = buildRephraseSettings({
+    connection,
+    receiver,
+    connPref: receiverConnPref,
+    topicSettings: receiverSettings,
+    boundaryCheck,
+  });
 
   // AI contextual topic analysis — catches indirect references that keyword
   // matching misses (e.g. "how much does it make" for money), and reads the
@@ -103,21 +115,17 @@ export async function POST(request) {
   // Run AI topic analysis and rephrasing in parallel to avoid double latency.
   const [aiTopicCheck, aiResult] = await Promise.all([
     analyzeTopics(contentRaw, nonGreenTopics).catch(() => ({ verdict: "skip", flaggedTopics: [] })),
-    rephraseMessage(contentRaw, {
-      tonePreference: receiverConnPref?.tonePreference || receiver?.tonePreference,
-      tonePrompt: receiverConnPref?.tonePrompt,
-      relationshipType: connection.relationshipType,
-      yellowTopics,
-      topicNotes,
-      locale: receiver?.locale,
-    }),
+    rephraseMessage(contentRaw, rephraseSettings),
   ]);
 
   // AI caught a red topic that keywords missed — hold the message.
+  // "level" here is the receiver's STORED level; analyzeTopics no longer
+  // trusts the model's own severity field, so this can't be downgraded by
+  // the model saying "yellow".
   if (aiTopicCheck.verdict === "blocked") {
     const aiRedTopics = aiTopicCheck.flaggedTopics
       .filter((f) => f.level === "red")
-      .map((f) => f.topic);
+      .map((f) => f.key);
 
     const held = await prisma.message.create({
       data: {
@@ -136,6 +144,7 @@ export async function POST(request) {
       topics: aiRedTopics,
       aiReasons: aiTopicCheck.flaggedTopics.map((f) => f.reason),
       draftId: held.id,
+      crisis,
     });
   }
 
@@ -159,6 +168,7 @@ export async function POST(request) {
       heldReason: "red_topic",
       topics: boundaryCheck.redTopicsWithNote || [],
       draftId: held.id,
+      crisis,
     });
   }
 
@@ -187,6 +197,7 @@ export async function POST(request) {
       heldReason,
       draftId: draft.id,
       error: aiResult.error,
+      crisis,
     });
   }
 
@@ -216,5 +227,10 @@ export async function POST(request) {
     needsSoftening: boundaryCheck.needsSoftening,
     yellowTopics,
     topicVerdict,
+    crisis,
+    // What shaped this rewrite, so the preview can name it. Choosing a
+    // relationship and a tone and then seeing an unlabelled result is
+    // indistinguishable from the settings being ignored.
+    applied: appliedSummary(rephraseSettings),
   });
 }

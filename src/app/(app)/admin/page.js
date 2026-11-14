@@ -204,7 +204,7 @@ export default function AdminPage() {
     );
   }
 
-  const { findings, metrics, logs, environment, generatedAt, viewer, userIssues, details, costs } = state.data;
+  const { findings, metrics, logs, environment, generatedAt, viewer, userIssues, details, costs, outcomes } = state.data;
   const unresolvedLogs = logs?.filter((l) => !l.resolved) || [];
   const resolvedLogs = logs?.filter((l) => l.resolved) || [];
 
@@ -277,6 +277,7 @@ export default function AdminPage() {
       <div>
         {activeTab === "overview" && (
           <OverviewTab metrics={metrics} findings={findings} userIssues={userIssues} details={details}
+            outcomes={outcomes} costs={costs}
             highFindings={highFindings} medFindings={medFindings} lowFindings={lowFindings} />
         )}
         {activeTab === "ai" && <AICallsTab details={details} metrics={metrics} costs={costs} />}
@@ -295,45 +296,43 @@ export default function AdminPage() {
 
 // ─── Overview Tab ───────────────────────────────────────────────────────────
 
-function OverviewTab({ metrics, userIssues, details, highFindings, medFindings, lowFindings }) {
+function OverviewTab({
+  metrics,
+  userIssues,
+  details,
+  outcomes,
+  costs,
+  highFindings,
+  medFindings,
+  lowFindings,
+}) {
   if (!metrics) return <p className="text-xs sm:text-sm text-slate-500">Metrics unavailable.</p>;
-
-  const userDetail = details?.users?.map((u) => ({
-    primary: u.name, secondary: new Date(u.joined).toLocaleDateString(),
-    badge: u.mood, badgeStyle: "bg-emerald-50 text-emerald-600",
-  })) || [];
-
-  const connDetail = details?.connections?.map((c) => ({
-    primary: `${c.personA} ↔ ${c.personB}`, secondary: new Date(c.since).toLocaleDateString(),
-  })) || [];
-
-  const heldDetail = details?.heldMessages?.map((m) => ({
-    primary: m.preview, secondary: m.sender,
-    badge: m.heldReason || "held", badgeStyle: "bg-red-50 text-red-600",
-  })) || [];
-
-  const draftDetail = details?.draftMessages?.map((m) => ({
-    primary: m.preview, secondary: m.sender,
-    badge: m.heldReason || "draft", badgeStyle: "bg-amber-50 text-amber-600",
-  })) || [];
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
-        <StatCard label="Users" value={metrics.users} detail={userDetail} />
-        <StatCard label="Connections" value={metrics.connections} detail={connDetail} />
-        <StatCard label="Sent" value={metrics.messagesSent} />
-        <StatCard label="Last 24h" value={metrics.messagesLast24h} />
-        <StatCard label="Held" value={metrics.messagesHeld} hint="red topic" detail={heldDetail} />
-        <StatCard label="Drafts" value={metrics.messagesDraft} hint="unsent" detail={draftDetail} />
-        <StatCard label="AI Tokens" value={metrics.aiTokensTotal?.toLocaleString()} hint="all time" />
-        <StatCard label="Providers" value={metrics.aiProviders.length}
-          hint={metrics.aiProviders.map((p) => p.name).join(" → ") || "none"}
-          detail={metrics.aiProviders.map((p) => ({ primary: p.name, badge: p.model, badgeStyle: "bg-emerald-50 text-emerald-600" }))}
-        />
+      <OutcomeHeroRow metrics={metrics} outcomes={outcomes} costs={costs} />
+
+      {outcomes?.messagesPerDay && outcomes.messagesPerDay.length > 0 && (
+        <MessagesPerDayCard rows={outcomes.messagesPerDay} />
+      )}
+
+      <div className="mt-4 sm:mt-6 grid gap-3 sm:gap-4 sm:grid-cols-2">
+        {outcomes?.composeHealth && <ComposeHealthCard health={outcomes.composeHealth} />}
+        {outcomes?.connectionHealth && <ConnectionHealthCard health={outcomes.connectionHealth} activity={outcomes.activity} />}
       </div>
 
-      {/* Severity lanes for findings */}
+      <div className="mt-4 sm:mt-6 grid gap-3 sm:gap-4 sm:grid-cols-2">
+        {outcomes?.modelBreakdown && <ModelBreakdownCard rows={outcomes.modelBreakdown} />}
+        {outcomes?.topBoundaries && <TopBoundariesCard rows={outcomes.topBoundaries} />}
+      </div>
+
+      {outcomes?.growth && (
+        <GrowthCard growth={outcomes.growth} activity={outcomes.activity} />
+      )}
+
+      {/* Severity lanes for findings still live on the overview — they're
+          the signal that something NEEDS a response, next to the dashboard
+          that shows whether the product is doing its job. */}
       {(highFindings.length > 0 || medFindings.length > 0 || lowFindings.length > 0) && (
         <section className="mt-6 space-y-3">
           <h2 className="text-base font-semibold text-slate-900">Findings</h2>
@@ -387,6 +386,261 @@ function OverviewTab({ metrics, userIssues, details, highFindings, medFindings, 
     </>
   );
 }
+
+// ─── Overview panels ────────────────────────────────────────────────────────
+
+const pct = (n) => (n === null || n === undefined ? "—" : `${Math.round(n * 100)}%`);
+const num = (n) => (n === null || n === undefined ? "—" : n.toLocaleString());
+
+/**
+ * Four big product numbers at the top of the overview. Chosen for what a
+ * product owner would read first on a Monday morning: who is using it,
+ * whether it is working for them, and what it costs to keep running.
+ */
+function OutcomeHeroRow({ metrics, outcomes, costs }) {
+  const act = outcomes?.activity;
+  const compose = outcomes?.composeHealth;
+  const last30 = costs?.last30d;
+  const costPerUser =
+    last30 && act?.mau > 0 ? last30.totalUsd / act.mau : null;
+
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
+      <HeroStat
+        label="Weekly active"
+        value={num(act?.wau ?? null)}
+        hint={act?.mau ? `${pct((act?.wau ?? 0) / Math.max(1, act.mau))} of 30d actives` : null}
+      />
+      <HeroStat
+        label="Send-through"
+        value={pct(compose?.sendThroughRate)}
+        hint={compose ? `${num(compose.composed)} composed · ${num(compose.sent)} sent (7d)` : null}
+        tone={compose && compose.sendThroughRate !== null && compose.sendThroughRate < 0.7 ? "amber" : "default"}
+      />
+      <HeroStat
+        label="AI approval"
+        value={pct(compose?.approvalRate)}
+        hint={compose ? `${pct(compose.rawSendRate)} sent raw` : null}
+        tone={compose && compose.approvalRate !== null && compose.approvalRate < 0.8 ? "amber" : "default"}
+      />
+      <HeroStat
+        label="Monthly spend"
+        value={last30 ? `$${last30.totalUsd.toFixed(2)}` : "—"}
+        hint={costPerUser !== null ? `~$${costPerUser.toFixed(3)}/active user` : null}
+      />
+    </div>
+  );
+}
+
+function HeroStat({ label, value, hint, tone }) {
+  const toneClass =
+    tone === "amber"
+      ? "border-amber-200 bg-amber-50"
+      : tone === "red"
+        ? "border-red-200 bg-red-50"
+        : "border-slate-100 bg-white";
+  return (
+    <div className={`rounded-xl border ${toneClass} p-3 sm:p-4 shadow-sm`}>
+      <p className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="mt-0.5 sm:mt-1 text-xl sm:text-2xl font-semibold text-slate-900">{value}</p>
+      {hint && <p className="mt-0.5 text-[10px] sm:text-xs text-slate-500 truncate">{hint}</p>}
+    </div>
+  );
+}
+
+/**
+ * A stacked bar per day: sent (green), held (red), draft (amber).
+ *
+ * Rendered as plain CSS width percentages rather than a charting library.
+ * The point is "did yesterday look like the day before"; a precise axis
+ * would not help make that call faster, and a library would ship kilobytes
+ * to render ten columns.
+ */
+function MessagesPerDayCard({ rows }) {
+  const max = Math.max(1, ...rows.map((r) => r.sent + r.held + r.draft));
+  return (
+    <section className="mt-4 sm:mt-6 rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm">
+      <div className="flex items-baseline justify-between gap-2 mb-2 sm:mb-3">
+        <h3 className="text-sm font-semibold text-slate-900">Messages per day (14d)</h3>
+        <div className="flex gap-3 text-[10px] text-slate-500">
+          <LegendDot color="bg-emerald-500" label="sent" />
+          <LegendDot color="bg-red-400" label="held" />
+          <LegendDot color="bg-amber-400" label="draft" />
+        </div>
+      </div>
+      <div className="flex items-end gap-1 sm:gap-1.5 h-32 sm:h-40 overflow-x-auto">
+        {rows.map((r) => {
+          const total = r.sent + r.held + r.draft;
+          const height = total === 0 ? 0 : (total / max) * 100;
+          return (
+            <div
+              key={r.day}
+              className="flex-1 min-w-[22px] flex flex-col items-center gap-1 group"
+              title={`${r.day}: ${r.sent} sent, ${r.held} held, ${r.draft} draft`}
+            >
+              <div className="w-full flex-1 flex flex-col-reverse justify-end relative" style={{ height: `${height}%`, minHeight: total > 0 ? 4 : 0 }}>
+                {r.sent > 0 && <div className="bg-emerald-500" style={{ flexBasis: `${(r.sent / total) * 100}%` }} />}
+                {r.held > 0 && <div className="bg-red-400" style={{ flexBasis: `${(r.held / total) * 100}%` }} />}
+                {r.draft > 0 && <div className="bg-amber-400" style={{ flexBasis: `${(r.draft / total) * 100}%` }} />}
+              </div>
+              <span className="text-[9px] sm:text-[10px] text-slate-400 whitespace-nowrap">
+                {r.day.slice(5)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function LegendDot({ color, label }) {
+  return (
+    <span className="flex items-center gap-1">
+      <span className={`inline-block w-2 h-2 rounded-full ${color}`} />
+      <span>{label}</span>
+    </span>
+  );
+}
+
+function ComposeHealthCard({ health }) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm">
+      <p className="text-xs font-medium text-slate-700 mb-2">AI compose health (7d)</p>
+      <Row label="Composed" value={num(health.composed)} />
+      <Row label="Sent" value={num(health.sent)} />
+      <Row label="Held by boundary" value={num(health.held)} />
+      <Row label="Draft (awaiting sender)" value={num(health.draftWaiting)} />
+      <Row label="Approval rate" value={pct(health.approvalRate)} emphasize />
+      <Row label="Raw-send rate" value={pct(health.rawSendRate)} />
+    </div>
+  );
+}
+
+function ConnectionHealthCard({ health, activity }) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm">
+      <p className="text-xs font-medium text-slate-700 mb-2">Connection activity (7d)</p>
+      <Row label="Active pairs" value={num(health.activeConnections)} />
+      <Row label="Of total" value={activity ? `${num(health.activeConnections)} / ${num(activity.activeConnections)}` : "—"} />
+      <Row label="Median messages / pair" value={num(health.medianMessages)} emphasize />
+      <Row label="Top-10% pair sent" value={num(health.topTenth)} />
+      <Row label="Stickiness (DAU/MAU)" value={pct(activity?.stickiness)} />
+    </div>
+  );
+}
+
+function ModelBreakdownCard({ rows }) {
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm">
+        <p className="text-xs font-medium text-slate-700">AI models (7d)</p>
+        <p className="mt-2 text-xs text-slate-500">No AI calls in the window.</p>
+      </div>
+    );
+  }
+  const total = rows.reduce((n, r) => n + r.total, 0);
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm">
+      <p className="text-xs font-medium text-slate-700 mb-2">AI models (7d)</p>
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-slate-400 text-[10px] uppercase">
+            <th className="text-left font-medium pb-1">Model</th>
+            <th className="text-right font-medium pb-1">Share</th>
+            <th className="text-right font-medium pb-1">Sent</th>
+            <th className="text-right font-medium pb-1">Held</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.model} className="border-t border-slate-50">
+              <td className="py-1 text-slate-700 truncate max-w-[12rem]">{r.model}</td>
+              <td className="py-1 text-right text-slate-500">{pct(r.total / total)}</td>
+              <td className="py-1 text-right text-emerald-600">{num(r.sent)}</td>
+              <td className="py-1 text-right text-red-500">{num(r.held)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TopBoundariesCard({ rows }) {
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm">
+        <p className="text-xs font-medium text-slate-700">Top boundaries</p>
+        <p className="mt-2 text-xs text-slate-500">No boundaries set by anyone yet.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm">
+      <p className="text-xs font-medium text-slate-700 mb-2">Top boundaries across users</p>
+      <div className="space-y-1">
+        {rows.slice(0, 8).map((r) => (
+          <div key={`${r.topic}-${r.level}`} className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 min-w-0 flex-1">
+              <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${r.level === "red" ? "bg-red-500" : "bg-amber-400"}`} />
+              <span className="text-slate-700 truncate">{r.topic}</span>
+            </span>
+            <span className="text-slate-500 shrink-0 font-medium">{r.count}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GrowthCard({ growth }) {
+  if ((growth.newUsers.length + growth.newConnections.length) === 0) return null;
+  const weeks = [...new Set([
+    ...growth.newUsers.map((r) => r.week),
+    ...growth.newConnections.map((r) => r.week),
+  ])].sort();
+  const userMap = Object.fromEntries(growth.newUsers.map((r) => [r.week, r.count]));
+  const connMap = Object.fromEntries(growth.newConnections.map((r) => [r.week, r.count]));
+  const max = Math.max(1, ...weeks.map((w) => (userMap[w] || 0) + (connMap[w] || 0)));
+
+  return (
+    <section className="mt-4 sm:mt-6 rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm">
+      <div className="flex items-baseline justify-between gap-2 mb-2 sm:mb-3">
+        <h3 className="text-sm font-semibold text-slate-900">Growth (last 4 weeks)</h3>
+        <div className="flex gap-3 text-[10px] text-slate-500">
+          <LegendDot color="bg-emerald-500" label="new users" />
+          <LegendDot color="bg-blue-400" label="new connections" />
+        </div>
+      </div>
+      <div className="flex items-end gap-3 h-28">
+        {weeks.map((w) => {
+          const u = userMap[w] || 0;
+          const c = connMap[w] || 0;
+          return (
+            <div key={w} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+              <div className="w-full flex items-end justify-center gap-0.5 flex-1">
+                <div className="w-3 sm:w-5 bg-emerald-500 rounded-t" style={{ height: `${(u / max) * 100}%`, minHeight: u > 0 ? 3 : 0 }} title={`${u} new users`} />
+                <div className="w-3 sm:w-5 bg-blue-400 rounded-t" style={{ height: `${(c / max) * 100}%`, minHeight: c > 0 ? 3 : 0 }} title={`${c} new connections`} />
+              </div>
+              <span className="text-[10px] text-slate-400 whitespace-nowrap">{w.slice(5)}</span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function Row({ label, value, emphasize = false }) {
+  return (
+    <div className="flex justify-between text-xs py-1 border-b border-slate-50 last:border-0">
+      <span className="text-slate-500">{label}</span>
+      <span className={emphasize ? "font-semibold text-slate-900" : "text-slate-700"}>{value}</span>
+    </div>
+  );
+}
+
 
 function FindingCard({ finding: f }) {
   const [expanded, setExpanded] = useState(false);
@@ -695,44 +949,90 @@ function LogsTab({ logs, unresolvedCount, resolvedCount, showResolved, setShowRe
 // ─── Data Lens Tab ──────────────────────────────────────────────────────────
 
 function DataLensTab() {
-  const [catalog, setCatalog] = useState([]);
+  const [catalog, setCatalog] = useState(null);
+  // Which mode the operator is using: "ask" (AI writes a query), "peek"
+  // (table sample), "sql" (hand-written). Kept as one state because each
+  // produces the same kind of result — a SQL string and a row table —
+  // and the mode picker is a tab, not a navigation.
+  const [mode, setMode] = useState("ask");
+
+  // Shared across modes: the generated/typed SQL, the result, a loading
+  // flag. Reset on mode change so a stale table from Ask does not sit
+  // under a Peek header.
+  const [generatedSql, setGeneratedSql] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [loadingCatalog, setLoadingCatalog] = useState(true);
-  // Held while a query runs so the statement is on screen before its rows.
-  const [pending, setPending] = useState(null);
+  const [explanation, setExplanation] = useState(null);
+
+  // Ask mode: question + agent (provider name).
+  const [question, setQuestion] = useState("");
+  const [agent, setAgent] = useState(null);
+
+  // Peek mode: which table the operator is looking at.
+  const [peekTable, setPeekTable] = useState(null);
+
+  // SQL mode: an editable textarea seeded from the last generated SQL,
+  // so the operator can inspect the AI's query and tweak it.
+  const [sqlDraft, setSqlDraft] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/admin/data-lens");
-        if (!cancelled && res.ok) {
-          const data = await res.json();
-          setCatalog(data.queries || []);
-        }
-      } catch { /* ignore */ }
-      if (!cancelled) setLoadingCatalog(false);
+        const res = await fetch("/api/admin/query");
+        if (cancelled || !res.ok) return;
+        const data = await res.json();
+        setCatalog(data);
+        const firstAgent = data.agents?.[0]?.name || null;
+        setAgent(firstAgent);
+      } catch { /* leave null; the error renders below */ }
     })();
     return () => { cancelled = true; };
   }, []);
 
-  async function runQuery(key) {
+  function changeMode(next) {
+    setMode(next);
+    setResult(null);
+    setGeneratedSql("");
+    setExplanation(null);
+  }
+
+  async function post(body) {
     setLoading(true);
     setResult(null);
-    setPending(catalog.find((q) => q.key === key) || null);
     try {
-      const res = await fetch("/api/admin/data-lens", {
+      const res = await fetch("/api/admin/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: key }),
+        body: JSON.stringify(body),
       });
-      if (res.ok) setResult(await res.json());
-      else setResult({ error: `Query failed (${res.status})` });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setResult({ ok: false, reason: data.reason || `Request failed (${res.status})`, ...data });
+      } else {
+        setResult(data);
+      }
+      if (data.generatedSql) setGeneratedSql(data.generatedSql);
+      if (data.explanation !== undefined) setExplanation(data.explanation);
     } catch {
-      setResult({ error: "Network error" });
+      setResult({ ok: false, reason: "Network error" });
     }
     setLoading(false);
+  }
+
+  async function runAsk() {
+    if (!question.trim() || !agent) return;
+    await post({ ask: question.trim(), agent });
+  }
+
+  async function runPeek(table) {
+    setPeekTable(table);
+    await post({ peek: table });
+  }
+
+  async function runSql() {
+    if (!sqlDraft.trim()) return;
+    await post({ sql: sqlDraft.trim() });
   }
 
   return (
@@ -740,98 +1040,292 @@ function DataLensTab() {
       <div className="rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm mb-4 sm:mb-6">
         <h3 className="text-sm sm:text-base font-semibold text-slate-900">Data Lens</h3>
         <p className="mt-1 text-xs sm:text-sm text-slate-500">
-          Read-only queries against the database. Picking one shows the exact statement it runs.
+          Read-only queries. Sensitive columns (message bodies, free-text status, auth secrets) are never returned.
         </p>
       </div>
 
-      {/* The statement that produced what is below. A result table with no
-          query next to it cannot be reasoned about: "recent messages" does not
-          say whether that is 24 hours or a week, or what the row cap drops. */}
-      <div className="mb-4 sm:mb-6 rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 sm:px-4 py-2">
-          <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Query that ran
-          </p>
-          {(result?.title || pending?.title) && (
-            <span className="shrink-0 text-[10px] sm:text-xs font-medium text-slate-500 truncate">
-              {result?.title || pending?.title}
-            </span>
-          )}
-        </div>
-        {(result?.question || pending?.question) && (
-          <p className="px-3 sm:px-4 pt-2 text-[11px] sm:text-xs text-slate-500">
-            {result?.question || pending?.question}
-          </p>
-        )}
-        <pre className="px-3 sm:px-4 py-2 sm:py-3 text-[10px] sm:text-xs font-mono leading-relaxed text-slate-700 whitespace-pre-wrap overflow-x-auto max-h-56 overflow-y-auto">
-{result?.source || pending?.source || "— pick a query on the left and its statement appears here —"}
-        </pre>
+      {/* Mode tabs */}
+      <div className="mb-4 flex gap-1 bg-slate-100 rounded-xl p-1">
+        {[
+          { key: "ask", label: "Ask", hint: "AI writes a query" },
+          { key: "peek", label: "Peek", hint: "Sample a table" },
+          { key: "sql", label: "SQL", hint: "Write it yourself" },
+        ].map((m) => (
+          <button
+            key={m.key}
+            onClick={() => changeMode(m.key)}
+            className={`flex-1 rounded-lg px-3 py-2 text-xs sm:text-sm transition-colors ${
+              mode === m.key ? "bg-white shadow-sm font-medium text-slate-900" : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <span className="block">{m.label}</span>
+            <span className="block text-[10px] text-slate-400 font-normal">{m.hint}</span>
+          </button>
+        ))}
       </div>
 
-      {/* Stacked on mobile, side-by-side on md+ */}
-      <div className="space-y-4 md:grid md:gap-6 md:grid-cols-[280px_1fr] md:space-y-0">
-        {/* Query catalog — horizontal scroll on mobile, vertical on md+ */}
-        <div>
-          <p className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase mb-2">Queries</p>
-          <div className="flex gap-2 overflow-x-auto pb-2 md:flex-col md:overflow-x-visible md:pb-0">
-            {loadingCatalog && <p className="text-xs text-slate-400">Loading...</p>}
-            {catalog.map((q) => (
+      {mode === "ask" && (
+        <AskMode
+          catalog={catalog}
+          question={question}
+          setQuestion={setQuestion}
+          agent={agent}
+          setAgent={setAgent}
+          loading={loading}
+          onRun={runAsk}
+        />
+      )}
+
+      {mode === "peek" && (
+        <PeekMode
+          catalog={catalog}
+          onPeek={runPeek}
+          active={peekTable}
+          loading={loading}
+        />
+      )}
+
+      {mode === "sql" && (
+        <SqlMode
+          draft={sqlDraft}
+          setDraft={setSqlDraft}
+          seededFrom={generatedSql}
+          onRun={runSql}
+          loading={loading}
+        />
+      )}
+
+      {/* The query that actually ran — shown for ALL three modes because in
+          Ask mode you want to read what the AI wrote, in Peek you want to
+          see the exact columns selected, and in SQL you want to confirm
+          what was sent. */}
+      {(generatedSql || loading) && (
+        <div className="mt-4 sm:mt-6 rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 sm:px-4 py-2">
+            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-slate-400">
+              {mode === "ask" ? "AI-generated SQL" : mode === "peek" ? "Peek SQL" : "SQL that ran"}
+            </p>
+            {result?.durationMs !== undefined && (
+              <span className="text-[10px] text-slate-400 shrink-0">
+                {result.rowCount ?? result.rows?.length ?? 0} row(s) · {result.durationMs}ms
+              </span>
+            )}
+          </div>
+          {explanation && (
+            <p className="px-3 sm:px-4 pt-2 text-[11px] sm:text-xs text-slate-500 italic">
+              {explanation}
+            </p>
+          )}
+          <pre className="px-3 sm:px-4 py-2 sm:py-3 text-[10px] sm:text-xs font-mono leading-relaxed text-slate-700 whitespace-pre-wrap overflow-x-auto max-h-56 overflow-y-auto">
+{generatedSql || "— running —"}
+          </pre>
+          {mode === "ask" && generatedSql && (
+            <div className="px-3 sm:px-4 pb-2 sm:pb-3">
               <button
-                key={q.key}
-                onClick={() => runQuery(q.key)}
-                disabled={loading}
-                className={`shrink-0 text-left rounded-lg border px-3 py-2 sm:py-2.5 transition-colors md:shrink md:w-full ${
-                  result?.query === q.key
-                    ? "border-emerald-300 bg-emerald-50"
-                    : "border-slate-100 bg-white hover:bg-slate-50"
-                } disabled:opacity-50`}
+                onClick={() => { setSqlDraft(generatedSql); changeMode("sql"); setSqlDraft(generatedSql); }}
+                className="text-[11px] font-medium text-emerald-600 hover:underline"
               >
-                <p className="text-xs sm:text-sm font-medium text-slate-900 whitespace-nowrap md:whitespace-normal">{q.title}</p>
-                <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 hidden md:block">{q.question}</p>
+                Edit in SQL mode →
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <ResultPane result={result} loading={loading} />
+    </>
+  );
+}
+
+function AskMode({ catalog, question, setQuestion, agent, setAgent, loading, onRun }) {
+  const agents = catalog?.agents || [];
+  const samples = catalog?.sampleQuestions || [];
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm space-y-3">
+      <div>
+        <p className="text-xs font-medium text-slate-700">Agent</p>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {agents.length === 0 && (
+            <p className="text-[11px] text-amber-700">No provider configured — add an API key.</p>
+          )}
+          {agents.map((a) => (
+            <button
+              key={a.name}
+              onClick={() => setAgent(a.name)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                agent === a.name
+                  ? "bg-emerald-600 text-white border-emerald-600"
+                  : "bg-white text-slate-600 border-gray-200"
+              }`}
+            >
+              {a.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-slate-700 mb-1">Your question</label>
+        <textarea
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="e.g. How many messages were held each day over the last two weeks?"
+          rows={2}
+          maxLength={500}
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+        <div className="mt-2 flex items-center gap-3">
+          <button
+            onClick={onRun}
+            disabled={loading || !question.trim() || !agent}
+            className="bg-emerald-600 text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-2 rounded-lg disabled:opacity-50 hover:bg-emerald-700"
+          >
+            {loading ? "Thinking…" : "Generate & run"}
+          </button>
+          <p className="text-[10px] text-slate-400">
+            The AI writes the SQL; a human-reviewed allow-list runs it read-only.
+          </p>
+        </div>
+      </div>
+
+      {samples.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase text-slate-400 mb-1.5">Sample questions</p>
+          <div className="space-y-0.5">
+            {samples.map((s) => (
+              <button
+                key={s}
+                onClick={() => setQuestion(s)}
+                className="block w-full text-left text-[11px] text-emerald-700 hover:underline"
+              >
+                {s}
               </button>
             ))}
           </div>
         </div>
-
-        {/* Results area */}
-        <div>
-          {loading && (
-            <div className="flex justify-center py-8 sm:py-12">
-              <div className="h-6 w-6 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
-            </div>
-          )}
-          {result?.error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-3 sm:p-4 text-xs sm:text-sm text-red-700">
-              {result.error}
-            </div>
-          )}
-          {result?.rows && !loading && (
-            <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-              <div className="px-3 sm:px-4 py-2.5 border-b border-slate-100 flex items-center justify-between gap-2">
-                <p className="text-xs sm:text-sm font-semibold text-slate-900 truncate">{result.title}</p>
-                <span className="text-[10px] sm:text-xs text-slate-400 shrink-0">
-                  {result.count} row{result.count !== 1 ? "s" : ""} · {result.durationMs}ms
-                </span>
-              </div>
-              <div className="overflow-x-auto max-h-[400px] sm:max-h-[500px] overflow-y-auto">
-                {result.rows.length === 0 ? (
-                  <p className="px-3 sm:px-4 py-6 sm:py-8 text-xs sm:text-sm text-slate-500 text-center">No rows returned.</p>
-                ) : (
-                  <DataTable rows={result.rows} />
-                )}
-              </div>
-            </div>
-          )}
-          {!result && !loading && (
-            <div className="flex items-center justify-center py-8 sm:py-16 text-xs sm:text-sm text-slate-400">
-              Select a query to run
-            </div>
-          )}
-        </div>
-      </div>
-    </>
+      )}
+    </div>
   );
 }
+
+function PeekMode({ catalog, onPeek, active, loading }) {
+  const tables = catalog?.tables || [];
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm">
+      <p className="text-xs font-medium text-slate-700 mb-2">Pick a table — latest 10 rows, safe columns only</p>
+      <div className="flex flex-wrap gap-1.5">
+        {tables.map((t) => (
+          <button
+            key={t.name}
+            onClick={() => onPeek(t.name)}
+            disabled={loading}
+            title={
+              t.sensitiveColumns.length > 0
+                ? `Hidden: ${t.sensitiveColumns.join(", ")}`
+                : "No sensitive columns on this table"
+            }
+            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+              active === t.name
+                ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                : "border-gray-200 bg-white text-slate-600 hover:bg-slate-50"
+            } disabled:opacity-50`}
+          >
+            {t.name}
+            {t.sensitiveColumns.length > 0 && (
+              <span className="ml-1 text-[10px] text-slate-400">
+                ({t.sensitiveColumns.length} hidden)
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SqlMode({ draft, setDraft, seededFrom, onRun, loading }) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-3 sm:p-4 shadow-sm space-y-2">
+      <label className="block text-xs font-medium text-slate-700">
+        SELECT statement (read-only, one statement, 100-row cap)
+      </label>
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder={`SELECT "aiModel", count(*) FROM "Message" WHERE "createdAt" > now() - interval '7 days' GROUP BY "aiModel";`}
+        rows={6}
+        maxLength={4000}
+        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-[11px] sm:text-xs font-mono resize-y focus:outline-none focus:ring-2 focus:ring-emerald-500"
+      />
+      {seededFrom && draft === seededFrom && (
+        <p className="text-[10px] text-slate-400">Seeded from the AI&rsquo;s last query.</p>
+      )}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onRun}
+          disabled={loading || !draft.trim()}
+          className="bg-emerald-600 text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-2 rounded-lg disabled:opacity-50 hover:bg-emerald-700"
+        >
+          {loading ? "Running…" : "Run"}
+        </button>
+        <p className="text-[10px] text-slate-400">
+          Rejected if it references a sensitive column, mutates, or exceeds the parser.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ResultPane({ result, loading }) {
+  if (loading) {
+    return (
+      <div className="flex justify-center py-8 sm:py-12">
+        <div className="h-6 w-6 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
+      </div>
+    );
+  }
+  if (!result) return null;
+
+  if (result.ok === false || result.reason) {
+    return (
+      <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 sm:p-4 text-xs sm:text-sm text-red-700 space-y-1">
+        <p className="font-medium">Query rejected</p>
+        <p>{result.reason}</p>
+        {result.raw && (
+          <pre className="mt-2 p-2 bg-red-100/50 rounded text-[10px] font-mono whitespace-pre-wrap">
+            {result.raw}
+          </pre>
+        )}
+      </div>
+    );
+  }
+
+  if (!result.rows) return null;
+
+  return (
+    <div className="mt-4 rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+      <div className="px-3 sm:px-4 py-2.5 border-b border-slate-100 flex items-center justify-between gap-2">
+        <p className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
+          {result.table ? `Peek · ${result.table}` : "Results"}
+        </p>
+        <span className="text-[10px] sm:text-xs text-slate-400 shrink-0">
+          {result.rows.length} row{result.rows.length !== 1 ? "s" : ""}
+          {result.truncated ? " (capped)" : ""}
+        </span>
+      </div>
+      <div className="overflow-x-auto max-h-[400px] sm:max-h-[500px] overflow-y-auto">
+        {result.rows.length === 0 ? (
+          <p className="px-3 sm:px-4 py-6 sm:py-8 text-xs sm:text-sm text-slate-500 text-center">No rows returned.</p>
+        ) : (
+          <DataTable rows={result.rows} />
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 // Derived explanation columns carry sentences. Truncating them to the same
 // width as an id is what made the reason unreadable in the first place.
@@ -915,6 +1409,10 @@ function RootCauseTab() {
   // null = the failover chain. A named agent is asked alone, so a provider
   // that is misbehaving cannot be masked by the next one answering for it.
   const [agent, setAgent] = useState(null);
+  // Also optional. Null = use that agent's default model; naming a model
+  // asks the pinned agent to answer with that exact model, so the operator
+  // can compare Opus against Haiku on the same prompt.
+  const [modelId, setModelId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -945,7 +1443,7 @@ function RootCauseTab() {
       const res = await fetch("/api/admin/root-cause", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: text, agent }),
+        body: JSON.stringify({ question: text, agent, model: modelId }),
       });
       if (res.ok) setResult(await res.json());
       else {
@@ -975,7 +1473,7 @@ function RootCauseTab() {
         <p className="text-xs sm:text-sm font-medium text-slate-700 mb-2">Agent</p>
         <div className="flex flex-wrap gap-1.5">
           <button
-            onClick={() => setAgent(null)}
+            onClick={() => { setAgent(null); setModelId(null); }}
             className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
               agent === null
                 ? "bg-emerald-600 text-white border-emerald-600"
@@ -987,7 +1485,7 @@ function RootCauseTab() {
           {agents.map((a) => (
             <button
               key={a.name}
-              onClick={() => setAgent(a.name)}
+              onClick={() => { setAgent(a.name); setModelId(null); }}
               title={a.model}
               className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 agent === a.name
@@ -1010,6 +1508,51 @@ function RootCauseTab() {
             No provider is configured — add an API key before asking.
           </p>
         )}
+        {agent && (() => {
+          const current = agents.find((a) => a.name === agent);
+          const models = current?.models || [];
+          if (models.length === 0) return null;
+          return (
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              <p className="text-[11px] font-medium text-slate-700 mb-1.5">Model</p>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  onClick={() => setModelId(null)}
+                  className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+                    modelId === null
+                      ? "bg-slate-800 text-white border-slate-800"
+                      : "bg-white text-slate-600 border-gray-200"
+                  }`}
+                  title={`Default: ${current.model}`}
+                >
+                  Default ({current.model.split("-").slice(-2).join(" ")})
+                </button>
+                {models.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setModelId(m.id)}
+                    title={m.notes || m.id}
+                    className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+                      modelId === m.id
+                        ? "bg-slate-800 text-white border-slate-800"
+                        : "bg-white text-slate-600 border-gray-200"
+                    }`}
+                  >
+                    {m.label}
+                    <span className="ml-1 text-[9px] opacity-60">
+                      {m.tier === "deep" ? "deep" : m.tier === "fast" ? "fast" : ""}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              {modelId && (
+                <p className="mt-1.5 text-[10px] text-slate-400">
+                  {models.find((m) => m.id === modelId)?.notes}
+                </p>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Question input */}

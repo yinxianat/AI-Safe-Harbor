@@ -5,18 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useT } from "@/lib/i18n/context.js";
 import Avatar from "@/components/Avatar.js";
-
-const REL_KEY = {
-  spouse: "rel_partner",
-  partner: "rel_partner",
-  friend: "rel_friend",
-  sibling: "rel_sibling",
-  parent: "rel_parent",
-  child: "rel_child",
-  coworker: "rel_coworker",
-  roommate: "rel_roommate",
-  other: "rel_other",
-};
+import { relationshipLabelKey } from "@/lib/relationships.js";
 
 /**
  * Desktop-only sidebar listing all connections. Appears alongside the
@@ -72,7 +61,7 @@ export default function ChatSidebar({ activeConnectionId }) {
                   {c.partnerName}
                 </p>
                 <p className="text-xs text-slate-400 truncate">
-                  {c.relationshipType ? t(REL_KEY[c.relationshipType] || "rel_connection_generic") : t("rel_connection_generic")}
+                  {c.relationshipType ? t(relationshipLabelKey(c.relationshipType)) : t("rel_connection_generic")}
                 </p>
               </div>
             </Link>

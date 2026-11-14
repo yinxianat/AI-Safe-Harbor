@@ -7,6 +7,7 @@
 import { getSessionUser } from "@/lib/auth.js";
 import { findAccessibleConnection, getPartnerId } from "@/lib/connections.js";
 import prisma from "@/lib/db.js";
+import { shieldTexts } from "@/lib/ai/apply-shield.js";
 
 const PERSON = { select: { id: true, displayName: true, username: true, email: true, avatarUrl: true } };
 
@@ -62,21 +63,38 @@ export async function GET(request) {
 
   messages.reverse();
 
-  const formatted = messages
-    .filter((m) => m.contentRephrased)
-    .map((m) => {
-      const isMine = m.senderId === user.id;
-      return {
-        id: m.id,
-        direction: isMine ? "sent" : "received",
-        content: m.contentRephrased,
-        // Only the sender may see their own original wording.
-        contentRaw: isMine ? m.contentRaw : null,
-        sentAt: m.sentAt?.toISOString(),
-        reaction: m.reaction || null,
-        readAt: m.readAt?.toISOString() || null,
-      };
-    });
+  const kept = messages.filter((m) => m.contentRephrased);
+
+  // Shield only the UNREAD received messages. Already-read messages have
+  // already been seen in their original form, so softening them on a
+  // re-read would misrepresent what the reader saw before. Unread ones are
+  // what the reader is about to see — the shield's actual job.
+  const shieldableIndexes = kept
+    .map((m, i) => ({ m, i }))
+    .filter(({ m }) => m.senderId !== user.id && !m.readAt);
+  const shielded = await shieldTexts(
+    user,
+    shieldableIndexes.map(({ m }) => m.contentRephrased)
+  );
+  const shieldByIndex = new Map(
+    shieldableIndexes.map(({ i }, k) => [i, shielded[k]])
+  );
+
+  const formatted = kept.map((m, i) => {
+    const isMine = m.senderId === user.id;
+    const s = shieldByIndex.get(i);
+    return {
+      id: m.id,
+      direction: isMine ? "sent" : "received",
+      content: s ? s.text : m.contentRephrased,
+      softened: s ? s.softened : false,
+      // Only the sender may see their own original wording.
+      contentRaw: isMine ? m.contentRaw : null,
+      sentAt: m.sentAt?.toISOString(),
+      reaction: m.reaction || null,
+      readAt: m.readAt?.toISOString() || null,
+    };
+  });
 
   // Mark received messages as read while we have them.
   const unreadIds = messages

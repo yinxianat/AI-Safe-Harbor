@@ -7,6 +7,9 @@ import { getReaction } from "@/lib/reactions.js";
 import { useT } from "@/lib/i18n/context.js";
 import Avatar from "@/components/Avatar.js";
 import VoiceInput from "@/components/VoiceInput.js";
+import CrisisCard from "@/components/CrisisCard.js";
+import { relationshipLabelKey } from "@/lib/relationships.js";
+import { toneLabelKey } from "@/lib/tones.js";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -233,6 +236,7 @@ function ComposeBar({ connectionId, onMessageSent }) {
           reason: data.heldReason,
           topics: data.topics,
           aiReasons: data.aiReasons,
+          crisis: data.crisis,
         });
       } else {
         setTuneResult({
@@ -241,6 +245,8 @@ function ComposeBar({ connectionId, onMessageSent }) {
           raw: text,
           rephrased: data.rephrased,
           topicVerdict: data.topicVerdict,
+          applied: data.applied,
+          crisis: data.crisis,
         });
       }
     } catch {
@@ -280,6 +286,7 @@ function ComposeBar({ connectionId, onMessageSent }) {
   if (tuneResult?.type === "held") {
     return (
       <div className="border-t border-gray-200 bg-white px-4 py-3 space-y-2">
+        {tuneResult.crisis && <CrisisCard />}
         <div className={`rounded-xl p-3 border text-sm ${
           tuneResult.reason === "red_topic"
             ? "bg-red-50 border-red-200 text-red-700"
@@ -321,6 +328,7 @@ function ComposeBar({ connectionId, onMessageSent }) {
   if (tuneResult?.type === "ready") {
     return (
       <div className="border-t border-gray-200 bg-white px-4 py-3 space-y-2">
+        {tuneResult.crisis && <CrisisCard />}
         {tuneResult.topicVerdict?.status === "clear" && (
           <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
@@ -336,6 +344,43 @@ function ComposeBar({ connectionId, onMessageSent }) {
         <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
           <p className="text-xs font-medium text-emerald-400 uppercase mb-1">{t("chat_tuned_version")}</p>
           <p className="text-sm text-emerald-900">{tuneResult.rephrased}</p>
+          {/* Names the settings that produced this wording. Without it,
+              choosing a relationship and a tone and then seeing an unlabelled
+              rewrite is indistinguishable from the settings being ignored. */}
+          {tuneResult.applied && (
+            <div className="mt-2 pt-2 border-t border-emerald-100 flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] text-emerald-700/70">{t("chat_written_for")}</span>
+              <span className="text-[10px] font-medium text-emerald-800 bg-white/70 border border-emerald-200 rounded-full px-2 py-0.5">
+                {t(relationshipLabelKey(tuneResult.applied.relationshipType))}
+              </span>
+              <span className="text-[10px] font-medium text-emerald-800 bg-white/70 border border-emerald-200 rounded-full px-2 py-0.5">
+                {t(toneLabelKey(tuneResult.applied.tonePreference))}
+              </span>
+              {tuneResult.applied.gentleTopicCount > 0 && (
+                <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                  {t("chat_applied_gentle", { count: tuneResult.applied.gentleTopicCount })}
+                </span>
+              )}
+              {tuneResult.applied.hasExtraInstructions && (
+                <span className="text-[10px] text-emerald-700 bg-white/70 border border-emerald-200 rounded-full px-2 py-0.5">
+                  {t("chat_applied_extra")}
+                </span>
+              )}
+              {tuneResult.applied.softeningApplied && (
+                <span className="text-[10px] text-emerald-700 bg-white/70 border border-emerald-200 rounded-full px-2 py-0.5">
+                  {t("chat_applied_soften")}
+                </span>
+              )}
+              {tuneResult.applied.readerShield?.enabled && tuneResult.applied.readerShield.emotions.length > 0 && (
+                <span
+                  className="text-[10px] text-emerald-700 bg-white/70 border border-emerald-200 rounded-full px-2 py-0.5"
+                  title={tuneResult.applied.readerShield.emotions.map((e) => t(`emotion_${e}`)).join(", ")}
+                >
+                  {t("chat_applied_reader_shield", { count: tuneResult.applied.readerShield.emotions.length })}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         {error && <p className="text-xs text-red-600">{error}</p>}
         <div className="flex gap-2">

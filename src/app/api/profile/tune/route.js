@@ -4,7 +4,7 @@ import { checkRateLimit } from "@/lib/rate-limit.js";
 import { loadContactsWithBoundaries } from "@/lib/profile-contacts.js";
 import { reviewForAudience } from "@/lib/profile-audience.js";
 import { rephraseMessage } from "@/lib/ai/index.js";
-import { getTopicLabel } from "@/lib/topics.js";
+import { getTopicLabel, getTopicLabelKey } from "@/lib/topics.js";
 
 const MAX_TEXT = 2000;
 // One AI call per recipient, so a wide audience is also an expensive request.
@@ -58,7 +58,7 @@ export async function POST(request) {
       blockedEntirely: review.blockedEntirely,
       blocked: review.blocked.map((c) => ({
         ...c,
-        topics: c.redTopics.map((key) => ({ key, label: getTopicLabel(key) })),
+        topics: c.redTopics.map((key) => ({ key, label: getTopicLabel(key), labelKey: getTopicLabelKey(key) })),
       })),
     });
   }
@@ -118,7 +118,7 @@ export async function POST(request) {
     blockedEntirely: review.blockedEntirely,
     blocked: review.blocked.map((c) => ({
       ...c,
-      topics: c.redTopics.map((key) => ({ key, label: getTopicLabel(key) })),
+      topics: c.redTopics.map((key) => ({ key, label: getTopicLabel(key), labelKey: getTopicLabelKey(key) })),
     })),
   });
 }

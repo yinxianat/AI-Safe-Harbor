@@ -15,6 +15,9 @@ export async function GET(request) {
 
   let tonePreference = user.tonePreference;
   let tonePrompt = "";
+  // Per-connection only; the account-wide default stays off until the reader
+  // chooses it for a specific contact.
+  let softenEmotions = false;
 
   if (connectionId) {
     const connection = await findAccessibleConnection(user.id, connectionId);
@@ -28,12 +31,14 @@ export async function GET(request) {
     if (pref) {
       tonePreference = pref.tonePreference;
       tonePrompt = pref.tonePrompt || "";
+      softenEmotions = pref.softenEmotions;
     }
   }
 
   return Response.json({
     tonePreference,
     tonePrompt,
+    softenEmotions,
     validTones: VALID_TONES,
   });
 }
@@ -58,6 +63,13 @@ export async function PUT(request) {
     ? body.data.tonePrompt.replace(/[\r\n]+/g, " ").trim().slice(0, 200)
     : null;
 
+  // Only forwarded when the caller sent it. Omitting the field keeps the
+  // stored value — a tone edit should not quietly flip someone's softening
+  // choice back to the default.
+  const softenEmotions = typeof body.data.softenEmotions === "boolean"
+    ? body.data.softenEmotions
+    : null;
+
   if (connectionId) {
     const connection = await findAccessibleConnection(user.id, connectionId);
     if (!connection) {
@@ -66,11 +78,26 @@ export async function PUT(request) {
 
     const pref = await prisma.connectionPreference.upsert({
       where: { connectionId_userId: { connectionId, userId: user.id } },
-      update: { tonePreference, ...(tonePrompt !== null ? { tonePrompt: tonePrompt || null } : {}) },
-      create: { connectionId, userId: user.id, tonePreference, tonePrompt: tonePrompt || null },
+      update: {
+        tonePreference,
+        ...(tonePrompt !== null ? { tonePrompt: tonePrompt || null } : {}),
+        ...(softenEmotions !== null ? { softenEmotions } : {}),
+      },
+      create: {
+        connectionId,
+        userId: user.id,
+        tonePreference,
+        tonePrompt: tonePrompt || null,
+        softenEmotions: softenEmotions ?? false,
+      },
     });
 
-    return Response.json({ tonePreference: pref.tonePreference, tonePrompt: pref.tonePrompt || "", connectionId });
+    return Response.json({
+      tonePreference: pref.tonePreference,
+      tonePrompt: pref.tonePrompt || "",
+      softenEmotions: pref.softenEmotions,
+      connectionId,
+    });
   }
 
   const updated = await prisma.user.update({

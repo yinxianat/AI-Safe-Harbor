@@ -125,6 +125,7 @@ export async function GET(request) {
       avatarUrl: contact.avatarUrl || null,
       relationshipType: contact.relationshipType,
       tonePreference: contact.tonePreference,
+      shield: contact.shield || null,
       status: {
         shown: statusShown,
         text: statusShown ? user.statusText : null,

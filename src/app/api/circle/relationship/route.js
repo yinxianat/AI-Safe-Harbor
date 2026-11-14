@@ -1,18 +1,7 @@
 import { getSessionUser } from "@/lib/auth.js";
 import { parseJsonBody, badRequest, requireString } from "@/lib/http.js";
 import prisma from "@/lib/db.js";
-
-const VALID_RELATIONSHIPS = [
-  "spouse",
-  "partner",
-  "friend",
-  "sibling",
-  "parent",
-  "child",
-  "coworker",
-  "roommate",
-  "other",
-];
+import { RELATIONSHIP_KEYS, isValidRelationship } from "@/lib/relationships.js";
 
 export async function PUT(request) {
   const user = await getSessionUser(request);
@@ -29,7 +18,7 @@ export async function PUT(request) {
   const relationshipType = requireString(body.data.relationshipType, { maxLength: 24 });
 
   if (!connectionId) return badRequest("missing_connectionId");
-  if (!VALID_RELATIONSHIPS.includes(relationshipType)) return badRequest("invalid_relationship");
+  if (!isValidRelationship(relationshipType)) return badRequest("invalid_relationship");
 
   const updated = await prisma.connection.updateMany({
     where: {
@@ -46,5 +35,5 @@ export async function PUT(request) {
 }
 
 export function GET() {
-  return Response.json({ validRelationships: VALID_RELATIONSHIPS });
+  return Response.json({ validRelationships: RELATIONSHIP_KEYS });
 }

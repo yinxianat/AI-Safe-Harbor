@@ -7,6 +7,7 @@ import {
   isCorePresetKey,
   isValidTopicKey,
   getTopicLabel,
+  getTopicLabelKey,
   isCustomTopicKey,
   sanitizeCustomTopic,
   MAX_CUSTOM_TOPICS,
@@ -47,6 +48,7 @@ function formatRows(stored) {
     .map((s) => ({
       topicName: s.topicName,
       label: getTopicLabel(s.topicName),
+      labelKey: getTopicLabelKey(s.topicName),
       comfortLevel: s.comfortLevel,
       note: s.note || "",
       isCustom: false,
@@ -73,6 +75,7 @@ function suggestedPresetKeys(stored) {
   return TOPIC_KEYS.filter((k) => !seen.has(k)).map((key) => ({
     topicName: key,
     label: getTopicLabel(key),
+      labelKey: getTopicLabelKey(key),
     // Flag so the UI can emphasize the usual starting picks on empty state.
     isCore: isCorePresetKey(key),
   }));
@@ -191,6 +194,7 @@ export async function PUT(request) {
     id: setting.id,
     topicName: setting.topicName,
     label: setting.sanitizedLabel || getTopicLabel(setting.topicName),
+    labelKey: setting.sanitizedLabel ? null : getTopicLabelKey(setting.topicName),
     comfortLevel: setting.comfortLevel,
     note: setting.note || "",
     isCustom: setting.isCustom,

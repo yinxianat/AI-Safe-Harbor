@@ -3,12 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "@/lib/i18n/context.js";
 import { toneLabelKey } from "@/lib/tones.js";
-
-const REL_KEYS = {
-  spouse: "rel_spouse", partner: "rel_partner", friend: "rel_friend",
-  sibling: "rel_sibling", parent: "rel_parent", child: "rel_child",
-  coworker: "rel_coworker", roommate: "rel_roommate", other: "rel_other",
-};
+import { relationshipLabelKey } from "@/lib/relationships.js";
 
 const names = (list) => list.map((c) => c.name).join(", ");
 const labels = (topics) => topics.map((t) => t.label).join(", ");
@@ -138,7 +133,7 @@ function Reason({ reason }) {
     case "tone":
       return <li>{t("why_tone", { tone: t(toneLabelKey(reason.tone)) })}</li>;
     case "relationship":
-      return <li>{t("why_relationship", { relationship: t(REL_KEYS[reason.relationshipType] || "rel_other") })}</li>;
+      return <li>{t("why_relationship", { relationship: t(relationshipLabelKey(reason.relationshipType)) })}</li>;
     case "softened":
       return <li>{t("why_softened", { topics: reason.topics.join(", ") })}</li>;
     case "topic_note":

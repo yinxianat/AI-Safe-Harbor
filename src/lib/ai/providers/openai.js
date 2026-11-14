@@ -16,6 +16,13 @@ const openaiProvider = {
     return process.env.AI_MODEL_OPENAI || DEFAULT_MODEL;
   },
 
+  models() {
+    return [
+      { id: "gpt-4o", label: "GPT-4o", tier: "balanced", notes: "Default." },
+      { id: "gpt-4o-mini", label: "GPT-4o mini", tier: "fast", notes: "Fast and cheap." },
+    ];
+  },
+
   async complete({ system, userMessage, model, maxTokens }) {
     let response;
     try {

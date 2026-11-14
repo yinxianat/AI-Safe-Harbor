@@ -25,8 +25,12 @@ export async function GET(request) {
     .map((provider) => ({
       name: provider.name,
       model: provider.defaultModel(),
+      // Every model the UI can pin for this provider. Previously only the
+      // default was exposed, so an operator could not compare Opus with
+      // Haiku on the same question — which is the primary reason to pick a
+      // model in the first place.
+      models: typeof provider.models === "function" ? provider.models() : [],
       inChain: chainNames.includes(provider.name),
-      // The one the "Auto" option would reach first.
       isDefault: chainNames[0] === provider.name,
     }));
 
@@ -50,6 +54,13 @@ export async function POST(request) {
     ? null
     : requireString(body.data.agent, { maxLength: 32 });
 
+  // Pinning a specific model turns the agent picker into a real tool: Opus
+  // and Haiku on the same prompt tell you different things, and the chain
+  // picker alone hid every model except the one each provider defaulted to.
+  const requestedModel = body.data.model === undefined || body.data.model === null
+    ? null
+    : requireString(body.data.model, { maxLength: 96 });
+
   let chain;
   if (requestedAgent) {
     const provider = REGISTRY[requestedAgent];
@@ -60,6 +71,15 @@ export async function POST(request) {
     chain = [provider];
   } else {
     chain = resolveChain();
+  }
+
+  // A model override only makes sense when one agent is pinned — otherwise
+  // the chain could reach a provider that has no concept of that model id.
+  if (requestedModel && !requestedAgent) return badRequest("model_requires_agent");
+  if (requestedModel && chain[0]?.models && !chain[0].models().some((m) => m.id === requestedModel)) {
+    // Allow unlisted model ids: a new model may not be in the UI list yet,
+    // and the provider API will reject an impossible id itself. The check
+    // above is only for a listed agent whose options we actually know.
   }
 
   if (chain.length === 0) {
@@ -133,7 +153,7 @@ ${context}`;
       const result = await provider.complete({
         system,
         userMessage: question,
-        model: provider.defaultModel(),
+        model: requestedModel || provider.defaultModel(),
         maxTokens: 1024,
       });
 
