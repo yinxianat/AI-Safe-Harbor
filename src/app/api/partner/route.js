@@ -1,6 +1,6 @@
 import { getSessionUser } from "@/lib/auth.js";
 import prisma from "@/lib/db.js";
-import { TOPIC_KEYS, getTopicLabel, isCustomTopicKey } from "@/lib/topics.js";
+import { TOPIC_KEYS, getTopicLabel, getTopicLabelKey, isCustomTopicKey } from "@/lib/topics.js";
 import { canView, textForViewer } from "@/lib/profile-audience.js";
 import { shieldText, shieldTexts } from "@/lib/ai/apply-shield.js";
 import { toneLabelKey } from "@/lib/tones.js";
@@ -78,6 +78,7 @@ export async function GET(request) {
   const boundaries = TOPIC_KEYS.map((key) => ({
     topicName: key,
     label: getTopicLabel(key),
+    labelKey: getTopicLabelKey(key),
     comfortLevel: settingsByTopic[key]?.comfortLevel || "green",
     isCustom: false,
   }));

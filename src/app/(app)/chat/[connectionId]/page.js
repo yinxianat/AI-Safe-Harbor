@@ -7,6 +7,7 @@ import { getReaction } from "@/lib/reactions.js";
 import { useT } from "@/lib/i18n/context.js";
 import Avatar from "@/components/Avatar.js";
 import VoiceInput from "@/components/VoiceInput.js";
+import CrisisCard from "@/components/CrisisCard.js";
 import { relationshipLabelKey } from "@/lib/relationships.js";
 import { toneLabelKey } from "@/lib/tones.js";
 
@@ -235,6 +236,7 @@ function ComposeBar({ connectionId, onMessageSent }) {
           reason: data.heldReason,
           topics: data.topics,
           aiReasons: data.aiReasons,
+          crisis: data.crisis,
         });
       } else {
         setTuneResult({
@@ -244,6 +246,7 @@ function ComposeBar({ connectionId, onMessageSent }) {
           rephrased: data.rephrased,
           topicVerdict: data.topicVerdict,
           applied: data.applied,
+          crisis: data.crisis,
         });
       }
     } catch {
@@ -283,6 +286,7 @@ function ComposeBar({ connectionId, onMessageSent }) {
   if (tuneResult?.type === "held") {
     return (
       <div className="border-t border-gray-200 bg-white px-4 py-3 space-y-2">
+        {tuneResult.crisis && <CrisisCard />}
         <div className={`rounded-xl p-3 border text-sm ${
           tuneResult.reason === "red_topic"
             ? "bg-red-50 border-red-200 text-red-700"
@@ -324,6 +328,7 @@ function ComposeBar({ connectionId, onMessageSent }) {
   if (tuneResult?.type === "ready") {
     return (
       <div className="border-t border-gray-200 bg-white px-4 py-3 space-y-2">
+        {tuneResult.crisis && <CrisisCard />}
         {tuneResult.topicVerdict?.status === "clear" && (
           <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />

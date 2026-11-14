@@ -281,7 +281,7 @@ function PersonCard({ person, onDisconnect, onNicknameChange, startOpen = false,
                       <p className="text-xs font-semibold text-red-600 uppercase mb-1.5">{t("circle_boundaries_avoids")}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {boundaries.filter((b) => b.comfortLevel === "red").map((b) => (
-                          <span key={b.topicName} className="text-xs bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded-full">{b.label}</span>
+                          <span key={b.topicName} className="text-xs bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded-full">{b.labelKey ? t(b.labelKey) : b.label}</span>
                         ))}
                       </div>
                     </div>
@@ -291,7 +291,7 @@ function PersonCard({ person, onDisconnect, onNicknameChange, startOpen = false,
                       <p className="text-xs font-semibold text-amber-600 uppercase mb-1.5">{t("circle_boundaries_gentle")}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {boundaries.filter((b) => b.comfortLevel === "yellow").map((b) => (
-                          <span key={b.topicName} className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full">{b.label}</span>
+                          <span key={b.topicName} className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full">{b.labelKey ? t(b.labelKey) : b.label}</span>
                         ))}
                       </div>
                     </div>
@@ -301,7 +301,7 @@ function PersonCard({ person, onDisconnect, onNicknameChange, startOpen = false,
                       <p className="text-xs font-semibold text-emerald-600 uppercase mb-1.5">{t("circle_boundaries_open")}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {boundaries.filter((b) => b.comfortLevel === "green").map((b) => (
-                          <span key={b.topicName} className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full">{b.label}</span>
+                          <span key={b.topicName} className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full">{b.labelKey ? t(b.labelKey) : b.label}</span>
                         ))}
                       </div>
                     </div>

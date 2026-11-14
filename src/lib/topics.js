@@ -12,6 +12,7 @@ export const TOPICS = [
   {
     key: "health",
     label: "Health",
+    labelKey: "topic_health_label",
     keywords: [
       "health", "healthy", "doctor", "hospital", "sick", "illness",
       "medicine", "medication", "therapy", "therapist", "mental health",
@@ -31,6 +32,7 @@ export const TOPICS = [
   {
     key: "work",
     label: "Work",
+    labelKey: "topic_work_label",
     keywords: [
       "work", "job", "boss", "office", "career", "colleague", "coworker",
       "meeting", "promotion", "fired", "quit", "salary", "workplace",
@@ -48,6 +50,7 @@ export const TOPICS = [
   {
     key: "money",
     label: "Money",
+    labelKey: "topic_money_label",
     keywords: [
       "money", "budget", "debt", "credit card", "loan", "mortgage",
       "savings", "expenses", "bills", "financial", "rent", "salary",
@@ -73,6 +76,7 @@ export const TOPICS = [
   {
     key: "family",
     label: "Family",
+    labelKey: "topic_family_label",
     keywords: [
       "family", "mother", "father", "mom", "dad", "parent", "sibling",
       "brother", "sister", "in-law", "mother-in-law", "father-in-law",
@@ -92,6 +96,7 @@ export const TOPICS = [
   {
     key: "intimacy",
     label: "Intimacy",
+    labelKey: "topic_intimacy_label",
     // Trimmed: "touch" fired on "get in touch" and "touch base",
     // "connection" on "our internet connection" — in an app whose own core
     // noun is a connection — "physical" on "physical therapy" and "spark" on
@@ -113,6 +118,7 @@ export const TOPICS = [
   {
     key: "future_plans",
     label: "Future Plans",
+    labelKey: "topic_future_plans_label",
     keywords: [
       "future", "plan", "plans", "moving", "relocate", "children",
       "kids", "baby", "marriage", "wedding", "retire", "retirement",
@@ -130,6 +136,7 @@ export const TOPICS = [
   {
     key: "past_conflicts",
     label: "Past Conflicts",
+    labelKey: "topic_past_conflicts_label",
     keywords: [
       "fight", "argument", "argued", "fighting", "conflict",
       "disagreement", "last time", "remember when", "you always",
@@ -148,6 +155,7 @@ export const TOPICS = [
   {
     key: "social_life",
     label: "Social Life",
+    labelKey: "topic_social_life_label",
     keywords: [
       "friends", "social", "party", "going out", "hanging out",
       "weekend plans", "vacation", "trip", "travel",
@@ -163,6 +171,7 @@ export const TOPICS = [
   {
     key: "parenting",
     label: "Parenting",
+    labelKey: "topic_parenting_label",
     keywords: [
       "parenting", "discipline", "school", "homework", "daycare",
       "babysitter", "bedtime", "screen time", "allowance",
@@ -181,6 +190,7 @@ export const TOPICS = [
   {
     key: "personal_growth",
     label: "Personal Growth",
+    labelKey: "topic_personal_growth_label",
     keywords: [
       "self-improvement", "growth", "hobby", "hobbies", "exercise",
       "gym", "diet", "weight", "learning", "class", "course",
@@ -209,6 +219,7 @@ export const TOPICS = [
   {
     key: "body_and_appearance",
     label: "Body & Appearance",
+    labelKey: "topic_body_and_appearance_label",
     keywords: [
       "my body", "your body", "appearance", "weight",
       "gained weight", "lost weight", "fat", "thin", "skinny",
@@ -226,6 +237,7 @@ export const TOPICS = [
   {
     key: "grief_and_loss",
     label: "Grief & Loss",
+    labelKey: "topic_grief_and_loss_label",
     keywords: [
       "grief", "grieving", "mourning", "bereaved", "bereavement",
       "funeral", "memorial", "burial", "cremation", "casket",
@@ -244,6 +256,7 @@ export const TOPICS = [
   {
     key: "politics_and_beliefs",
     label: "Politics & Beliefs",
+    labelKey: "topic_politics_and_beliefs_label",
     keywords: [
       "politics", "political", "election", "vote", "voting", "voted",
       "president", "government", "senator", "congress", "parliament",
@@ -261,6 +274,7 @@ export const TOPICS = [
   {
     key: "home_and_chores",
     label: "Home & Chores",
+    labelKey: "topic_home_and_chores_label",
     keywords: [
       "chores", "chore", "dishes", "laundry", "vacuum", "vacuuming",
       "cleaning", "clean up", "tidy", "tidying", "mess", "messy",
@@ -279,6 +293,7 @@ export const TOPICS = [
   {
     key: "substances_and_habits",
     label: "Alcohol & Habits",
+    labelKey: "topic_substances_and_habits_label",
     keywords: [
       "drinking", "drank", "drunk", "alcohol", "beer", "wine", "whiskey",
       "hungover", "hangover", "sober", "sobriety", "relapse", "relapsed",
@@ -296,6 +311,7 @@ export const TOPICS = [
   {
     key: "time_and_attention",
     label: "Time & Attention",
+    labelKey: "topic_time_and_attention_label",
     keywords: [
       "always late", "running late", "kept me waiting", "waited for you",
       "on your phone", "on the phone", "screen time", "scrolling",
@@ -313,6 +329,7 @@ export const TOPICS = [
   {
     key: "past_relationships",
     label: "Past Relationships",
+    labelKey: "topic_past_relationships_label",
     keywords: [
       "my ex", "your ex", "ex-wife", "ex-husband", "ex-girlfriend",
       "ex-boyfriend", "ex-partner", "divorce", "divorced", "separation",
@@ -357,6 +374,18 @@ export function isValidTopicKey(key) {
 
 export function getTopicLabel(key) {
   return BY_KEY.get(key)?.label ?? key;
+}
+
+/**
+ * Translation key for the preset topic's label.
+ *
+ * Returns null for a custom topic (its label is the user's own text,
+ * which doesn't go through the i18n system) and for an unknown key.
+ * The server should use this on preset-topic references and leave the
+ * literal label alone otherwise.
+ */
+export function getTopicLabelKey(key) {
+  return BY_KEY.get(key)?.labelKey ?? null;
 }
 
 /**

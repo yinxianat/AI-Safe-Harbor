@@ -1,5 +1,6 @@
 import { getSessionUser } from "@/lib/auth.js";
 import prisma from "@/lib/db.js";
+import { getTopicLabelKey } from "@/lib/topics.js";
 
 const PERSON = {
   select: {
@@ -94,6 +95,7 @@ export async function GET(request) {
       boundariesByConn[s.connectionId].push({
         topicName: s.topicName,
         label: s.sanitizedLabel || s.topicName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        labelKey: s.sanitizedLabel ? null : getTopicLabelKey(s.topicName),
         comfortLevel: level,
       });
     }

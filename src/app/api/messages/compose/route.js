@@ -11,6 +11,7 @@ import {
   appliedSummary,
 } from "@/lib/receiver-settings.js";
 import { logCritical } from "@/lib/logger.js";
+import { detectsCrisis } from "@/lib/crisis.js";
 
 const MAX_MESSAGE_LENGTH = 5000;
 
@@ -34,6 +35,13 @@ export async function POST(request) {
   if (!contentRaw) {
     return badRequest("invalid_contentRaw");
   }
+
+  // Crisis markers are checked on EVERY compose, regardless of what
+  // the AI or the boundary layer decides. The /messages route handles
+  // the sender a support-resource card on any held or draft outcome
+  // when this flag is true, so a message held by a Health boundary
+  // doesn't send the sender away with no next step.
+  const crisis = detectsCrisis(contentRaw);
 
   const connection = await findAccessibleConnection(user.id, connectionId);
   if (!connection) {
@@ -75,6 +83,7 @@ export async function POST(request) {
       heldReason: boundaryCheck.heldReason,
       topics: boundaryCheck.redTopics,
       draftId: held.id,
+      crisis,
     });
   }
 
@@ -110,10 +119,13 @@ export async function POST(request) {
   ]);
 
   // AI caught a red topic that keywords missed — hold the message.
+  // "level" here is the receiver's STORED level; analyzeTopics no longer
+  // trusts the model's own severity field, so this can't be downgraded by
+  // the model saying "yellow".
   if (aiTopicCheck.verdict === "blocked") {
     const aiRedTopics = aiTopicCheck.flaggedTopics
       .filter((f) => f.level === "red")
-      .map((f) => f.topic);
+      .map((f) => f.key);
 
     const held = await prisma.message.create({
       data: {
@@ -132,6 +144,7 @@ export async function POST(request) {
       topics: aiRedTopics,
       aiReasons: aiTopicCheck.flaggedTopics.map((f) => f.reason),
       draftId: held.id,
+      crisis,
     });
   }
 
@@ -155,6 +168,7 @@ export async function POST(request) {
       heldReason: "red_topic",
       topics: boundaryCheck.redTopicsWithNote || [],
       draftId: held.id,
+      crisis,
     });
   }
 
@@ -183,6 +197,7 @@ export async function POST(request) {
       heldReason,
       draftId: draft.id,
       error: aiResult.error,
+      crisis,
     });
   }
 
@@ -212,6 +227,7 @@ export async function POST(request) {
     needsSoftening: boundaryCheck.needsSoftening,
     yellowTopics,
     topicVerdict,
+    crisis,
     // What shaped this rewrite, so the preview can name it. Choosing a
     // relationship and a tone and then seeing an unlabelled result is
     // indistinguishable from the settings being ignored.

@@ -141,12 +141,12 @@ export default function ThemPage() {
             )}
             {greenTopics.map((b) => (
               <div key={b.topicName} className="bg-gray-50 rounded-lg px-2.5 py-1.5">
-                <span className="text-xs text-slate-700">{b.label}</span>
+                <span className="text-xs text-slate-700">{b.labelKey ? t(b.labelKey) : b.label}</span>
               </div>
             ))}
             {yellowTopics.map((b) => (
               <div key={b.topicName} className="bg-amber-50 rounded-lg px-2.5 py-1.5 border border-amber-100">
-                <span className="text-xs text-amber-700">{b.label}</span>
+                <span className="text-xs text-amber-700">{b.labelKey ? t(b.labelKey) : b.label}</span>
                 <span className="text-[10px] text-amber-500 ml-1">{t("them_gentle_note")}</span>
               </div>
             ))}
@@ -164,7 +164,7 @@ export default function ThemPage() {
             ) : (
               redTopics.map((b) => (
                 <div key={b.topicName} className="bg-gray-50 rounded-lg px-2.5 py-1.5">
-                  <span className="text-xs text-slate-700">{b.label}</span>
+                  <span className="text-xs text-slate-700">{b.labelKey ? t(b.labelKey) : b.label}</span>
                 </div>
               ))
             )}

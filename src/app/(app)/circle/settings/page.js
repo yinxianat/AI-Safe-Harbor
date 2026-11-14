@@ -41,11 +41,11 @@ function TopicRow({ setting, onToggle, onSaveNote, onRemove }) {
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-3 space-y-2">
       <div className="flex items-center gap-2 min-w-0">
-        <p className="text-sm text-slate-800 flex-1 min-w-0 truncate">{setting.label}</p>
+        <p className="text-sm text-slate-800 flex-1 min-w-0 truncate">{setting.labelKey ? t(setting.labelKey) : setting.label}</p>
         {onRemove && (
           <button
             onClick={() => onRemove(setting.topicName)}
-            aria-label={t("tuning_remove_aria", { label: setting.label })}
+            aria-label={t("tuning_remove_aria", { label: setting.labelKey ? t(setting.labelKey) : setting.label })}
             className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-xs"
           >
             ✕
@@ -581,7 +581,7 @@ export default function AITuningPage() {
                     onClick={() => handleQuickAdd(s.topicName)}
                     className="text-xs px-2.5 py-1 rounded-full border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
                   >
-                    + {s.label}
+                    + {s.labelKey ? t(s.labelKey) : s.label}
                   </button>
                 ))}
               </div>

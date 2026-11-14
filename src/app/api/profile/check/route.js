@@ -2,7 +2,7 @@ import { getSessionUser } from "@/lib/auth.js";
 import { parseJsonBody, badRequest } from "@/lib/http.js";
 import { loadContactsWithBoundaries } from "@/lib/profile-contacts.js";
 import { reviewForAudience } from "@/lib/profile-audience.js";
-import { getTopicLabel } from "@/lib/topics.js";
+import { getTopicLabel, getTopicLabelKey } from "@/lib/topics.js";
 
 /**
  * Judge a draft note against every contact in its intended audience.
@@ -26,7 +26,7 @@ export async function POST(request) {
   const contacts = await loadContactsWithBoundaries(user.id);
   const review = reviewForAudience(text, contacts, visibleTo);
 
-  const withLabels = (topics) => topics.map((key) => ({ key, label: getTopicLabel(key) }));
+  const withLabels = (topics) => topics.map((key) => ({ key, label: getTopicLabel(key), labelKey: getTopicLabelKey(key) }));
 
   return Response.json({
     blockedEntirely: review.blockedEntirely,
