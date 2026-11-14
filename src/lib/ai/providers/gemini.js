@@ -14,6 +14,13 @@ const geminiProvider = {
     return process.env.AI_MODEL_GEMINI || DEFAULT_MODEL;
   },
 
+  models() {
+    return [
+      { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", tier: "deep", notes: "Deepest Gemini. Slower and costlier than Flash." },
+      { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", tier: "fast", notes: "Fast and cheap. The default." },
+    ];
+  },
+
   async complete({ system, userMessage, model, maxTokens }) {
     let response;
     try {

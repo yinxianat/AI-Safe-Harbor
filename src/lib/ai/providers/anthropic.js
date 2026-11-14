@@ -18,6 +18,29 @@ const anthropicProvider = {
     return process.env.AI_MODEL_ANTHROPIC || DEFAULT_MODEL;
   },
 
+  /**
+   * Model options an operator can pin for ad-hoc diagnostic calls.
+   *
+   * Not meant as an exhaustive catalog: these are the four we actively
+   * support in the admin UI. The provider-level API accepts any model id
+   * directly, so a one-off experiment can still pass a custom string —
+   * this list is what the UI shows as the recommended choice.
+   *
+   * Comparing two models on the same question is how an operator tells
+   * "the data is thin" from "this model is confused". Opus vs Haiku on
+   * the same diagnostic is the most informative split: Haiku is cheap
+   * and will show you what a fast surface answer looks like; Opus will
+   * show you where the Haiku answer was wrong.
+   */
+  models() {
+    return [
+      { id: "claude-opus-4-7", label: "Opus 4.7", tier: "deep", notes: "Deepest reasoning. Use when the Haiku answer looks wrong or thin." },
+      { id: "claude-sonnet-4-5", label: "Sonnet 4.5", tier: "balanced", notes: "The default. Good balance of depth and speed." },
+      { id: "claude-haiku-4-5", label: "Haiku 4.5", tier: "fast", notes: "Fast and cheap. Good first pass for a sanity check." },
+      { id: "claude-opus-5", label: "Opus 5", tier: "deep", notes: "Newest Opus; slower and costlier than 4.7. Use for the hardest questions." },
+    ];
+  },
+
   async complete({ system, userMessage, model, maxTokens }) {
     let response;
     try {

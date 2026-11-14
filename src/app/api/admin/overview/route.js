@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/admin-auth.js";
 import { getFindings, getMetrics, getRecentLogs } from "@/lib/diagnostics.js";
 import { logError } from "@/lib/logger.js";
 import { summarizeUsage, projectMonthly } from "@/lib/ai/pricing.js";
+import { computeOutcomes } from "@/lib/admin-outcomes.js";
 import prisma from "@/lib/db.js";
 
 /**
@@ -167,12 +168,16 @@ async function getConnectionList() {
 async function getRecentMessages(status, limit = 20) {
   const messages = await prisma.message.findMany({
     where: { status },
+    // No body columns. The dashboard reports reasons and topic tags; the
+    // text itself belongs in the gated Data Lens, which also refuses to
+    // return it. The old "preview" column leaked the first 80 characters
+    // of every held or drafted message onto this screen.
     select: {
       id: true,
-      contentRaw: true,
       heldReason: true,
       topicTags: true,
       aiProvider: true,
+      aiModel: true,
       status: true,
       createdAt: true,
       sender: { select: { displayName: true, username: true, email: true } },
@@ -182,10 +187,10 @@ async function getRecentMessages(status, limit = 20) {
   });
   return messages.map((m) => ({
     id: m.id,
-    preview: m.contentRaw?.slice(0, 80) + (m.contentRaw?.length > 80 ? "..." : ""),
     heldReason: m.heldReason,
     topics: m.topicTags,
     provider: m.aiProvider,
+    model: m.aiModel,
     sender: m.sender.displayName || m.sender.username || m.sender.email,
     createdAt: m.createdAt.toISOString(),
   }));
@@ -195,7 +200,7 @@ export async function GET(request) {
   const auth = await requireAdmin(request);
   if (!auth.ok) return auth.response;
 
-  const [findings, metrics, logs, userIssues, costs, aiCalls, users, connections, heldMessages, draftMessages] = await Promise.all([
+  const [findings, metrics, logs, userIssues, costs, aiCalls, users, connections, heldMessages, draftMessages, outcomes] = await Promise.all([
     getFindings().catch((err) => {
       logError("api.admin.overview", "findings unavailable", err?.message);
       return null;
@@ -221,6 +226,10 @@ export async function GET(request) {
     getConnectionList().catch(() => []),
     getRecentMessages("held").catch(() => []),
     getRecentMessages("draft").catch(() => []),
+    computeOutcomes().catch((err) => {
+      logError("api.admin.overview", "outcomes unavailable", err?.message);
+      return null;
+    }),
   ]);
 
   return Response.json({
@@ -239,5 +248,6 @@ export async function GET(request) {
       heldMessages,
       draftMessages,
     },
+    outcomes,
   });
 }
