@@ -366,6 +366,14 @@ function ComposeBar({ connectionId, onMessageSent }) {
                   {t("chat_applied_soften")}
                 </span>
               )}
+              {tuneResult.applied.readerShield?.enabled && tuneResult.applied.readerShield.emotions.length > 0 && (
+                <span
+                  className="text-[10px] text-emerald-700 bg-white/70 border border-emerald-200 rounded-full px-2 py-0.5"
+                  title={tuneResult.applied.readerShield.emotions.map((e) => t(`emotion_${e}`)).join(", ")}
+                >
+                  {t("chat_applied_reader_shield", { count: tuneResult.applied.readerShield.emotions.length })}
+                </span>
+              )}
             </div>
           )}
         </div>

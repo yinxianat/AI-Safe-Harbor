@@ -102,6 +102,61 @@ export async function GET(request) {
       m.boundarySummary = summaryByConn[m.connectionId] || { red: 0, yellow: 0, green: 0 };
       m.boundaries = boundariesByConn[m.connectionId] || [];
     }
+
+    // Activity signals for the people strip: when did this contact's
+    // latest status, post, or incoming message happen, and are there any
+    // unread messages from them? The strip uses this to ring "fresh" and
+    // fade "quiet" contacts, so the user sees at a glance where their
+    // attention is wanted.
+    const memberByConnection = new Map(members.map((m) => [m.connectionId, m]));
+    const partnerIds = members.map((m) => m.userId);
+
+    const [latestPosts, latestMessages, unreadCounts] = await Promise.all([
+      prisma.wallPost.groupBy({
+        by: ["userId"],
+        where: { userId: { in: partnerIds } },
+        _max: { createdAt: true },
+      }),
+      prisma.message.groupBy({
+        by: ["senderId", "connectionId"],
+        where: {
+          senderId: { in: partnerIds },
+          connectionId: { in: activeConnectionIds },
+          status: "sent",
+        },
+        _max: { sentAt: true },
+      }),
+      prisma.message.groupBy({
+        by: ["senderId", "connectionId"],
+        where: {
+          senderId: { in: partnerIds },
+          connectionId: { in: activeConnectionIds },
+          status: "sent",
+          readAt: null,
+        },
+        _count: true,
+      }),
+    ]);
+
+    const latestPostByUser = new Map(
+      latestPosts.map((r) => [r.userId, r._max.createdAt])
+    );
+    const latestMsgByConn = new Map(
+      latestMessages.map((r) => [r.connectionId, r._max.sentAt])
+    );
+    const unreadByConn = new Map(
+      unreadCounts.map((r) => [r.connectionId, r._count])
+    );
+
+    for (const m of members) {
+      const times = [
+        m.statusUpdatedAt ? new Date(m.statusUpdatedAt).getTime() : null,
+        latestPostByUser.get(m.userId)?.getTime() ?? null,
+        latestMsgByConn.get(m.connectionId)?.getTime() ?? null,
+      ].filter((t) => typeof t === "number");
+      m.lastActiveAt = times.length === 0 ? null : new Date(Math.max(...times)).toISOString();
+      m.unreadCount = unreadByConn.get(m.connectionId) || 0;
+    }
   }
 
   return Response.json({ members, incoming, outgoing });

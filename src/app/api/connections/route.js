@@ -19,6 +19,7 @@ export async function GET(request) {
           id: true, displayName: true, username: true, email: true, avatarUrl: true,
           tonePreference: true,
           statusText: true, statusUpdatedAt: true, statusVisibleTo: true,
+          emotionalShield: true, emotionalShieldEmotions: true,
         },
       },
       userB: {
@@ -26,6 +27,7 @@ export async function GET(request) {
           id: true, displayName: true, username: true, email: true, avatarUrl: true,
           tonePreference: true,
           statusText: true, statusUpdatedAt: true, statusVisibleTo: true,
+          emotionalShield: true, emotionalShieldEmotions: true,
         },
       },
       preferences: {
@@ -59,6 +61,12 @@ export async function GET(request) {
       // The tone they asked to be spoken in on this connection, for the
       // brief line on the chat card. Account-wide preference is the fallback.
       partnerTonePreference: partner.tonePreference || "warm_and_gentle",
+      partnerShield: partner.emotionalShield === false
+        ? null
+        : {
+            enabled: true,
+            emotions: partner.emotionalShieldEmotions || [],
+          },
       // What I asked to be spoken in; shown on my side of the card so I
       // remember which register their messages come to me in. Null when I
       // never set a per-connection override.

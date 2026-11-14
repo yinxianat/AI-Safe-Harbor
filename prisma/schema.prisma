@@ -38,6 +38,17 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  // Account-wide softening of other people's emotional load before this
+  // user reads it. Covers messages, status, wall posts and Know Me entries.
+  // Defaults to true so first-time users get the shield without having to
+  // opt in; they can turn it off or narrow it by emotion.
+  emotionalShield          Boolean   @default(true)
+  // Which emotions the shield operates on. Anything missing from this list
+  // passes through unchanged, so a user can keep (say) "sadness" plain
+  // because they want to meet the other person where they are, while still
+  // softening "anger".
+  emotionalShieldEmotions  String[]  @default(["anger","frustration","anxiety","stress","overwhelm","burnout","sadness","despair","fear","shame","guilt","resentment","loneliness","exhaustion","harshness"])
+
   statusText      String?
   statusMood      String?
   statusUpdatedAt DateTime?

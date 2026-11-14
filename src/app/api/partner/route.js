@@ -2,6 +2,7 @@ import { getSessionUser } from "@/lib/auth.js";
 import prisma from "@/lib/db.js";
 import { TOPIC_KEYS, getTopicLabel, isCustomTopicKey } from "@/lib/topics.js";
 import { canView, textForViewer } from "@/lib/profile-audience.js";
+import { shieldText, shieldTexts } from "@/lib/ai/apply-shield.js";
 import { toneLabelKey } from "@/lib/tones.js";
 
 export async function GET(request) {
@@ -90,12 +91,27 @@ export async function GET(request) {
       isCustom: true,
     }));
 
-  const entries = visibleKnowMe.map((e) => ({
+  // The viewer's own stored shield decides which emotions are softened
+  // before they see this page. shieldText / shieldTexts fail OPEN — a
+  // provider outage returns the original text, so a down AI never silences
+  // the partner.
+  const knowMeAnswers = visibleKnowMe.map((e) => textForViewer(e, connectionId, "answer"));
+  const wallTexts = visibleWall.map((p) => textForViewer(p, connectionId, "text"));
+
+  const [statusShielded, knowMeShielded, wallShielded] = await Promise.all([
+    statusVisible && partner.statusText
+      ? shieldText(user, partner.statusText)
+      : { text: statusVisible ? partner.statusText : null, softened: false },
+    shieldTexts(user, knowMeAnswers),
+    shieldTexts(user, wallTexts),
+  ]);
+
+  const entries = visibleKnowMe.map((e, i) => ({
     id: e.id,
     category: e.category,
     prompt: e.prompt,
-    // The variant the author approved for this reader, if any.
-    answer: textForViewer(e, connectionId, "answer"),
+    answer: knowMeShielded[i].text,
+    softened: knowMeShielded[i].softened,
   }));
 
   return Response.json({
@@ -106,17 +122,25 @@ export async function GET(request) {
       tonePreference: partner.tonePreference,
       toneLabelKey: toneLabelKey(partner.tonePreference),
       avatarUrl: partner.avatarUrl || null,
-      statusText: statusVisible ? partner.statusText : null,
+      statusText: statusShielded.text,
       statusMood: statusVisible ? partner.statusMood : null,
       statusUpdatedAt: statusVisible ? partner.statusUpdatedAt : null,
+      statusSoftened: statusShielded.softened,
     },
     boundaries: [...boundaries, ...customBoundaries],
     knowMe: entries,
-    wall: visibleWall.map((p) => ({
+    wall: visibleWall.map((p, i) => ({
       id: p.id,
-      text: textForViewer(p, connectionId, "text"),
+      text: wallShielded[i].text,
       mood: p.mood,
       createdAt: p.createdAt,
+      softened: wallShielded[i].softened,
     })),
+    // Did the reader's shield change anything on this page? The UI uses
+    // this to say "softened for you" once, rather than a badge per item.
+    shieldApplied:
+      statusShielded.softened
+      || knowMeShielded.some((e) => e.softened)
+      || wallShielded.some((e) => e.softened),
   });
 }

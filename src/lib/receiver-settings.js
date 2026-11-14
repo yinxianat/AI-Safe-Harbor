@@ -29,7 +29,7 @@ export async function loadReceiverContext(connectionId, receiverId) {
   const [receiver, topicSettings, connPref] = await Promise.all([
     prisma.user.findUnique({
       where: { id: receiverId },
-      select: { id: true, tonePreference: true, locale: true },
+      select: { id: true, tonePreference: true, locale: true, emotionalShield: true, emotionalShieldEmotions: true },
     }),
     prisma.topicSetting.findMany({ where: { connectionId, userId: receiverId } }),
     prisma.connectionPreference.findUnique({
@@ -60,7 +60,17 @@ export function topicNotesFrom(topicSettings) {
  * @returns {{ tonePreference, tonePrompt, relationshipType, yellowTopics, topicNotes }}
  */
 export function buildRephraseSettings({ connection, receiver, connPref, topicSettings, boundaryCheck }) {
+  const readerShield = receiver?.emotionalShield === false
+    ? null
+    : {
+        enabled: true,
+        emotions: Array.isArray(receiver?.emotionalShieldEmotions)
+          ? receiver.emotionalShieldEmotions
+          : [],
+      };
+
   return {
+    readerShield,
     tonePreference: sanitizeTone(connPref?.tonePreference || receiver?.tonePreference),
     tonePrompt: connPref?.tonePrompt || null,
     relationshipType: connection?.relationshipType || "other",
@@ -93,5 +103,9 @@ export function appliedSummary(settings) {
     hasExtraInstructions: Boolean(settings.tonePrompt),
     gentleTopicCount: (settings.yellowTopics || []).length,
     softeningApplied: Boolean(settings.softenEmotions),
+    // What the RECEIVER's account-wide shield will do when they open the
+    // message. The author sees this so they are not surprised by text
+    // reading softer on the other side.
+    readerShield: settings.readerShield || null,
   };
 }

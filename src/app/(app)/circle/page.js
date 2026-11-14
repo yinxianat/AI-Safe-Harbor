@@ -377,6 +377,25 @@ function PersonRow({ person, action }) {
  * update below the fold, which is the opposite of what the product asks
  * for.
  */
+// Attention thresholds for the people strip.
+//
+// Chosen to give the strip three visible classes at a glance — "they
+// wrote you something you haven't seen", "they've been active lately",
+// and "they've been quiet a while" — without a legend. Thresholds
+// deliberately coarse: narrower bands would flicker on the boundary and
+// the extra signal is not worth the instability.
+const FRESH_MS = 3 * 24 * 60 * 60 * 1000;
+const QUIET_MS = 30 * 24 * 60 * 60 * 1000;
+
+function peopleAttention(p) {
+  if (p.unreadCount > 0) return "unread";
+  if (!p.lastActiveAt) return "quiet";
+  const age = Date.now() - new Date(p.lastActiveAt).getTime();
+  if (age < FRESH_MS) return "fresh";
+  if (age > QUIET_MS) return "quiet";
+  return "normal";
+}
+
 function PeopleStrip({ members, onOpenPerson }) {
   const { t } = useT();
   return (
@@ -390,21 +409,48 @@ function PeopleStrip({ members, onOpenPerson }) {
             p.nickname
             || p.displayName
             || (p.username ? `@${p.username}` : t("circle_fallback_name"));
+          const attention = peopleAttention(p);
+          const ringClass =
+            attention === "unread"
+              ? "ring-2 ring-emerald-600"
+              : attention === "fresh"
+                ? "ring-2 ring-emerald-300"
+                : "";
+          // Quiet contacts go to 60% opacity — present but visually
+          // demoted, so the operator can see who they've drifted from
+          // without hiding anyone.
+          const fade = attention === "quiet" ? "opacity-60" : "";
           return (
             <button
               key={p.connectionId}
               onClick={() => onOpenPerson(p.connectionId)}
-              className="shrink-0 w-16 text-center group"
+              className={`shrink-0 w-16 text-center group ${fade}`}
               aria-label={t("chat_open_profile", { name })}
+              title={
+                attention === "unread"
+                  ? t("circle_people_unread", { count: p.unreadCount })
+                  : attention === "fresh"
+                    ? t("circle_people_fresh")
+                    : attention === "quiet"
+                      ? t("circle_people_quiet")
+                      : undefined
+              }
             >
-              <div className="relative inline-block">
+              <div className={`relative inline-block rounded-full ${ringClass}`}>
                 <Avatar src={p.avatarUrl} name={name} size="md" tone="solid" />
-                {p.statusText && (
+                {p.unreadCount > 0 ? (
+                  <span
+                    className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-white"
+                    aria-hidden="true"
+                  >
+                    {p.unreadCount > 9 ? "9+" : p.unreadCount}
+                  </span>
+                ) : p.statusText ? (
                   <span
                     className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white"
                     aria-hidden="true"
                   />
-                )}
+                ) : null}
               </div>
               <p className="mt-1 text-[11px] text-slate-700 group-hover:text-emerald-700 truncate">
                 {name}
@@ -485,12 +531,21 @@ function FeedCard() {
 
 function FeedItem({ item, timeAgo }) {
   const { t } = useT();
-  const kindLabel = item.kind === "status"
-    ? t("circle_feed_kind_status")
-    : t("circle_feed_kind_post");
+  const kindLabel =
+    item.kind === "status"
+      ? t("circle_feed_kind_status")
+      : item.kind === "rediscovery"
+        ? t("circle_feed_kind_rediscovery")
+        : t("circle_feed_kind_post");
+
+  // Rediscovery items are intentionally muted so the reader does not
+  // mistake them for brand-new activity — they are context, not news.
+  const outer = item.isRediscovery
+    ? "bg-amber-50/60 border border-amber-100 rounded-xl p-3 sm:p-4"
+    : "bg-white border border-gray-100 rounded-xl p-3 sm:p-4";
 
   return (
-    <article className="bg-white border border-gray-100 rounded-xl p-3 sm:p-4">
+    <article className={outer}>
       <div className="flex items-start gap-3">
         <Link
           href={`/them?connectionId=${item.connectionId}`}
@@ -512,9 +567,17 @@ function FeedItem({ item, timeAgo }) {
             >
               {item.author.name || t("circle_fallback_name")}
             </Link>
-            <span className="text-[10px] text-slate-400 uppercase tracking-wide">
+            <span className={`text-[10px] uppercase tracking-wide ${item.isRediscovery ? "text-amber-700" : "text-slate-400"}`}>
               {kindLabel}
             </span>
+            {item.softened && (
+              <span
+                className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-1.5 py-0.5"
+                title={t("shield_crisis_note")}
+              >
+                {t("shield_badge_softened")}
+              </span>
+            )}
             <span className="text-[11px] text-slate-400 ml-auto">
               {timeAgo(item.createdAt)}
             </span>
@@ -562,6 +625,9 @@ function MeCard({ me, onUsernameClaimed }) {
   const knowMeCount = summary?.knowMe?.count ?? 0;
   const storyLatest = summary?.story?.latest?.text || null;
   const knowMeLatest = summary?.knowMe?.latest;
+  const totalContacts = summary?.totalContacts ?? 0;
+  const storyReach = summary?.story?.latestReach ?? null;
+  const knowMeReach = summary?.knowMe?.latestReach ?? null;
 
   return (
     <div className="bg-white border border-gray-100 rounded-xl sm:rounded-2xl shadow-sm overflow-hidden">
@@ -622,6 +688,8 @@ function MeCard({ me, onUsernameClaimed }) {
           emptyHint={t("circle_me_notes_empty_hint")}
           emptyAction={t("circle_me_add_first_note")}
           preview={storyLatest}
+          reach={storyReach}
+          totalContacts={totalContacts}
         />
         <SelfSection
           href="/knowme"
@@ -633,6 +701,8 @@ function MeCard({ me, onUsernameClaimed }) {
           preview={knowMeLatest
             ? `${knowMeLatest.prompt} — ${knowMeLatest.answer}`
             : null}
+          reach={knowMeReach}
+          totalContacts={totalContacts}
         />
       </div>
     </div>
@@ -645,8 +715,17 @@ function MeCard({ me, onUsernameClaimed }) {
  * to start, because that is what someone opening this page actually
  * needs to see first).
  */
-function SelfSection({ href, label, count, countLabel, emptyHint, emptyAction, preview }) {
+function SelfSection({ href, label, count, countLabel, emptyHint, emptyAction, preview, reach, totalContacts }) {
+  const { t } = useT();
   const empty = count === 0 || !preview;
+  // Reach is meaningful only when both the latest item exists AND there
+  // is at least one contact to compare against. "visible to 0 of 0" is
+  // noise.
+  const showReach = !empty && typeof reach === "number" && totalContacts > 0;
+  // A hidden latest item (reach = 0 against a non-zero audience) is the
+  // one the author most needs to know about — it reads as "I posted
+  // something; nobody's seeing it".
+  const reachWarn = showReach && reach === 0;
   return (
     <Link
       href={href}
@@ -655,13 +734,21 @@ function SelfSection({ href, label, count, countLabel, emptyHint, emptyAction, p
       <div className="min-w-0 flex-1 space-y-0.5">
         <div className="flex items-baseline justify-between gap-2 flex-wrap">
           <p className="text-sm font-semibold text-slate-800">{label}</p>
-          <p className="text-[11px] text-slate-500 shrink-0">{countLabel}</p>
+          <div className="flex items-center gap-2 shrink-0">
+            {showReach && (
+              <p className={`text-[11px] ${reachWarn ? "text-amber-700" : "text-slate-500"}`}>
+                {t("circle_me_reach", { reach, total: totalContacts })}
+              </p>
+            )}
+            <p className="text-[11px] text-slate-500">{countLabel}</p>
+          </div>
         </div>
         {empty ? (
-          <>
-            <p className="text-[11px] text-slate-500">{emptyHint}</p>
-            <p className="text-[11px] font-medium text-emerald-600">{emptyAction} →</p>
-          </>
+          // One-line empty state: the paragraph version pushed the first
+          // contact's avatar off-screen on a tight phone, and the long
+          // sentence wasn't carrying any information the action line
+          // didn't already imply.
+          <p className="text-[11px] font-medium text-emerald-600">{emptyAction} →</p>
         ) : (
           <p className="text-[11px] text-slate-600 line-clamp-2">{preview}</p>
         )}

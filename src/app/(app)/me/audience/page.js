@@ -351,6 +351,14 @@ export default function AudiencePage() {
             {t("audience_see_their_profile")}
           </Link>
         </div>
+        {audience.shield?.enabled && audience.shield.emotions.length > 0 && (
+          <p className="mt-2 text-[11px] text-slate-500 border-t border-gray-100 pt-2">
+            {t("audience_shield_on", {
+              name,
+              emotions: audience.shield.emotions.map((e) => t(`emotion_${e}`)).join(", "),
+            })}
+          </p>
+        )}
       </div>
 
       {/* Status */}
