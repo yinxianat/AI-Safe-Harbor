@@ -7,6 +7,10 @@ export default function InvitePage() {
   const { t } = useT();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  // Mirrored from the server. When true, SMTP is known-unhealthy and the
+  // "invitation sent" success card would be a lie; the UI renders a
+  // yellow banner instead that names the actual state.
+  const [degraded, setDegraded] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -36,6 +40,7 @@ export default function InvitePage() {
       }
 
       setSent(true);
+      setDegraded(Boolean(data.deliveryDegraded));
     } catch {
       setError(t("network_error"));
     } finally {
@@ -50,7 +55,19 @@ export default function InvitePage() {
         <p className="text-sm text-slate-500 mt-1">{t("invite_subtitle")}</p>
       </div>
 
-      {sent ? (
+      {sent && degraded ? (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-6">
+          <p className="font-medium mb-1">{t("invite_undeliverable_title")}</p>
+          <p className="text-sm">{t("invite_undeliverable_detail", { email })}</p>
+          <p className="text-sm mt-2">{t("invite_undeliverable_hint")}</p>
+          <button
+            onClick={() => { setSent(false); setDegraded(false); setEmail(""); }}
+            className="mt-4 text-sm font-medium text-amber-800 underline"
+          >
+            {t("invite_send_another")}
+          </button>
+        </div>
+      ) : sent ? (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl p-6 text-center">
           <p className="font-medium mb-1">{t("invite_sent_title")}</p>
           <p className="text-sm">{t("invite_sent_to")} <strong>{email}</strong></p>
