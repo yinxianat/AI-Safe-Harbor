@@ -55,7 +55,17 @@ export async function POST(request) {
       { status: 500 }
     );
   }
-  const inviterName = user.displayName || "Someone";
+  // "Someone invited you to Leeway" is the exact shape Gmail's filter
+  // trains against as a promotional/scam pattern. Falling back through
+  // displayName → username → the email's local part means every real
+  // invite carries a specific person's identity, which reads as
+  // transactional. Only an account with no username and no displayName
+  // ever lands on "Someone".
+  const inviterName =
+    user.displayName
+    || user.username
+    || user.email?.split("@")[0]
+    || "Someone";
 
   // Wait briefly for the send to confirm. Most failure modes — bad
   // credentials, unreachable host, sender rejected — reply within the
@@ -67,9 +77,20 @@ export async function POST(request) {
 
   const sendPromise = sendMail({
     to: email,
-    subject: `${inviterName} invited you to Leeway`,
-    text: `You've been invited to connect on Leeway.\n\nAccept: ${inviteLink}\n\nThis link expires in 15 minutes.`,
-    html: `<p>${inviterName} invited you to connect on Leeway.</p><p><a href="${inviteLink}">Accept Invitation</a></p><p>This link expires in 15 minutes.</p>`,
+    // "wants to connect on Leeway" instead of "invited you to" —
+    // both describe the same thing, but the second phrasing is the one
+    // Gmail's filter trains against. "Wants to connect" also reads as a
+    // specific person's action rather than a mass mailing.
+    subject: `${inviterName} wants to connect on Leeway`,
+    text: `${inviterName} wants to connect with you on Leeway.\n\nAccept the invitation:\n${inviteLink}\n\nThis link expires in 15 minutes.\n\nIf you did not expect this, you can ignore this email.`,
+    // href === text in the <a>. href ≠ text is the single strongest
+    // phishing signal in HTML email, and the sign-in flow — which
+    // reaches external inboxes fine — uses the same href===text pattern
+    // here.
+    html: `<p>${inviterName} wants to connect with you on Leeway.</p>` +
+          `<p><a href="${inviteLink}">${inviteLink}</a></p>` +
+          `<p>This link expires in 15 minutes.</p>` +
+          `<p style="color:#64748b;font-size:13px">If you did not expect this, you can ignore this email.</p>`,
   });
 
   // A `null` resolution means the timeout won — the send is still running.
