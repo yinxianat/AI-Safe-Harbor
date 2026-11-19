@@ -16,6 +16,8 @@
     "test:all": "node --experimental-vm-modules node_modules/.bin/jest --runInBand"
   },
   "dependencies": {
+    "@apple/app-store-server-library": "^1.6.0",
+    "@parse/node-apn": "^6.5.0",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "jose": "^6.2.17",

@@ -103,6 +103,9 @@ export async function logEvent({ level = LEVEL.ERROR, source, message, detail = 
   }
 }
 
+export const logInfo = (source, message, detail) =>
+  logEvent({ level: "info", source, message, detail });
+
 export const logError = (source, message, detail) =>
   logEvent({ level: LEVEL.ERROR, source, message, detail });
 

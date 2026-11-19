@@ -12,6 +12,7 @@ import {
 } from "@/lib/receiver-settings.js";
 import { logCritical } from "@/lib/logger.js";
 import { detectsCrisis } from "@/lib/crisis.js";
+import { consumeTuneQuota } from "@/lib/plan-limits.js";
 
 const MAX_MESSAGE_LENGTH = 5000;
 
@@ -88,6 +89,24 @@ export async function POST(request) {
   }
 
   const yellowTopics = boundaryCheck.yellowTopics || [];
+
+  // Per-tier daily AI quota. Charged here, AFTER the hard-block check (a
+  // red-topic hold never reaches the AI, so it shouldn't count against
+  // the day's cap) and BEFORE the actual AI call (so a quota-exhausted
+  // user sees a paywall instead of having a draft silently fail).
+  const quota = await consumeTuneQuota(user);
+  if (!quota.ok) {
+    return Response.json(
+      {
+        error: "quota_exhausted",
+        detail: "You have used today's AI tunes. Upgrade for more.",
+        used: quota.used,
+        cap: quota.cap,
+        plan: quota.plan,
+      },
+      { status: 429 }
+    );
+  }
 
   // Built once, from the same helper retry uses, so both paths apply the same
   // relationship, per-connection tone, notes and extra instructions.

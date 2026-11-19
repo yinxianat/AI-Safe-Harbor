@@ -1,7 +1,7 @@
 import { getSessionUser, generateMagicToken } from "@/lib/auth.js";
 import { getBaseUrl } from "@/lib/base-url.js";
 import { parseJsonBody, badRequest, requireString } from "@/lib/http.js";
-import { sendMail } from "@/lib/mailer.js";
+import { sendMail, deliveryHealth } from "@/lib/mailer.js";
 import { logError } from "@/lib/logger.js";
 import prisma from "@/lib/db.js";
 
@@ -66,5 +66,15 @@ export async function POST(request) {
       logError("api.invite", "invitation email threw unexpectedly", err?.message);
     });
 
-  return Response.json({ sent: true });
+  // Mirror the sign-in route: report whether the mail infrastructure is
+  // known to be unhealthy. Without this the UI showed "invitation sent"
+  // when SMTP wasn't configured, when credentials were rejected, or when
+  // the server could not reach the mail host — three different silent
+  // failures that all looked identical to the sender.
+  const health = deliveryHealth();
+  return Response.json({
+    sent: true,
+    deliveryDegraded: health.degraded,
+    reason: health.reason || null,
+  });
 }

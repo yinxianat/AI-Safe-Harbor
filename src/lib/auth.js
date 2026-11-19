@@ -120,6 +120,10 @@ export async function createSession(userId, sessionDays = 30) {
 export async function verifySession(token) {
   try {
     const { payload } = await jwtVerify(token, jwtKey());
+    // A refresh token is signed with the same secret but is NOT a session.
+    // Rejecting it here means a leaked refresh token can't skip the refresh
+    // endpoint and be used as an access token directly.
+    if (payload.typ === "refresh") return { valid: false };
     return { valid: true, userId: payload.userId };
   } catch {
     return { valid: false };
@@ -140,17 +144,21 @@ function readSessionCookie(request) {
 }
 
 export async function getSessionUser(request) {
+  // Mobile clients send `Authorization: Bearer <jwt>`; the web cookie
+  // path is the fallback. Checking Bearer first means a request that
+  // sends BOTH a stale cookie and a fresh access token uses the fresh
+  // one, not the cookie it accidentally still has.
   const authHeader = request.headers.get("authorization");
-  const token = authHeader?.replace("Bearer ", "") || readSessionCookie(request);
-
-  if (!token) {
-    return null;
+  let token = null;
+  if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
+    const value = authHeader.slice(7).trim();
+    if (value) token = value;
   }
+  if (!token) token = readSessionCookie(request);
+  if (!token) return null;
 
   const result = await verifySession(token);
-  if (!result.valid) {
-    return null;
-  }
+  if (!result.valid) return null;
 
   return prisma.user.findUnique({ where: { id: result.userId } });
 }

@@ -1,6 +1,7 @@
 import { getSessionUser } from "@/lib/auth.js";
 import { parseJsonBody, badRequest } from "@/lib/http.js";
 import { checkRateLimit } from "@/lib/rate-limit.js";
+import { consumeTuneQuota } from "@/lib/plan-limits.js";
 import { loadContactsWithBoundaries } from "@/lib/profile-contacts.js";
 import { reviewForAudience } from "@/lib/profile-audience.js";
 import { rephraseMessage } from "@/lib/ai/index.js";
@@ -40,6 +41,24 @@ export async function POST(request) {
     return Response.json(
       { error: "rate_limited", retryAfter: limit.retryAfter },
       { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
+
+  // Per-tier daily quota, on TOP of the per-minute rate limit. The rate
+  // limit stops floods; this one gates the free tier on economics. A
+  // paying user who hit the rate limit will retry in a minute; a free
+  // user who hit the quota is pointed at the paywall, not told to wait.
+  const quota = await consumeTuneQuota(user);
+  if (!quota.ok) {
+    return Response.json(
+      {
+        error: "quota_exhausted",
+        detail: "You have used today's AI tunes. Upgrade for more.",
+        used: quota.used,
+        cap: quota.cap,
+        plan: quota.plan,
+      },
+      { status: 429 }
     );
   }
 

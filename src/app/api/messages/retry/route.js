@@ -2,6 +2,7 @@ import { getSessionUser } from "@/lib/auth.js";
 import { parseJsonBody, badRequest, requireString } from "@/lib/http.js";
 import prisma from "@/lib/db.js";
 import { detectsCrisis } from "@/lib/crisis.js";
+import { consumeTuneQuota } from "@/lib/plan-limits.js";
 import { checkTopicBoundaries } from "@/lib/topic-checker.js";
 import { rephraseMessage, analyzeTopics } from "@/lib/ai/index.js";
 import { getTopicLabel } from "@/lib/topics.js";
@@ -112,6 +113,24 @@ export async function POST(request) {
       data: { status: "held", heldReason: "red_topic", topicTags: topics },
     });
     return Response.json({ held: true, heldReason: "red_topic", topics, crisis });
+  }
+
+  // Retries count against the daily cap the same as a compose would.
+  // Charging here (before rephraseMessage) matches compose; a quota-
+  // exhausted retry returns the paywall shape rather than failing
+  // silently as "ai_failed" again.
+  const quota = await consumeTuneQuota(user);
+  if (!quota.ok) {
+    return Response.json(
+      {
+        error: "quota_exhausted",
+        detail: "You have used today's AI tunes. Upgrade for more.",
+        used: quota.used,
+        cap: quota.cap,
+        plan: quota.plan,
+      },
+      { status: 429 }
+    );
   }
 
   // Previously this passed only the account-wide tone and the gentle topics,
